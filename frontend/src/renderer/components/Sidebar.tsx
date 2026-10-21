@@ -147,6 +147,7 @@ import type { RemoteHost } from "../hooks/useRemoteHosts";
 import { sessionNavigateTarget } from "../lib/navigate-to-session";
 import { sessionUiKey } from "../lib/hosts";
 import { RemoteHostsSection } from "./RemoteHostsSection";
+import { LOCAL_ONLY_BUILD } from "../../shared/local-only";
 
 // macOS paints framed chrome: the fixed TitlebarNav cluster carries the
 // sidebar toggle + history arrows above this surface. Windows hangs the sidebar
@@ -1133,7 +1134,8 @@ export function Sidebar({
 												/>
 											))}
 										</AnimatePresence>
-										<RemoteHostsSection
+										{/* No remote hosts in the local-only build. */}
+										{!LOCAL_ONLY_BUILD && <RemoteHostsSection
 											hosts={remoteHosts}
 											workspaces={remoteWorkspaces}
 											failedHostIds={remoteFailedHostIds}
@@ -1172,7 +1174,7 @@ export function Sidebar({
 												/>;
 											}}
 											onRetry={onRetryRemoteHosts}
-										/>
+										/>}
 										{isIconRail && <CreateProjectListItem />}
 										<div
 											aria-hidden="true"
@@ -1276,19 +1278,22 @@ export function Sidebar({
 						status={updateStatus}
 						tabIndex={isCollapsed ? -1 : 0}
 					/>
-					<button
-						aria-label={t("settings.connectMobile")}
-						className={FOOTER_NAV_BUTTON_CLASS}
-						onClick={() => selection.goConnectMobile()}
-						tabIndex={isCollapsed ? -1 : 0}
-						type="button"
-					>
-						<NavRowHighlight />
-						<span className="relative z-[1] flex min-w-0 flex-1 items-center gap-2.5 [&_svg]:size-icon-md [&_svg]:shrink-0">
-							<Smartphone aria-hidden="true" />
-							<span className="tracking-tight">{t("settings.connectMobile")}</span>
-						</span>
-					</button>
+					{/* No Connect Mobile in the local-only build. */}
+					{!LOCAL_ONLY_BUILD && (
+						<button
+							aria-label={t("settings.connectMobile")}
+							className={FOOTER_NAV_BUTTON_CLASS}
+							onClick={() => selection.goConnectMobile()}
+							tabIndex={isCollapsed ? -1 : 0}
+							type="button"
+						>
+							<NavRowHighlight />
+							<span className="relative z-[1] flex min-w-0 flex-1 items-center gap-2.5 [&_svg]:size-icon-md [&_svg]:shrink-0">
+								<Smartphone aria-hidden="true" />
+								<span className="tracking-tight">{t("settings.connectMobile")}</span>
+							</span>
+						</button>
+					)}
 					<div className="flex w-full items-center gap-1">
 						<button
 							aria-label={t("shell.settings")}
@@ -1318,23 +1323,26 @@ export function Sidebar({
 					/>
 					<CloudSignInRailButton tabIndex={isCollapsed ? 0 : -1} />
 					<CloudAccountRailButton tabIndex={isCollapsed ? 0 : -1} />
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<button
-								aria-label={t("settings.connectMobile")}
-								className={FOOTER_RAIL_BUTTON_CLASS}
-								onClick={() => selection.goConnectMobile()}
-								tabIndex={isCollapsed ? 0 : -1}
-								type="button"
-							>
-								<NavRowHighlight />
-								<span className="relative z-[1] grid place-items-center [&_svg]:size-icon-base">
-									<Smartphone aria-hidden="true" />
-								</span>
-							</button>
-						</TooltipTrigger>
-						<TooltipContent side="right">{t("settings.connectMobile")}</TooltipContent>
-					</Tooltip>
+					{/* No Connect Mobile in the local-only build. */}
+					{!LOCAL_ONLY_BUILD && (
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<button
+									aria-label={t("settings.connectMobile")}
+									className={FOOTER_RAIL_BUTTON_CLASS}
+									onClick={() => selection.goConnectMobile()}
+									tabIndex={isCollapsed ? 0 : -1}
+									type="button"
+								>
+									<NavRowHighlight />
+									<span className="relative z-[1] grid place-items-center [&_svg]:size-icon-base">
+										<Smartphone aria-hidden="true" />
+									</span>
+								</button>
+							</TooltipTrigger>
+							<TooltipContent side="right">{t("settings.connectMobile")}</TooltipContent>
+						</Tooltip>
+					)}
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<button
