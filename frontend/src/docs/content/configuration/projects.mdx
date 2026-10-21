@@ -44,6 +44,7 @@ ao project rm <project-id>
 | `workersRequestReview` | When `true`, new workers request an Orchestrator review of their own PR once it is ready, and again after each fix. When unset, workers ask the user or orchestrator before starting one. |
 | `verifyCommand` | Argument list (run directly, never through a shell) that the daemon runs in a throwaway checkout of a PR's exact head before it merges. If the command fails, times out or can't start, the merge is refused with `PR_VERIFY_FAILED`. Single-repo projects only. Example: `["go", "test", "./..."]`. In **Project Settings → General → Pull requests** it is the **Merge check command**, entered as one line where quotes group an argument (`sh -c "make test && make lint"`). |
 | `verifyTimeoutSeconds` | Time limit for `verifyCommand`, in seconds (**Merge check time limit** in Project Settings). Defaults to 600; the maximum is 7200. |
+| `pushAfterMerge` | When `true`, `ao merge` (the orchestrator's local merge of a worker branch) pushes the base branch to `origin` after the merge lands, never forced. A failed push is reported and never undoes the local merge. Off by default; workers never push. Single-repo projects only (**Push after merge** in Project Settings). |
 | `defaultBranch` | Base branch for new Git worktrees. Defaults to `auto`. |
 | `sessionPrefix` | Prefix for generated session identifiers. |
 | `env` | Extra environment variables passed to agent runtimes. |
