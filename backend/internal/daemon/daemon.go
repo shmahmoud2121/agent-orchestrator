@@ -76,6 +76,7 @@ import (
 	"github.com/aoagents/agent-orchestrator/backend/internal/service/systemcheck"
 	"github.com/aoagents/agent-orchestrator/backend/internal/service/systeminstall"
 	usagesvc "github.com/aoagents/agent-orchestrator/backend/internal/service/usage"
+	verifysvc "github.com/aoagents/agent-orchestrator/backend/internal/service/verify"
 	sessionmanager "github.com/aoagents/agent-orchestrator/backend/internal/session_manager"
 	"github.com/aoagents/agent-orchestrator/backend/internal/skillassets"
 	"github.com/aoagents/agent-orchestrator/backend/internal/storage/sqlite"
@@ -897,6 +898,7 @@ func Run() error {
 			MergeWriter:  store,
 			ThreadWriter: store,
 			Lifecycle:    lcStack.LCM,
+			Verifier:     verifysvc.New(verifysvc.Deps{Sessions: store, Projects: store, Logger: log}),
 			Logger:       log,
 		})
 	} else {

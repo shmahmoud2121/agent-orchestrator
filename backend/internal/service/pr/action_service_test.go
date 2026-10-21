@@ -506,3 +506,53 @@ func TestActionServiceResolveComments_NothingToResolve(t *testing.T) {
 		t.Fatalf("writes=%d resolves=%d, want 0", writer.writeCalls, scm.resolveCalls)
 	}
 }
+
+type fakeMergeVerifier struct {
+	err   error
+	calls int
+	head  string
+}
+
+func (f *fakeMergeVerifier) VerifyMerge(_ context.Context, _ domain.PullRequest, headSHA string) error {
+	f.calls++
+	f.head = headSHA
+	return f.err
+}
+
+func TestActionServiceMerge_VerifierFailureNeverReachesProvider(t *testing.T) {
+	pr, scm := mergeableActionFixture()
+	verifier := &fakeMergeVerifier{err: errors.New("tests failed")}
+	svc := NewActionService(ActionDeps{Store: &fakeActionStore{pr: pr, ok: true}, Reader: scm, Merger: scm, Verifier: verifier})
+	_, err := svc.Merge(context.Background(), MergeRequest{PRID: "42", PRURL: pr.URL, ExpectedHeadSHA: pr.HeadSHA})
+	if !errors.Is(err, ErrPRVerifyFailed) {
+		t.Fatalf("err = %v, want ErrPRVerifyFailed", err)
+	}
+	if scm.mergeCalls != 0 {
+		t.Fatalf("provider merge called %d times after failed verification", scm.mergeCalls)
+	}
+	if verifier.calls != 1 || verifier.head != pr.HeadSHA {
+		t.Fatalf("verifier calls = %d head = %q", verifier.calls, verifier.head)
+	}
+}
+
+func TestActionServiceMerge_VerifierPassMergesAndSkipsUnreadyPRs(t *testing.T) {
+	pr, scm := mergeableActionFixture()
+	verifier := &fakeMergeVerifier{}
+	svc := NewActionService(ActionDeps{Store: &fakeActionStore{pr: pr, ok: true}, Reader: scm, Merger: scm, Verifier: verifier})
+	if _, err := svc.Merge(context.Background(), MergeRequest{PRID: "42", PRURL: pr.URL, ExpectedHeadSHA: pr.HeadSHA}); err != nil {
+		t.Fatal(err)
+	}
+	if scm.mergeCalls != 1 || verifier.calls != 1 {
+		t.Fatalf("merge calls = %d verifier calls = %d", scm.mergeCalls, verifier.calls)
+	}
+
+	// A PR that fails the cheap readiness checks is refused before any
+	// verify command runs.
+	scm.observation.CI.Summary = string(domain.CIFailing)
+	if _, err := svc.Merge(context.Background(), MergeRequest{PRID: "42", PRURL: pr.URL, ExpectedHeadSHA: pr.HeadSHA}); !errors.Is(err, ErrPRPreconditions) {
+		t.Fatalf("err = %v, want ErrPRPreconditions", err)
+	}
+	if verifier.calls != 1 {
+		t.Fatalf("verifier ran for an unready PR: calls = %d", verifier.calls)
+	}
+}

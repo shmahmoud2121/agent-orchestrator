@@ -86,7 +86,23 @@ type ProjectConfig struct {
 	// the feature but check with the user or orchestrator before using it.
 	// Read at spawn, when the worker prompt is built.
 	WorkersRequestReview bool `json:"workersRequestReview,omitempty"`
+
+	// VerifyCommand, when set, is run by the daemon itself (argv, never a
+	// shell) in a clean checkout of a PR's exact head before AO merges it. A
+	// failing, timed-out or unrunnable command refuses the merge, so "tests
+	// pass" is proven by AO rather than reported by an agent. Empty keeps the
+	// upstream behavior.
+	VerifyCommand []string `json:"verifyCommand,omitempty"`
+	// VerifyTimeoutSeconds bounds VerifyCommand; 0 means DefaultVerifyTimeout.
+	VerifyTimeoutSeconds int `json:"verifyTimeoutSeconds,omitempty"`
 }
+
+// DefaultVerifyTimeoutSeconds bounds a project VerifyCommand without its own
+// timeout; MaxVerifyTimeoutSeconds caps any configured value.
+const (
+	DefaultVerifyTimeoutSeconds = 600
+	MaxVerifyTimeoutSeconds     = 7200
+)
 
 // ContainerReapConfig is the project-level opt-out for #2652's Docker
 // container reaping on session terminal state.
@@ -214,6 +230,14 @@ func (c ProjectConfig) IsZero() bool {
 // Validate rejects values outside the typed vocabulary so a bad config is
 // refused when it is set (CLI/API) rather than surfacing at spawn.
 func (c ProjectConfig) Validate() error {
+	for i, arg := range c.VerifyCommand {
+		if (i == 0 && strings.TrimSpace(arg) == "") || strings.ContainsRune(arg, '\x00') {
+			return fmt.Errorf("verifyCommand[%d]: invalid argument", i)
+		}
+	}
+	if c.VerifyTimeoutSeconds < 0 || c.VerifyTimeoutSeconds > MaxVerifyTimeoutSeconds {
+		return fmt.Errorf("verifyTimeoutSeconds: must be between 0 and %d", MaxVerifyTimeoutSeconds)
+	}
 	if c.CanonicalRepoURL != "" {
 		if err := c.ValidateCanonicalRepository(c.CanonicalRepoURL); err != nil {
 			return err

@@ -127,6 +127,9 @@ type projectConfig struct {
 	// of another field never silently turns it off.
 	WorkersRequestReview bool             `json:"workersRequestReview,omitempty"`
 	Reviewers            []reviewerConfig `json:"reviewers,omitempty"`
+	// VerifyCommand/VerifyTimeoutSeconds must round-trip like WorkersRequestReview.
+	VerifyCommand        []string `json:"verifyCommand,omitempty"`
+	VerifyTimeoutSeconds int      `json:"verifyTimeoutSeconds,omitempty"`
 }
 
 // setConfigRequest mirrors the daemon's SetConfigInput body for

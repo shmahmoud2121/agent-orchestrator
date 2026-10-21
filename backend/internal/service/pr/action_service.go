@@ -45,6 +45,13 @@ type actionLifecycle interface {
 	ApplySCMObservation(ctx context.Context, sessionID domain.SessionID, obs ports.SCMObservation) error
 }
 
+// MergeVerifier proves a pull request's exact head before the daemon merges
+// it. A nil error means the merge may proceed; projects without a verify
+// command return nil without doing any work.
+type MergeVerifier interface {
+	VerifyMerge(ctx context.Context, pr domain.PullRequest, headSHA string) error
+}
+
 type mergeStateWriter interface {
 	MarkPRMerged(ctx context.Context, prURL, mergeCommitSHA string, mergedAt time.Time) error
 }
@@ -66,6 +73,8 @@ type ActionDeps struct {
 	ThreadWriter interface {
 		MarkPRReviewThreadResolved(context.Context, string, string) error
 	}
+	// Verifier, when set, must pass before Merge calls the provider.
+	Verifier MergeVerifier
 }
 
 // ActionService validates current pull request state before applying mutations.
@@ -77,6 +86,7 @@ type ActionService struct {
 	resolver     ports.SCMReviewResolver
 	mergeWriter  mergeStateWriter
 	lifecycle    actionLifecycle
+	verifier     MergeVerifier
 	clock        func() time.Time
 	logger       *slog.Logger
 	threadWriter interface {
@@ -114,6 +124,7 @@ func NewActionService(deps ActionDeps) *ActionService {
 		resolver:     deps.Resolver,
 		mergeWriter:  deps.MergeWriter,
 		lifecycle:    deps.Lifecycle,
+		verifier:     deps.Verifier,
 		clock:        clock,
 		logger:       logger,
 		threadWriter: threadWriter,
@@ -166,6 +177,14 @@ func (s *ActionService) Merge(ctx context.Context, request MergeRequest) (MergeR
 	}
 	if !readyToMerge(fresh, review) {
 		return MergeResult{}, ErrPRPreconditions
+	}
+	// The verifier tests expectedHead itself, and the provider merge below
+	// repeats the SHA guard, so a push during verification cannot slip an
+	// unverified head into the merge.
+	if s.verifier != nil {
+		if err := s.verifier.VerifyMerge(ctx, tracked, expectedHead); err != nil {
+			return MergeResult{}, fmt.Errorf("%w: %w", ErrPRVerifyFailed, err)
+		}
 	}
 
 	out, err := s.merger.MergePullRequest(ctx, ports.SCMMergeRequest{PR: ref, ExpectedHeadSHA: expectedHead, Method: ports.SCMMergeSquash})
