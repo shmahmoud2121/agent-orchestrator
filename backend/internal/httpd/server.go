@@ -23,6 +23,7 @@ type Server struct {
 	cfg    config.Config
 	log    *slog.Logger
 	http   *http.Server
+	router http.Handler
 	listen net.Listener
 
 	shutdownRequested chan struct{}
@@ -64,11 +65,12 @@ func NewWithDeps(cfg config.Config, log *slog.Logger, termMgr *terminal.Manager,
 		listen:            ln,
 		shutdownRequested: make(chan struct{}),
 	}
+	srv.router = NewRouterWithControl(cfg, log, termMgr, deps, ControlDeps{
+		RequestShutdown:   srv.requestShutdown,
+		AgentSwitchPolicy: deps.AgentSwitchPolicy,
+	})
 	srv.http = &http.Server{
-		Handler: NewRouterWithControl(cfg, log, termMgr, deps, ControlDeps{
-			RequestShutdown:   srv.requestShutdown,
-			AgentSwitchPolicy: deps.AgentSwitchPolicy,
-		}),
+		Handler: loopbackHostGuard(srv.router),
 		// ReadHeaderTimeout guards against slow-loris even on loopback;
 		// per-request body/handler timeouts are applied per-surface.
 		ReadHeaderTimeout: 10 * time.Second,
@@ -82,8 +84,9 @@ func (s *Server) Addr() net.Addr { return s.listen.Addr() }
 
 // Handler returns the loopback server's built router so the daemon can share
 // the exact same handler instance with the LAN listener (via NewMobileLAN),
-// keeping the loopback and LAN surfaces identical.
-func (s *Server) Handler() http.Handler { return s.http.Handler }
+// keeping the loopback and LAN surfaces identical. It is the router without
+// loopbackHostGuard: LAN clients reach the daemon by its network name.
+func (s *Server) Handler() http.Handler { return s.router }
 
 // Run serves until ctx is cancelled (SIGINT/SIGTERM via signal.NotifyContext),
 // then performs a graceful shutdown bounded by cfg.ShutdownTimeout. It writes

@@ -1150,7 +1150,7 @@ func newSessionTestServerWithPreview(
 		deps.PreviewServer = managed
 		deps.SessionCapabilities = allowSessionCapability{}
 	}
-	srv := httptest.NewServer(httpd.NewRouterWithControl(config.Config{}, log, nil, deps, httpd.ControlDeps{}))
+	srv := httptest.NewServer(httpd.NewRouterWithControl(config.Config{AllowedOrigins: config.DefaultAllowedOrigins}, log, nil, deps, httpd.ControlDeps{}))
 	t.Cleanup(srv.Close)
 	return srv
 }
@@ -2886,7 +2886,7 @@ func TestSessionsAPI_ArtifactMediaETagTracksRapidReplacements(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				req.Header.Set("Origin", "http://localhost:5173")
+				req.Header.Set("Origin", "app://renderer")
 				for key, value := range headers {
 					req.Header.Set(key, value)
 				}
@@ -2908,7 +2908,7 @@ func TestSessionsAPI_ArtifactMediaETagTracksRapidReplacements(t *testing.T) {
 			if first.StatusCode != http.StatusOK || body != "first clip" || etag == "" || lastModified == "" {
 				t.Fatalf("initial response: status=%d body=%q headers=%v", first.StatusCode, body, first.Header)
 			}
-			if first.Header.Get("Access-Control-Allow-Origin") != "http://localhost:5173" || first.Header.Get("Access-Control-Expose-Headers") != "ETag" {
+			if first.Header.Get("Access-Control-Allow-Origin") != "app://renderer" || first.Header.Get("Access-Control-Expose-Headers") != "ETag" {
 				t.Fatalf("ETag must be readable by the renderer: headers=%v", first.Header)
 			}
 			if first.Header.Get("Cache-Control") != "private, no-cache" {
@@ -3714,7 +3714,8 @@ func TestSessionsAPI_ManagedPreviewAppProxy(t *testing.T) {
 		t.Fatal(err)
 	}
 	request.Header.Set("Authorization", "Bearer host-password")
-	request.Header.Set("Origin", "http://ao-preview-client.localhost:4321")
+	// The desktop's remote proxy strips the browser's Origin and carries it
+	// in X-AO-Preview-App-Origin instead.
 	request.Header.Set("X-AO-Preview-App-Authorization", "Basic app-token")
 	request.Header.Set("X-AO-Preview-App-Origin", "http://ao-preview-client.localhost:4321")
 	response, err = http.DefaultClient.Do(request)
@@ -3740,7 +3741,6 @@ func TestSessionsAPI_ManagedPreviewAppProxy(t *testing.T) {
 	conn, _, err := websocket.Dial(context.Background(), "ws"+strings.TrimPrefix(srv.URL, "http")+"/api/v1/sessions/ao-1/preview/app/ws", &websocket.DialOptions{
 		HTTPHeader: http.Header{
 			"Authorization":                  []string{"Bearer host-password"},
-			"Origin":                         []string{"http://ao-preview-client.localhost:4321"},
 			"X-Ao-Preview-App-Authorization": []string{"Basic ws-token"},
 			"X-Ao-Preview-App-Origin":        []string{"http://ao-preview-client.localhost:4321"},
 		},

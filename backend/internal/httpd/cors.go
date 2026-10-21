@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/httpd/envelope"
+	"github.com/aoagents/agent-orchestrator/backend/internal/httpd/requestscope"
 	previewutil "github.com/aoagents/agent-orchestrator/backend/internal/preview"
 )
 
@@ -17,6 +18,14 @@ import (
 // (every file:// page and sandboxed iframe on any website presents "null").
 // The packaged Electron renderer is served from app://renderer specifically
 // so it has a distinct, unforgeable origin this allowlist can name.
+//
+// Being served from this machine earns an origin nothing: any dev server or
+// tool listening on a localhost port can host a hostile page. The one loopback
+// origin admitted without an allowlist entry is a workspace preview reaching
+// its own host, where PreviewOrigin answers every path read-only and the API
+// is never mounted (previewSelfOrigin). The LAN listener, where every request
+// carries the pairing password, still admits loopback origins for the mobile
+// app (lanLoopbackOrigin).
 //
 // Requests without an Origin header (the CLI, curl, health probes) pass
 // through untouched. Requests bearing an Origin outside the allowlist are
@@ -51,7 +60,7 @@ func corsMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
-			if _, ok := allowed[origin]; !ok && !isLoopbackOrigin(origin) {
+			if _, ok := allowed[origin]; !ok && !previewSelfOrigin(origin, r.Host) && !lanLoopbackOrigin(r, origin) {
 				envelope.WriteAPIError(w, r, http.StatusForbidden, "forbidden", "ORIGIN_FORBIDDEN",
 					"Origin is not allowed to access this daemon", nil)
 				return
@@ -80,22 +89,22 @@ func corsMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
 	}
 }
 
-// codexAccountOriginMiddleware gives credential-management routes a stricter
-// browser boundary than the rest of the loopback API. Workspace previews are
-// intentionally accepted by corsMiddleware so they can use ordinary daemon
-// APIs, but they must never read account metadata or execute account
-// mutations. Native clients do not send Origin and remain unauthenticated;
-// browser clients must present one of the exact configured renderer origins.
-func codexAccountOriginMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
+// appOriginMiddleware gives the routes that hand out credentials or open the
+// daemon to other machines a stricter browser boundary than the rest of the
+// API: only the exact configured renderer origins may call them. This holds
+// even for an origin corsMiddleware admits (a preview on its own host), so a
+// later loosening there cannot reach these routes. Native clients do not send
+// Origin and pass through.
+func appOriginMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
 	allowed := exactAllowedOrigins(allowedOrigins)
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			origin := r.Header.Get("Origin")
-			if origin != "" && isCodexAccountPath(r.URL.Path) {
+			if origin != "" && isAppOnlyPath(r.URL.Path) {
 				w.Header().Add("Vary", "Origin")
 				if _, ok := allowed[origin]; !ok {
 					envelope.WriteAPIError(w, r, http.StatusForbidden, "forbidden", "ORIGIN_FORBIDDEN",
-						"Origin is not allowed to access Codex account management", nil)
+						"Origin is not allowed to access this route", nil)
 					return
 				}
 			}
@@ -116,11 +125,15 @@ func exactAllowedOrigins(origins []string) map[string]struct{} {
 	return allowed
 }
 
-func isCodexAccountPath(path string) bool {
+// isAppOnlyPath reports the routes appOriginMiddleware guards: account
+// credentials, and Connect Mobile, which turns on LAN and tunnel access and
+// returns the pairing password.
+func isAppOnlyPath(path string) bool {
 	for _, prefix := range []string{
 		"/api/v1/agents/codex/accounts",
 		"/api/v1/agents/codex/account-switches",
 		"/api/v1/agents/accounts",
+		"/api/v1/mobile",
 	} {
 		if path == prefix || strings.HasPrefix(path, prefix+"/") {
 			return true
@@ -129,21 +142,42 @@ func isCodexAccountPath(path string) bool {
 	return false
 }
 
-// isLoopbackOrigin reports whether a browser origin is content served from
-// this machine's loopback (the Vite dev server / preview server on whatever
-// port it picked). Such content can already reach the no-auth daemon directly,
-// so granting it CORS adds no exposure — while a remote page can never bear a
-// loopback origin (DNS rebinding changes resolution, not the Origin header).
-func isLoopbackOrigin(origin string) bool {
+// previewSelfOrigin reports whether origin is a workspace preview origin
+// requesting its own host: a preview page loading its modules and assets.
+// PreviewOrigin claims every request to such a host, so this grants nothing
+// beyond the preview's own read-only files.
+func previewSelfOrigin(origin, requestHost string) bool {
+	u, err := url.Parse(origin)
+	if err != nil || u.Scheme != "http" || !strings.EqualFold(u.Host, requestHost) {
+		return false
+	}
+	if _, ok := previewutil.SessionIDFromHost(u.Host); ok {
+		return true
+	}
+	_, ok := previewutil.SessionIDFromArtifactHost(u.Host)
+	return ok
+}
+
+// lanLoopbackOrigin admits a loopback origin on a request the LAN listener
+// authenticated. The mobile app pins "Origin: http://localhost" on its
+// WebSocket upgrades (iOS sets an Origin React Native cannot drop), and every
+// LAN request already carries the pairing password, which a hostile page does
+// not have.
+func lanLoopbackOrigin(r *http.Request, origin string) bool {
+	if !requestscope.IsLAN(r.Context()) {
+		return false
+	}
 	u, err := url.Parse(origin)
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
 		return false
 	}
-	host := strings.ToLower(strings.TrimSuffix(u.Hostname(), "."))
-	// RFC 6761 reserves localhost and every name below it for loopback.
-	// Workspace previews use a per-session subdomain so browser-enforced CORS
-	// requests (ES modules and fetch) remain isolated without being rejected by
-	// the daemon's origin boundary.
+	return isLoopbackHostname(u.Hostname())
+}
+
+// isLoopbackHostname reports whether host (no port, no brackets) names this
+// machine's loopback: localhost, any name below it (RFC 6761), or a loopback IP.
+func isLoopbackHostname(host string) bool {
+	host = strings.ToLower(strings.TrimSuffix(host, "."))
 	if host == "localhost" || strings.HasSuffix(host, ".localhost") {
 		return true
 	}

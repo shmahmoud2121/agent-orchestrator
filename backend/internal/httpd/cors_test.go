@@ -33,28 +33,29 @@ func TestCORS(t *testing.T) {
 			wantACAO:   "app://renderer",
 		},
 		{
-			// Not in the allowlist — trusted because loopback-served content
-			// can already reach the daemon directly (dev/preview servers on
-			// arbitrary ports).
-			name:       "loopback origin allowed without an allowlist entry",
+			// Being served from this machine earns nothing: any dev server or
+			// tool on a localhost port can host a hostile page.
+			name:       "loopback origin without an allowlist entry is rejected",
 			method:     http.MethodGet,
 			headers:    map[string]string{"Origin": "http://localhost:5181"},
-			wantStatus: http.StatusOK,
-			wantACAO:   "http://localhost:5181",
+			wantStatus: http.StatusForbidden,
+			wantACAO:   "",
 		},
 		{
-			name:       "loopback IP origin allowed",
+			name:       "loopback IP origin is rejected",
 			method:     http.MethodGet,
 			headers:    map[string]string{"Origin": "http://127.0.0.1:8080"},
-			wantStatus: http.StatusOK,
-			wantACAO:   "http://127.0.0.1:8080",
+			wantStatus: http.StatusForbidden,
+			wantACAO:   "",
 		},
 		{
-			name:       "isolated localhost preview origin allowed",
+			// A preview is admitted only on its own host (see
+			// TestPreviewOriginIsAdmittedOnlyOnItsOwnHost), never on the API.
+			name:       "preview origin is rejected on the daemon API host",
 			method:     http.MethodGet,
 			headers:    map[string]string{"Origin": "http://ao-preview.mfxs2mi.localhost:5181"},
-			wantStatus: http.StatusOK,
-			wantACAO:   "http://ao-preview.mfxs2mi.localhost:5181",
+			wantStatus: http.StatusForbidden,
+			wantACAO:   "",
 		},
 		{
 			// localhost in the host position of a non-loopback origin must not
