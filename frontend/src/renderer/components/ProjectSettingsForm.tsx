@@ -15,6 +15,7 @@ import { captureOrchestratorReplacementFailure } from "../lib/orchestrator-repla
 import { OrchestratorSpawnError, spawnOrchestrator } from "../lib/spawn-orchestrator";
 import { openRemoteOrchestrator } from "../lib/remote-orchestrator";
 import { captureRendererEvent } from "../lib/telemetry";
+import { formatVerifyCommand, parseVerifyCommand, parseVerifyTimeout } from "../lib/verify-command";
 import { type OrchestratorReplacementFailure, useUiStore } from "../stores/ui-store";
 import { newestActiveOrchestrator } from "../types/workspace";
 import { RequiredAgentField } from "./CreateProjectAgentSheet";
@@ -138,6 +139,8 @@ function SettingsBody({ project, projectId, hostId, hostConnected, onSaved, sect
 	const remoteProjectQuery = useRemoteProjectQuery(hostId ?? "", projectId);
 	const config = project.config ?? {};
 	const isScratchProject = project.kind === "scratch";
+	// The daemon refuses to merge a workspace project with verifyCommand set.
+	const verifiable = project.kind === "single_repo";
 	const { settings } = useSettings(hostId);
 	const intakeVisible = !isScratchProject && !!settings?.trackerIntakeEnabled;
 	const workspace = hostId ? remoteProjectQuery.data : workspaceQuery.data?.find((item) => item.id === projectId);
@@ -167,6 +170,10 @@ function SettingsBody({ project, projectId, hostId, hostConnected, onSaved, sect
 		intakeEnabled: intake.enabled ?? false,
 		intakeRepo: intake.repo ?? "",
 		intakeAssignee: intake.assignee ?? "",
+		...(verifiable && {
+			verifyCommand: formatVerifyCommand(config.verifyCommand),
+			verifyTimeoutSeconds: config.verifyTimeoutSeconds ? String(config.verifyTimeoutSeconds) : "",
+		}),
 	};
 	const lastOrchestratorRef = useRef(config.orchestrator?.agent ?? "");
 	const replacementAttemptedRef = useRef(false);
@@ -254,6 +261,7 @@ function SettingsBody({ project, projectId, hostId, hostConnected, onSaved, sect
 					),
 					autoReview: values.autoReview,
 					workersRequestReview: values.workersRequestReview || undefined,
+					...(verifiable && verifyConfig(values)),
 				};
 		const { error } = await (hostId ? clientForHost(hostId) : apiClient).PUT("/api/v1/projects/{id}", {
 			params: { path: { id: projectId } },
@@ -324,7 +332,7 @@ function SettingsBody({ project, projectId, hostId, hostConnected, onSaved, sect
 		}
 	};
 	return <ProjectSettingsEditor initialValues={initialValues} section={section} disabled={!hostConnected}
-		capabilities={{ workflow: !isScratchProject, sessionPrefix: !isScratchProject, intake: intakeVisible, reviewer: !isScratchProject, requiredAgents: true, workersRequestReview: !isScratchProject }}
+		capabilities={{ workflow: !isScratchProject, sessionPrefix: !isScratchProject, intake: intakeVisible, reviewer: !isScratchProject, requiredAgents: true, workersRequestReview: !isScratchProject, verifyCommand: verifiable }}
 		details={[{ label: t("settings.project.path"), value: project.path, href: hostId ? undefined : `file://${encodeURI(project.path)}` }, { label: t("settings.project.repo"), value: project.repo || "—", href: project.repo ? repositoryHref(project.repo) : undefined }]}
 		workspaceRepos={project.kind === "workspace" ? project.workspaceRepos ?? [] : undefined} repository={project.repo}
 		modelScope={() => projectId} defaultReviewer={(draft) => WORKER_DEFAULT_REVIEWERS[draft.workerAgent] ?? "claude-code"}
@@ -370,6 +378,15 @@ function scratchSupportedConfig(config: ProjectConfig): ProjectConfig {
 		...supported
 	} = config as ProjectConfig;
 	return supported;
+}
+
+// The editor validates both fields before saving, so a parse failure here only
+// clears the setting rather than sending a malformed one.
+function verifyConfig(values: ProjectSettingsDraft): Pick<ProjectConfig, "verifyCommand" | "verifyTimeoutSeconds"> {
+	const verifyCommand = parseVerifyCommand(values.verifyCommand ?? "");
+	if (!verifyCommand?.length) return { verifyCommand: undefined, verifyTimeoutSeconds: undefined };
+	const timeout = parseVerifyTimeout(values.verifyTimeoutSeconds ?? "");
+	return { verifyCommand, verifyTimeoutSeconds: Number.isNaN(timeout) ? undefined : timeout };
 }
 
 function blankToUndefined<T extends object>(obj: T): T | undefined {
