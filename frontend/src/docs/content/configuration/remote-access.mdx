@@ -12,10 +12,11 @@ Remote access is disabled in this build. There is no **Connect Mobile** pairing,
 - **No auto-update or version checks.** The app never checks a release feed, the desktop version floor, or feature builds. Harness update checks are off and cannot be turned on.
 - **No pricing fetch.** Usage costs come from a pricing catalog bundled with the app.
 - **No cloud.** AO Cloud sign-in, cloud sessions, and the control plane are off.
-- **No link-preview unfurling** and no push notifications.
+- **No link-preview unfurling**, external image loading, or push notifications.
+- **No background SCM polling or issue intake.** GitHub/GitLab code remains available for explicit operations.
 
 ## What still uses the network
 
 - Agent CLIs (Claude Code, Codex, and others) talk to their own model providers.
 - Git, GitHub, and GitLab operations you configure, such as fetching, pushing, and pull request status.
-- Pages you open in the built-in browser, and images (such as repository avatars) shown in the app.
+- Pages you open in the built-in browser. External images in the supervisor UI are blocked.

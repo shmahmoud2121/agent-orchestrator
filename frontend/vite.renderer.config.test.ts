@@ -17,6 +17,11 @@ describe("packaged renderer CSP", () => {
 		expect(connectSrc).toEqual([expected.join(" ")]);
 	});
 
+	it.each(["build", "serve"] as const)("does not load external images automatically in %s", (mode) => {
+		expect(contentSecurityPolicy(mode).split("; ").filter((directive) => directive.startsWith("img-src")))
+			.toEqual(["img-src 'self' data: http://127.0.0.1:* http://*.localhost:*"]);
+	});
+
 	it("frames agent renders from the loopback daemon and nothing else", () => {
 		const frameSrc = contentSecurityPolicy("build")
 			.split("; ")

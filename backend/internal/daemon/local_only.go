@@ -15,11 +15,15 @@ import (
 // The subsystems' code is kept so these can be switched back on later; the
 // switch points are here and in Run.
 
+const localOnlyBuild = true
+
 // localOnlyConfig forces every network-facing setting off, whatever the
 // environment asked for. Run applies it before anything reads cfg, so the
 // telemetry, Sentry, harness-update, and cloud wiring all see the disabled
 // values.
 func localOnlyConfig(cfg config.Config) config.Config {
+	cfg.Host = config.LoopbackHost
+	cfg.TrackerIntake = false
 	cfg.Telemetry.Remote = config.TelemetryRemoteOff
 	cfg.Telemetry.PostHogKey = ""
 	cfg.Telemetry.PostHogHost = ""

@@ -2932,6 +2932,10 @@ ipcMain.handle("updateSettings:setMacDifferentialUpdates", async (_event, enable
 	if (typeof enabled !== "boolean") return;
 	const runFile = runFilePath();
 	if (!runFile) return;
+	if (LOCAL_ONLY_BUILD) {
+		await updateUpdateSettings(path.dirname(runFile), (current) => ({ ...current, macDifferentialUpdates: enabled }));
+		return;
+	}
 	await setMacDifferentialUpdates(path.dirname(runFile), enabled);
 });
 
@@ -3191,7 +3195,9 @@ function cloudDataDir(): string {
 }
 
 // Cloud sessions' agent browsers, served to the Browser panel's agent tabs.
-const cloudAgentProxy = createCloudAgentProxy(cloudDataDir);
+const cloudAgentProxy: ReturnType<typeof createCloudAgentProxy> = LOCAL_ONLY_BUILD
+	? { agentBrowserUrl: async () => "", isAgentBrowserUrl: () => false, close: async () => undefined }
+	: createCloudAgentProxy(cloudDataDir);
 
 function notifyRenderersOfCloudSession(account: import("./shared/cloud-account").CloudAccount | null): void {
 	if (!account) {
@@ -3531,7 +3537,7 @@ app.whenReady().then(async () => {
 	await createWindow();
 	if (browserQuitRequested) return;
 	if (!daemonStartsWithWindow) void startDaemon();
-	initAutoUpdates();
+	if (!LOCAL_ONLY_BUILD) initAutoUpdates();
 
 	// Windows/Linux: on first launch, the deep-link URL may arrive as a
 	// process.argv entry (e.g. ao-app://callback?token=...).

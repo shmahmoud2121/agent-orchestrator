@@ -2173,6 +2173,13 @@ describe("Sidebar", () => {
 		expect(navigateMock).not.toHaveBeenCalled();
 	});
 
+	it("keeps the Mobile settings page unreachable from the footer", () => {
+		renderSidebar();
+		expect(screen.queryByRole("button", { name: "Connect mobile" })).not.toBeInTheDocument();
+		expect(useUiStore.getState().settingsModal).toBeNull();
+		expect(navigateMock).not.toHaveBeenCalled();
+	});
+
 	it("shows no Connect mobile entry in the local-only build, expanded or collapsed", () => {
 		renderSidebar();
 		expect(screen.queryAllByRole("button", { name: "Connect mobile", hidden: true })).toHaveLength(0);

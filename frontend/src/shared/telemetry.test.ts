@@ -74,6 +74,18 @@ test("buildTelemetryBootstrap always withholds the bootstrap in the local-only b
 	await expect(readFile(path.join(dir, "telemetry_install_id"), "utf8")).rejects.toThrow();
 });
 
+test("failure-reporting opt-out still withholds the renderer bootstrap", async () => {
+	const dir = await mkdtemp(path.join(os.tmpdir(), "ao-telemetry-"));
+	tempDirs.push(dir);
+	await expect(buildTelemetryBootstrap({}, "0.11.2", "linux", dir, true, { ...enabledPolicy, eventsEnabled: false })).resolves.toBeNull();
+});
+
+test("a deny list cannot enable the renderer bootstrap", async () => {
+	const dir = await mkdtemp(path.join(os.tmpdir(), "ao-telemetry-"));
+	tempDirs.push(dir);
+	await expect(buildTelemetryBootstrap({ AO_TELEMETRY_DISABLED_EVENTS: "ao.v2.app.active, ao.renderer.*" }, "0.11.2", "linux", dir, true, enabledPolicy)).resolves.toBeNull();
+});
+
 test("parseDisabledEvents treats absent or blank policy as no policy", () => {
 	expect(parseDisabledEvents(undefined)).toEqual([]);
 	expect(parseDisabledEvents(" , , ")).toEqual([]);

@@ -104,6 +104,17 @@ describe("AppLink link preview", () => {
 		});
 	});
 
+	it("settles a missing local-only preview route without hiding the original link", async () => {
+		const missingUrl = "https://missing-route.example.org/";
+		getMock.mockResolvedValue({ response: new Response("404 page not found", { status: 404 }), error: "404 page not found" });
+		render(<AppLink href={missingUrl}>original link</AppLink>);
+		fireEvent.pointerOver(screen.getByRole("link", { name: "original link" }), { pointerType: "mouse" });
+		await waitFor(() => expect(getMock).toHaveBeenCalled());
+		await waitFor(() => expect(screen.queryByTestId("link-preview-loading")).not.toBeInTheDocument());
+		expect(screen.queryByTestId("link-preview-card")).not.toBeInTheDocument();
+		expect(screen.getByRole("link", { name: "original link" })).toHaveAttribute("href", missingUrl);
+	});
+
 	it("does not fetch previews for non-web links", async () => {
 		render(<AppLink href="mailto:dev@example.com">mail</AppLink>);
 

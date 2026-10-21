@@ -57,10 +57,9 @@ export function contentSecurityPolicy(mode: "build" | "serve"): string {
 		// impractical because the preamble changes with the plugin version.
 		mode === "serve" ? "script-src 'self' 'unsafe-inline'" : "script-src 'self'",
 		"style-src 'self' 'unsafe-inline'",
-		// Repository avatars can come from self-hosted SCM instances whose origins
-		// are only known at runtime. Keep the broad exception limited to images;
-		// scripts, connections, frames, and other resource classes remain scoped.
-		"img-src 'self' data: http://127.0.0.1:* http://*.localhost:* https:",
+		// External avatars and chat images must not initiate network requests.
+		// Only bundled data and images served by the loopback daemon are allowed.
+		"img-src 'self' data: http://127.0.0.1:* http://*.localhost:*",
 		"media-src 'self' http://127.0.0.1:* http://*.localhost:*",
 		"font-src 'self' data:",
 		[
