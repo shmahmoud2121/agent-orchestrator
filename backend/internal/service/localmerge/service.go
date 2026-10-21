@@ -402,7 +402,7 @@ func (s *Service) fastForwardCheckout(ctx context.Context, t target, base, check
 	if moved(ctx, t.repo, baseRef, oldTip) {
 		return errBaseMoved
 	}
-	if out, err := git(ctx, checkout, "merge", "--ff-only", "--no-edit", mergeSHA); err != nil {
+	if out, err := git(ctx, checkout, "merge", "--ff-only", "--no-overwrite-ignore", "--no-edit", mergeSHA); err != nil {
 		if moved(ctx, t.repo, baseRef, oldTip) {
 			return errBaseMoved
 		}

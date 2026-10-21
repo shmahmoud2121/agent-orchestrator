@@ -752,3 +752,24 @@ func TestMergeRefusesScratchAndStandalone(t *testing.T) {
 		})
 	}
 }
+
+func TestMergeDoesNotOverwriteIgnoredMainFiles(t *testing.T) {
+	f := newFixture(t)
+	commitFile(t, f.repo, ".gitignore", "generated.txt\n", "ignore generated files")
+	w := f.addWorker("w1")
+	writeFile(t, w, "generated.txt", "committed worker version\n")
+	runGit(t, w, "add", "-f", "generated.txt")
+	runGit(t, w, "commit", "-qm", "track generated file")
+	writeFile(t, f.repo, "generated.txt", "user's ignored data\n")
+	before := f.mainTip()
+	_, err := f.svc.Merge(context.Background(), Request{SessionID: "w1"})
+	requireCode(t, err, CodeBaseCheckoutBlocked)
+	if f.mainTip() != before {
+		t.Fatal("base advanced over an ignored file")
+	}
+	data, err := os.ReadFile(filepath.Join(f.repo, "generated.txt"))
+	if err != nil || string(data) != "user's ignored data\n" {
+		t.Fatalf("ignored data changed: %q %v", data, err)
+	}
+	f.assertNoTempWorktrees()
+}
