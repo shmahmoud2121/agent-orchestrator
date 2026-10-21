@@ -51,9 +51,10 @@ const (
 	DefaultTelemetryPostHogHost = "https://us.i.posthog.com"
 
 	// defaultCloudControlPlaneURL is the control plane a build talks to when no
-	// override is set. Production, now that the hosted offering is live;
-	// AO_CLOUD_CONTROL_PLANE_URL still overrides it (e.g. staging-api for dev).
-	defaultCloudControlPlaneURL = "https://api.aoagents.dev"
+	// override is set. Empty in this local-only build so the cloud offering
+	// fails closed; the daemon additionally clears any
+	// AO_CLOUD_CONTROL_PLANE_URL override (see daemon.localOnlyConfig).
+	defaultCloudControlPlaneURL = ""
 )
 
 // TelemetryRemote selects the remote telemetry exporter.
@@ -156,8 +157,9 @@ type Config struct {
 	// Telemetry controls local/remote telemetry sinks.
 	Telemetry TelemetryConfig
 	// HarnessUpdateChecks lets the daemon compare installed harnesses with their
-	// release sources over the network. AO_HARNESS_UPDATE_CHECKS=off disables
-	// it for offline or policy-restricted machines.
+	// release sources over the network. It is always false in this local-only
+	// build: AO_HARNESS_UPDATE_CHECKS is no longer read, so nothing can turn
+	// background update checks on.
 	HarnessUpdateChecks bool
 	// HarnessUpdateInterval is how often the daemon re-checks installed
 	// harnesses after its startup check. AO_HARNESS_UPDATE_INTERVAL overrides
@@ -274,7 +276,7 @@ func Load() (Config, error) {
 			PostHogHost: DefaultTelemetryPostHogHost,
 		},
 		LocalOffering:          true,
-		HarnessUpdateChecks:    true,
+		HarnessUpdateChecks:    false,
 		HarnessUpdateInterval:  DefaultHarnessUpdateInterval,
 		UpdateWhileRunning:     true,
 		VersionRefresh:         true,
@@ -343,13 +345,6 @@ func Load() (Config, error) {
 		cfg.AllowedOrigins = origins
 	}
 
-	if raw, present := os.LookupEnv("AO_HARNESS_UPDATE_CHECKS"); present && strings.TrimSpace(raw) != "" {
-		v, err := parseToggleEnv("AO_HARNESS_UPDATE_CHECKS", raw)
-		if err != nil {
-			return Config{}, err
-		}
-		cfg.HarnessUpdateChecks = v
-	}
 	if raw, present := os.LookupEnv("AO_UPDATE_WHILE_RUNNING"); present && strings.TrimSpace(raw) != "" {
 		v, err := parseToggleEnv("AO_UPDATE_WHILE_RUNNING", raw)
 		if err != nil {

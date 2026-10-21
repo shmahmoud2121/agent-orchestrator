@@ -1,12 +1,40 @@
 package cli
 
 import (
+	"bytes"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
+
+// TestRemoteHostCommandNotRegistered pins the local-only build: `ao
+// remote-host` is not reachable from the root command.
+func TestRemoteHostCommandNotRegistered(t *testing.T) {
+	_, _, err := executeCLI(t, Deps{}, "remote-host", "status")
+	if err == nil || !strings.Contains(err.Error(), "unknown command") {
+		t.Fatalf("ao remote-host status err = %v, want unknown command", err)
+	}
+}
+
+// executeRemoteHostCLI runs the unregistered remote-host command under a root
+// command, so its behavior stays covered for when remote access returns.
+func executeRemoteHostCLI(t *testing.T, deps Deps, args ...string) (string, string, error) {
+	t.Helper()
+	var out, errOut bytes.Buffer
+	deps.Out = &out
+	deps.Err = &errOut
+	if deps.Sleep == nil {
+		deps.Sleep = func(time.Duration) {}
+	}
+	cmd := NewRootCommand(deps)
+	cmd.AddCommand(newRemoteHostCommand(&commandContext{deps: deps.withDefaults()}))
+	cmd.SetArgs(args)
+	err := cmd.Execute()
+	return out.String(), errOut.String(), err
+}
 
 func TestRemoteHostCLIUsesLocalControlAPI(t *testing.T) {
 	cfg := setConfigEnv(t)
@@ -49,7 +77,7 @@ func TestRemoteHostCLIUsesLocalControlAPI(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			requests = nil
-			out, _, err := executeCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, "remote-host", tc.verb)
+			out, _, err := executeRemoteHostCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, "remote-host", tc.verb)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -100,7 +128,7 @@ func TestRemoteHostCLITunnelFromDisabledAndStatus(t *testing.T) {
 	t.Cleanup(srv.Close)
 	writeRunFileFor(t, cfg, srv)
 
-	out, _, err := executeCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, "remote-host", "enable", "--tunnel")
+	out, _, err := executeRemoteHostCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, "remote-host", "enable", "--tunnel")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,12 +145,12 @@ func TestRemoteHostCLITunnelFromDisabledAndStatus(t *testing.T) {
 	}
 
 	ready = true
-	out, _, err = executeCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, "remote-host", "status")
+	out, _, err = executeRemoteHostCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, "remote-host", "status")
 	if err != nil || !strings.Contains(out, "https://live.trycloudflare.com:443") {
 		t.Fatalf("ready tunnel status = %q, %v", out, err)
 	}
 	failed = true
-	out, _, err = executeCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, "remote-host", "status")
+	out, _, err = executeRemoteHostCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, "remote-host", "status")
 	if err != nil || !strings.Contains(out, "Tunnel unavailable: connector exited") || strings.Contains(out, "stale.trycloudflare.com") {
 		t.Fatalf("failed tunnel status = %q, %v", out, err)
 	}
@@ -140,7 +168,7 @@ func TestRemoteHostCLITunnelOnlyUsesLoopbackRoute(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 	writeRunFileFor(t, cfg, srv)
-	out, _, err := executeCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, "remote-host", "enable", "--tunnel-only")
+	out, _, err := executeRemoteHostCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, "remote-host", "enable", "--tunnel-only")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,7 +192,7 @@ func TestRemoteHostCLITunnelRefusesLoopbackOnlyListener(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 	writeRunFileFor(t, cfg, srv)
-	_, _, err := executeCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, "remote-host", "enable", "--tunnel")
+	_, _, err := executeRemoteHostCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, "remote-host", "enable", "--tunnel")
 	if err == nil || !strings.Contains(err.Error(), "disable") {
 		t.Fatalf("wrong-mode CLI error = %v, want disable-first guidance", err)
 	}
@@ -186,7 +214,7 @@ func TestRemoteHostCLITunnelExistingListenerKeepsPassword(t *testing.T) {
 	t.Cleanup(srv.Close)
 	writeRunFileFor(t, cfg, srv)
 
-	out, _, err := executeCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, "remote-host", "enable", "--tunnel")
+	out, _, err := executeRemoteHostCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, "remote-host", "enable", "--tunnel")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,11 +254,11 @@ func TestRemoteHostCLIRejectsArgsAndPreservesDaemonError(t *testing.T) {
 	t.Cleanup(srv.Close)
 	writeRunFileFor(t, cfg, srv)
 
-	_, _, err := executeCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, "remote-host", "enable", "extra")
+	_, _, err := executeRemoteHostCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, "remote-host", "enable", "extra")
 	if ExitCode(err) != 2 {
 		t.Fatalf("extra argument exit code = %d, want 2: %v", ExitCode(err), err)
 	}
-	_, _, err = executeCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, "remote-host", "enable")
+	_, _, err = executeRemoteHostCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, "remote-host", "enable")
 	if err == nil || !strings.Contains(err.Error(), "listener failed (MOBILE_ENABLE) [request req-123]") {
 		t.Fatalf("daemon error = %v, want request ID and code", err)
 	}
@@ -239,7 +267,7 @@ func TestRemoteHostCLIRejectsArgsAndPreservesDaemonError(t *testing.T) {
 	}
 	requests = nil
 	statusError = true
-	_, _, err = executeCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, "remote-host", "status")
+	_, _, err = executeRemoteHostCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, "remote-host", "status")
 	if err == nil || !strings.Contains(err.Error(), "status failed (MOBILE_STATUS) [request req-456]") {
 		t.Fatalf("status error = %v, want request ID and code", err)
 	}
@@ -249,7 +277,7 @@ func TestRemoteHostCLIRejectsArgsAndPreservesDaemonError(t *testing.T) {
 	requests = nil
 	statusError = false
 	tunnelError = true
-	_, _, err = executeCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, "remote-host", "enable", "--tunnel")
+	_, _, err = executeRemoteHostCLI(t, Deps{ProcessAlive: func(int) bool { return true }}, "remote-host", "enable", "--tunnel")
 	if err == nil || !strings.Contains(err.Error(), "tunnel failed (MOBILE_REMOTE_ACCESS) [request req-789]") {
 		t.Fatalf("tunnel error = %v, want request ID and code", err)
 	}
@@ -260,7 +288,7 @@ func TestRemoteHostCLIRejectsArgsAndPreservesDaemonError(t *testing.T) {
 
 func TestRemoteHostCLIHeadlessStartupHint(t *testing.T) {
 	setConfigEnv(t)
-	_, _, err := executeCLI(t, Deps{}, "remote-host", "enable")
+	_, _, err := executeRemoteHostCLI(t, Deps{}, "remote-host", "enable")
 	if err == nil || !strings.Contains(err.Error(), "ao daemon") {
 		t.Fatalf("missing daemon error = %v, want headless startup hint", err)
 	}

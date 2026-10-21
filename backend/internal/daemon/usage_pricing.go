@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"net/http"
 	"sync/atomic"
 
 	usagepipeline "github.com/aoagents/agent-orchestrator/backend/internal/observe/usage"
@@ -40,11 +39,9 @@ func newUsagePricingRuntime(config usagePricingRuntimeConfig) (*usagePricingRunt
 	}
 	fetcher := config.Fetcher
 	if fetcher == nil {
-		production, err := pricing.NewProductionFetcher(&http.Client{})
-		if err != nil {
-			return nil, err
-		}
-		fetcher = production
+		// Local-only build: price from the embedded catalog snapshot instead of
+		// downloading pricing.RemoteManifestURL.
+		fetcher = pricing.BundledFetcher{}
 	}
 	manager := pricing.NewManager(nil)
 	backfiller := usagesvc.NewCostBackfiller(config.Store, usagesvc.CostBackfillerConfig{
