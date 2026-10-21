@@ -144,6 +144,15 @@ func TestVerifyMerge_FetchesHeadFromOrigin(t *testing.T) {
 	}
 }
 
+func TestGitCommandNeverPromptsForCredentials(t *testing.T) {
+	env := strings.Join(gitCommand(context.Background(), t.TempDir(), "fetch").Env, "\n")
+	for _, want := range []string{"GIT_TERMINAL_PROMPT=0", "GCM_INTERACTIVE=Never"} {
+		if !strings.Contains(env, want) {
+			t.Fatalf("git env is missing %s", want)
+		}
+	}
+}
+
 func TestVerifyMerge_RefusesWorkspaceProjects(t *testing.T) {
 	repo, good, _ := newRepo(t)
 	stores := &fakeStores{

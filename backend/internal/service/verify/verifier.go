@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -20,8 +21,12 @@ import (
 // not start, or a head that could not be checked out.
 var ErrFailed = errors.New("verify: command did not pass")
 
-// outputTailBytes bounds how much command output an error carries.
-const outputTailBytes = 4096
+const (
+	// outputTailBytes bounds how much command output an error carries.
+	outputTailBytes = 4096
+	// fetchTimeout bounds fetching a PR head that is not local yet.
+	fetchTimeout = 2 * time.Minute
+)
 
 type sessionStore interface {
 	GetSession(ctx context.Context, id domain.SessionID) (domain.SessionRecord, bool, error)
@@ -121,7 +126,9 @@ func (v *Verifier) ensureCommit(ctx context.Context, repo, branch, sha string) e
 	if branch == "" || strings.HasPrefix(branch, "-") || strings.ContainsAny(branch, ": \t\n") {
 		return fmt.Errorf("%w: head %s is not in the local repository", ErrFailed, sha)
 	}
-	if out, err := git(ctx, repo, "fetch", "--no-tags", "origin", "refs/heads/"+branch); err != nil {
+	fetchCtx, cancel := context.WithTimeout(ctx, fetchTimeout)
+	defer cancel()
+	if out, err := git(fetchCtx, repo, "fetch", "--no-tags", "origin", "refs/heads/"+branch); err != nil {
 		return fmt.Errorf("%w: fetch %s: %w: %s", ErrFailed, branch, err, out)
 	}
 	if _, err := git(ctx, repo, "cat-file", "-e", sha+"^{commit}"); err != nil {
@@ -166,9 +173,16 @@ func (v *Verifier) removeWorktree(repo, dir string) {
 }
 
 func git(ctx context.Context, repo string, args ...string) (string, error) {
-	cmd := process.CommandContext(ctx, "git", append([]string{"-C", repo}, args...)...)
-	out, err := cmd.CombinedOutput()
+	out, err := gitCommand(ctx, repo, args...).CombinedOutput()
 	return strings.TrimSpace(string(out)), err
+}
+
+// gitCommand never lets Git ask for credentials: the daemon has no one to
+// answer a terminal or credential-manager prompt, so a fetch must fail fast.
+func gitCommand(ctx context.Context, repo string, args ...string) *exec.Cmd {
+	cmd := process.CommandContext(ctx, "git", append([]string{"-C", repo}, args...)...)
+	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GCM_INTERACTIVE=Never")
+	return cmd
 }
 
 // tailBuffer keeps the last outputTailBytes written to it.
