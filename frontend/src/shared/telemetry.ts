@@ -35,18 +35,17 @@ export function parseDisabledEvents(raw: string | undefined): string[] {
 /**
  * Whether the renderer may export to PostHog.
  *
- * Unpackaged builds are off by default so a developer's ordinary session does
- * not land in the production project as a real install. Setting
- * `AO_TELEMETRY_RENDERER=on` opts a dev build back in for deliberate testing.
+ * Never, in this local-only build: neither a packaged build nor
+ * `AO_TELEMETRY_RENDERER=on` turns renderer export on, so no PostHog client is
+ * ever constructed.
  */
 export function rendererTelemetryEnabled(
 	env: Record<string, string | undefined>,
 	isPackaged: boolean,
 ): boolean {
-	const explicit = env.AO_TELEMETRY_RENDERER?.trim().toLowerCase();
-	if (explicit === "on") return true;
-	if (explicit === "off") return false;
-	return isPackaged;
+	void env;
+	void isPackaged;
+	return false;
 }
 
 export function defaultDataDir(

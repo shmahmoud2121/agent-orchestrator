@@ -1,6 +1,7 @@
 import { Activity, BadgeCheck, Bot, CircleHelp, CreditCard, Globe2, Keyboard, RefreshCw, Server, Settings2, Smartphone, type LucideIcon } from "lucide-react";
 import { lazy, type ReactNode } from "react";
 import type { TFunction } from "i18next";
+import { LOCAL_ONLY_BUILD } from "../../../shared/local-only";
 import type { GlobalSettingsSection, HarnessDiagnosticsRequest } from "../../stores/ui-store";
 import { BillingSection } from "./BillingSection";
 import { BrowserDownloadsSection } from "./BrowserDownloadsSection";
@@ -110,13 +111,17 @@ const globalSettingsCatalog: SettingsCatalogItem[] = [
 		id: "remoteHosts",
 		icon: Server,
 		label: (t) => t("settings.remoteHosts"),
-		visible: ({ developerMode }) => developerMode,
+		// No remote hosts in the local-only build.
+		visible: ({ developerMode }) => developerMode && !LOCAL_ONLY_BUILD,
 		render: (_t, titleHidden) => <RemoteHostsSettings titleHidden={titleHidden} />,
 	},
 	{
 		id: "mobile",
 		icon: Smartphone,
 		label: (t) => t("settings.mobile"),
+		// No Connect Mobile in the local-only build: the daemon runs no LAN
+		// listener or tunnel to pair a phone with.
+		visible: () => !LOCAL_ONLY_BUILD,
 		render: (t, titleHidden) => (
 			<>
 				<SettingsSection titleHidden={titleHidden} title={t("settings.mobile")} grouped>

@@ -130,6 +130,8 @@ type projectConfig struct {
 	// VerifyCommand/VerifyTimeoutSeconds must round-trip like WorkersRequestReview.
 	VerifyCommand        []string `json:"verifyCommand,omitempty"`
 	VerifyTimeoutSeconds int      `json:"verifyTimeoutSeconds,omitempty"`
+	// PushAfterMerge must round-trip like WorkersRequestReview.
+	PushAfterMerge bool `json:"pushAfterMerge,omitempty"`
 }
 
 // setConfigRequest mirrors the daemon's SetConfigInput body for

@@ -3075,6 +3075,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sessions/{sessionId}/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Merge a worker session's branch into the project's base branch locally */
+        post: operations["mergeSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sessions/{sessionId}/merge-policy": {
         parameters: {
             query?: never;
@@ -5949,6 +5966,11 @@ export interface components {
             /** @enum {string} */
             pressureSource: "psi" | "available_pct" | "memorystatus";
         };
+        MergeOverlap: {
+            branch: string;
+            files: string[];
+            sessionId: string;
+        };
         MergePRRequest: {
             expectedHeadSha: string;
             prUrl: string;
@@ -5961,6 +5983,45 @@ export interface components {
             state: "merged";
             /** Format: date-time */
             stateChangedAt: string;
+        };
+        MergeSessionRequest: {
+            /** @description AO session making the request, if any. Only an orchestrator of the same project may merge; worker sessions get 403. Omit for a person. */
+            callerSessionId?: string;
+            /** @description Merge and run the project verify command in a throwaway worktree, without advancing any branch, pushing, or messaging any session. */
+            dryRun?: boolean;
+        };
+        MergeSessionResponse: {
+            /** @description Base branch tip the merge was computed against. */
+            baseBefore: string;
+            baseBranch: string;
+            branch: string;
+            /** @description Files the branch changes relative to the base branch (capped). */
+            changedFiles: string[];
+            changedFilesTotal: number;
+            /** @description Commits the branch brings into the base branch. */
+            commitCount: number;
+            dryRun: boolean;
+            /** @description New base branch tip. Empty for a dry run. */
+            mergeCommit?: string;
+            /** @description Live workers told that the base branch moved. */
+            notified: string[];
+            /** @description Other live workers whose committed or uncommitted changes touch the same files. */
+            overlaps: components["schemas"]["MergeOverlap"][];
+            /** @description True when the project's pushAfterMerge setting asked to push the base branch to origin. */
+            pushAttempted: boolean;
+            /** @description Why the push after merge failed (tail of git's output). */
+            pushError?: string;
+            /** @description True when origin accepted the push. A failed push never undoes the local merge. */
+            pushed: boolean;
+            pushedCommit?: string;
+            pushedRef?: string;
+            sessionId: string;
+            /** @description Checkout that had the base branch checked out and was fast-forwarded. */
+            updatedCheckout?: string;
+            /** @description True when the project's verify command passed on the merge result. */
+            verified: boolean;
+            /** @description Best-effort steps that failed without stopping the merge. */
+            warnings: string[];
         };
         MobileDeviceResponse: {
             /** Format: date-time */
@@ -6130,6 +6191,7 @@ export interface components {
             orchestratorRules?: string;
             postCreate?: string[];
             preRemove?: string[];
+            pushAfterMerge?: boolean;
             reviewers?: components["schemas"]["DomainReviewerConfig"][];
             sessionPrefix?: string;
             symlinks?: string[];
@@ -18438,6 +18500,87 @@ export interface operations {
             };
             /** @description Internal Server Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIError"];
+                };
+            };
+        };
+    };
+    mergeSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Session identifier, e.g. project-1. */
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["MergeSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MergeSessionResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };

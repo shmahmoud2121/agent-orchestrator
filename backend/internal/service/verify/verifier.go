@@ -76,20 +76,32 @@ func (v *Verifier) VerifyMerge(ctx context.Context, pr domain.PullRequest, headS
 		return err
 	}
 
-	dir, err := os.MkdirTemp(v.tempDir, "ao-verify-")
+	dir, cleanup, err := AddTempWorktree(ctx, project.Path, v.tempDir, headSHA, v.logger)
 	if err != nil {
-		return fmt.Errorf("%w: create worktree dir: %w", ErrFailed, err)
+		return err
 	}
-	defer v.removeWorktree(project.Path, dir)
-	if out, err := git(ctx, project.Path, "worktree", "add", "--detach", dir, headSHA); err != nil {
-		return fmt.Errorf("%w: check out %s: %w: %s", ErrFailed, headSHA, err, out)
-	}
+	defer cleanup()
+	return RunCommand(ctx, dir, project.Config.VerifyCommand, project.Config.VerifyTimeoutSeconds)
+}
 
-	timeout := time.Duration(project.Config.VerifyTimeoutSeconds) * time.Second
-	if timeout <= 0 {
-		timeout = domain.DefaultVerifyTimeoutSeconds * time.Second
+// AddTempWorktree checks ref out as a detached worktree of repo in a fresh
+// directory under tempDir (empty means os.TempDir()). The returned cleanup
+// removes it with a fresh context, so a cancelled request still removes its
+// checkout. Errors wrap ErrFailed.
+func AddTempWorktree(ctx context.Context, repo, tempDir, ref string, logger *slog.Logger) (string, func(), error) {
+	if logger == nil {
+		logger = slog.Default()
 	}
-	return v.run(ctx, dir, project.Config.VerifyCommand, timeout)
+	dir, err := os.MkdirTemp(tempDir, "ao-verify-")
+	if err != nil {
+		return "", nil, fmt.Errorf("%w: create worktree dir: %w", ErrFailed, err)
+	}
+	cleanup := func() { removeWorktree(logger, repo, dir) }
+	if out, err := git(ctx, repo, "worktree", "add", "--detach", dir, ref); err != nil {
+		cleanup()
+		return "", nil, fmt.Errorf("%w: check out %s: %w: %s", ErrFailed, ref, err, out)
+	}
+	return dir, cleanup, nil
 }
 
 func (v *Verifier) projectFor(ctx context.Context, pr domain.PullRequest) (domain.ProjectRecord, bool, error) {
@@ -137,7 +149,17 @@ func (v *Verifier) ensureCommit(ctx context.Context, repo, branch, sha string) e
 	return nil
 }
 
-func (v *Verifier) run(ctx context.Context, dir string, argv []string, timeout time.Duration) error {
+// RunCommand runs argv in dir, bounded by timeoutSeconds (0 or less means
+// domain.DefaultVerifyTimeoutSeconds). A failure wraps ErrFailed and carries
+// the tail of the command's combined output.
+func RunCommand(ctx context.Context, dir string, argv []string, timeoutSeconds int) error {
+	if len(argv) == 0 {
+		return fmt.Errorf("%w: empty command", ErrFailed)
+	}
+	timeout := time.Duration(timeoutSeconds) * time.Second
+	if timeout <= 0 {
+		timeout = domain.DefaultVerifyTimeoutSeconds * time.Second
+	}
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	cmd := process.CommandContext(runCtx, argv[0], argv[1:]...)
@@ -160,14 +182,14 @@ func (v *Verifier) run(ctx context.Context, dir string, argv []string, timeout t
 
 // removeWorktree cleans up with a fresh context so a cancelled merge request
 // still removes its checkout.
-func (v *Verifier) removeWorktree(repo, dir string) {
+func removeWorktree(logger *slog.Logger, repo, dir string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	if out, err := git(ctx, repo, "worktree", "remove", "--force", dir); err != nil {
-		v.logger.Warn("pr verify: worktree remove failed", "dir", dir, "err", err, "output", out)
+		logger.Warn("verify: worktree remove failed", "dir", dir, "err", err, "output", out)
 	}
 	if err := os.RemoveAll(dir); err != nil {
-		v.logger.Warn("pr verify: remove dir failed", "dir", dir, "err", err)
+		logger.Warn("verify: remove dir failed", "dir", dir, "err", err)
 	}
 	_, _ = git(ctx, repo, "worktree", "prune")
 }

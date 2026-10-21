@@ -2769,6 +2769,8 @@
 	"settings.project.autoReview": "Auto review",
 	"settings.project.autoReviewToggle": "Auto review PRs",
 	"settings.project.workersRequestReviewDescription": "When enabled, new workers start an AO review of their own PR once it is ready, and again after each fix. When disabled, workers ask before starting one.",
+	"settings.project.pushAfterMergeDescription": "启用后，在本地合并工作者的分支后，ao merge 会将基础分支推送到 origin。推送失败不会撤销合并。工作者从不推送。",
+	"settings.project.pushAfterMergeToggle": "合并后推送",
 	"settings.project.workersRequestReviewToggle": "Workers request AO review",
 	"settings.project.verifyCommand": "Merge check command",
 	"settings.project.verifyCommandDescription": "AO runs this on the PR's exact head in a throwaway checkout before it merges, and refuses the merge if it fails. It runs directly, not through a shell; quote arguments that contain spaces.",

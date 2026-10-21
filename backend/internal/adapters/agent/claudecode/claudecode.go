@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 
@@ -200,9 +201,36 @@ func (p *Plugin) GetLaunchCommand(ctx context.Context, cfg ports.LaunchConfig) (
 		SystemPromptFile: cfg.SystemPromptFile,
 		Permission:       agentruntime.PermissionPolicy(permissions),
 		AllowedTools:     cfg.AllowedTools,
-		DisallowedTools:  cfg.DisallowedTools,
+		DisallowedTools:  workerDisallowedTools(cfg.Kind, cfg.DisallowedTools),
 		ProviderArgs:     autoDefaultNudgeGuardArgs(agentruntime.PermissionPolicy(permissions)),
 	})
+}
+
+// workerPublishDenyRules keep a worker session from publishing on its own:
+// integration is local and only the orchestrator's `ao merge` (with the
+// project's push-after-merge) ever pushes. They are defense in depth for the
+// worker prompt rule. Claude Code enforces deny rules only outside
+// bypassPermissions (see ports.LaunchConfig), so a bypass-mode worker still
+// relies on the prompt.
+var workerPublishDenyRules = []string{
+	"Bash(git push:*)",
+	"Bash(gh pr create:*)",
+	"Bash(gh pr merge:*)",
+}
+
+// workerDisallowedTools adds workerPublishDenyRules to a worker launch's deny
+// list. Orchestrators and reviewers (no worker kind) are left as configured.
+func workerDisallowedTools(kind domain.SessionKind, base []string) []string {
+	if kind != domain.KindWorker {
+		return base
+	}
+	out := append([]string(nil), base...)
+	for _, rule := range workerPublishDenyRules {
+		if !slices.Contains(out, rule) {
+			out = append(out, rule)
+		}
+	}
+	return out
 }
 
 // freshLaunchNativeSessionID keeps a fresh launch from adopting someone else's
@@ -386,7 +414,7 @@ func (p *Plugin) GetRestoreCommand(ctx context.Context, cfg ports.RestoreConfig)
 		SystemPromptFile: cfg.SystemPromptFile,
 		Permission:       agentruntime.PermissionPolicy(cfg.Permissions),
 		AllowedTools:     cfg.AllowedTools,
-		DisallowedTools:  cfg.DisallowedTools,
+		DisallowedTools:  workerDisallowedTools(cfg.Kind, cfg.DisallowedTools),
 		ProviderArgs:     autoDefaultNudgeGuardArgs(agentruntime.PermissionPolicy(cfg.Permissions)),
 	})
 }

@@ -14,6 +14,11 @@ function render(ui: React.ReactNode) {
 
 const test = vi.hoisted(() => ({ mac: true, get: vi.fn(), post: vi.fn() }));
 vi.mock("../lib/platform", () => ({ isMacPlatform: () => test.mac }));
+// These tests cover the desktop + Connect Mobile wake path, which the
+// local-only build switches off (see AwakeControl.localOnly.test.tsx for that
+// build's behavior). Keeping them against the full path preserves coverage for
+// when remote access returns.
+vi.mock("../../shared/local-only", () => ({ LOCAL_ONLY_BUILD: false, LOCAL_ONLY_DISABLED_MESSAGE: "disabled" }));
 vi.mock("../lib/api-client", () => ({
 	apiClient: { GET: test.get, POST: test.post },
 	apiErrorMessage: (e: unknown) => String(e),

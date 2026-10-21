@@ -201,7 +201,8 @@ func NewRootCommand(deps Deps) *cobra.Command {
 	root.AddCommand(newStartCommand(ctx))
 	root.AddCommand(newStopCommand(ctx))
 	root.AddCommand(newStatusCommand(ctx))
-	root.AddCommand(newRemoteHostCommand(ctx))
+	// `ao remote-host` (newRemoteHostCommand) is not registered: this build is
+	// local-only and the daemon serves no remote listener.
 	root.AddCommand(newDoctorCommand(ctx))
 	root.AddCommand(newAgentCommand(ctx))
 	root.AddCommand(newSpawnCommand(ctx))
@@ -226,6 +227,7 @@ func NewRootCommand(deps Deps) *cobra.Command {
 	root.AddCommand(newOrchestratorCommand(ctx))
 	root.AddCommand(newPRCommand(ctx))
 	root.AddCommand(newReviewCommand(ctx))
+	root.AddCommand(newMergeCommand(ctx))
 	root.AddCommand(newAutomationCommand(ctx))
 	root.AddCommand(newCueCommand(ctx))
 	root.AddCommand(newCompletionCommand())

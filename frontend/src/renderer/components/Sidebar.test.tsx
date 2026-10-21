@@ -11,7 +11,7 @@ vi.mock("motion/react", async (importOriginal) => {
 		AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
 	};
 });
-import { act, createEvent, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, createEvent, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { components } from "../../api/schema";
@@ -588,10 +588,7 @@ describe("Sidebar", () => {
 		expect(screen.getByRole("dialog")).toBe(chooser);
 	});
 
-	it("lists remote projects beside local and Cloud projects with host-qualified sessions", () => {
-		mockParams.hostId = "box-b";
-		mockParams.projectId = "proj-1";
-		mockParams.sessionId = "proj-1-1";
+	it("lists no remote projects in the local-only build, even if hosts are supplied", () => {
 		const remoteSession = (hostId: string, title: string): WorkspaceSession => ({
 			...session, hostId, title,
 		});
@@ -599,27 +596,15 @@ describe("Sidebar", () => {
 			workspaces: [{ ...workspace, sessions: [session] }],
 			remoteHosts: [
 				{ hostId: "box-a", label: "Host A", url: "http://box-a:3001", status: "connected" },
-				{ hostId: "box-b", label: "Host B", url: "http://box-b:3001", status: "connected" },
 			],
 			remoteWorkspaces: [
 				{ ...workspace, hostId: "box-a", sessions: [remoteSession("box-a", "Task on A")] },
-				{ ...workspace, hostId: "box-b", sessions: [remoteSession("box-b", "Task on B")] },
 			],
 		});
 
 		const projects = screen.getByTestId("sidebar-projects-scroller");
-		expect(within(projects).getByText("Host A")).toBeInTheDocument();
-		expect(within(projects).getByText("Host B")).toBeInTheDocument();
-		expect(screen.queryByText("Remote hosts")).not.toBeInTheDocument();
-		const remoteSessions = within(projects).getAllByTestId("remote-session-row");
-		expect(remoteSessions).toHaveLength(2);
-		expect(remoteSessions[0]).not.toHaveAttribute("aria-current");
-		expect(remoteSessions[1]).toHaveAttribute("aria-current", "page");
-		fireEvent.click(remoteSessions[0]);
-		expect(navigateMock).toHaveBeenCalledWith({
-			to: "/host/$hostId/project/$projectId/session/$sessionId",
-			params: { hostId: "box-a", projectId: "proj-1", sessionId: "proj-1-1" },
-		});
+		expect(within(projects).queryByText("Host A")).not.toBeInTheDocument();
+		expect(within(projects).queryAllByTestId("remote-session-row")).toHaveLength(0);
 	});
 
 	it("shows the cloud sign-in entry point while signed out", () => {
@@ -728,7 +713,6 @@ describe("Sidebar", () => {
 		const footer = document.querySelector('[data-sidebar="footer"]');
 		expect(footer).toHaveClass("border-t", "border-border-strong", "!py-2");
 		expect(screen.getAllByRole("button", { name: "Settings" })[0]).toHaveClass("h-9");
-		expect(screen.getAllByRole("button", { name: "Connect mobile" })[0]).toHaveClass("h-9");
 		expect(footer?.className).not.toContain("--size-center-panel-bottom-inset");
 		expect(footer?.className).not.toContain("--size-center-panel-inset-mac");
 	});
@@ -2189,18 +2173,19 @@ describe("Sidebar", () => {
 		expect(navigateMock).not.toHaveBeenCalled();
 	});
 
-	it("opens the Mobile settings page from the footer", async () => {
-		const user = userEvent.setup();
+	it("keeps the Mobile settings page unreachable from the footer", () => {
 		renderSidebar();
-		await user.click((await screen.findAllByRole("button", { name: "Connect mobile" }))[0]);
-		expect(useUiStore.getState().settingsModal).toEqual({ scope: "global", section: "mobile" });
+		expect(screen.queryByRole("button", { name: "Connect mobile" })).not.toBeInTheDocument();
+		expect(useUiStore.getState().settingsModal).toBeNull();
 		expect(navigateMock).not.toHaveBeenCalled();
 	});
 
-	it("always shows Connect mobile", () => {
+	it("shows no Connect mobile entry in the local-only build, expanded or collapsed", () => {
 		renderSidebar();
-
-		expect(screen.getByRole("button", { name: "Connect mobile" })).toBeVisible();
+		expect(screen.queryAllByRole("button", { name: "Connect mobile", hidden: true })).toHaveLength(0);
+		cleanup();
+		renderSidebar({ initialOpen: false });
+		expect(screen.queryAllByRole("button", { name: "Connect mobile", hidden: true })).toHaveLength(0);
 	});
 
 	it("opens the command palette when Search is clicked", async () => {
@@ -3321,9 +3306,9 @@ describe("Sidebar", () => {
 		expect(within(readyRow).queryByText(/ready|Nightly/)).not.toBeInTheDocument();
 		expect(readyRow.querySelector(".rounded-full")).toBeNull();
 		expect(screen.queryAllByLabelText("Retry update check")).toHaveLength(0);
-		// Stays above Connect mobile / Settings — not overlaid on them.
-		const connectMobile = screen.getByRole("button", { name: "Connect mobile" });
-		expect(readyRow.compareDocumentPosition(connectMobile) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		// Stays above Settings — not overlaid on it.
+		const settings = screen.getAllByRole("button", { name: "Settings" })[0];
+		expect(readyRow.compareDocumentPosition(settings) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 		expect(screen.queryByLabelText(/Hide update/)).not.toBeInTheDocument();
 	});
 

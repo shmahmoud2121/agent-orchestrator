@@ -6010,7 +6010,7 @@ func TestSpawnWorker_IssueWithoutPromptGetsFallbackTaskPrompt(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	want := "Work on issue 2272.\n\nIssue details were not pre-fetched. Start by reading the issue from the tracker, then inspect the relevant code and tests. Implement the smallest appropriate fix and run focused verification. When complete, push the branch. If this issue comes from GitHub, GitLab, or another provider, create or update a PR/MR when a remote/provider is configured and the change is ready, and link the issue."
+	want := "Work on issue 2272.\n\nIssue details were not pre-fetched. Start by reading the issue from the tracker, then inspect the relevant code and tests. Implement the smallest appropriate fix and run focused verification. When complete, commit your work on this session's branch in this worktree, leave the worktree clean, and report done with ao report --done, naming the issue. Do not push, open a PR/MR, or merge into the base branch: AO merges your branch locally after review."
 	if agent.lastLaunch.Prompt != want {
 		t.Fatalf("launch prompt = %q, want %q", agent.lastLaunch.Prompt, want)
 	}
@@ -6092,7 +6092,7 @@ func TestSpawnWorker_IncludesReviewCIAndPlanningInstructions(t *testing.T) {
 	systemPrompt := agent.lastLaunch.SystemPrompt
 	for _, want := range []string{
 		"## Review, CI, and Task Planning",
-		"mark every thread you fixed as resolved",
+		"address each relevant one and commit the fix on this session's branch",
 		"multiple PRs/MRs with CI failures or review comments",
 		"decide the order based on blockers, stack order, failing scope, and user priority",
 		"Do not use the agent runtime's built-in subagent or task-delegation tools",

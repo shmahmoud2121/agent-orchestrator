@@ -13,6 +13,12 @@ import { TooltipProvider } from "./ui/tooltip";
 
 const { harnessSettingsSectionMock } = vi.hoisted(() => ({ harnessSettingsSectionMock: vi.fn() }));
 
+// This file covers the Connect Mobile / Remote hosts code kept for when the
+// build is not local-only; the local-only build hides it (SettingsDialog.test).
+vi.mock("../../shared/local-only", async (importOriginal) => ({
+	...(await importOriginal<typeof import("../../shared/local-only")>()),
+	LOCAL_ONLY_BUILD: false,
+}));
 vi.mock("./settings/HarnessSettingsSection", () => ({
 	HarnessSettingsSection: (props: { focusAgentId?: string; hostId?: string; titleHidden?: boolean }) => {
 		harnessSettingsSectionMock(props);

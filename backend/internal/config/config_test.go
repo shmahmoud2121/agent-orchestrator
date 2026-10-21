@@ -273,8 +273,8 @@ func TestLoadOfferingDefaults(t *testing.T) {
 	if !cfg.LocalOffering {
 		t.Error("LocalOffering = false, want true by default")
 	}
-	if cfg.CloudControlPlaneURL != "https://api.aoagents.dev" {
-		t.Errorf("CloudControlPlaneURL = %q, want the baked default", cfg.CloudControlPlaneURL)
+	if cfg.CloudControlPlaneURL != "" {
+		t.Errorf("CloudControlPlaneURL = %q, want empty (local-only build fails closed)", cfg.CloudControlPlaneURL)
 	}
 }
 
@@ -577,22 +577,18 @@ func TestLoadAgentBrowserToken(t *testing.T) {
 	}
 }
 
-func TestLoadHarnessUpdateChecksToggle(t *testing.T) {
-	t.Setenv("AO_HARNESS_UPDATE_CHECKS", "")
-	cfg, err := Load()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !cfg.HarnessUpdateChecks {
-		t.Fatal("harness update checks are off by default")
-	}
-	t.Setenv("AO_HARNESS_UPDATE_CHECKS", "off")
-	if cfg, err = Load(); err != nil || cfg.HarnessUpdateChecks {
-		t.Fatalf("AO_HARNESS_UPDATE_CHECKS=off: checks=%t err=%v", cfg.HarnessUpdateChecks, err)
-	}
-	t.Setenv("AO_HARNESS_UPDATE_CHECKS", "sometimes")
-	if _, err := Load(); err == nil {
-		t.Fatal("invalid AO_HARNESS_UPDATE_CHECKS value was accepted")
+// The local-only build never checks harness release sources in the
+// background: the default is off and AO_HARNESS_UPDATE_CHECKS cannot turn it on.
+func TestLoadHarnessUpdateChecksAreHardOff(t *testing.T) {
+	for _, raw := range []string{"", "on", "1", "off", "sometimes"} {
+		t.Setenv("AO_HARNESS_UPDATE_CHECKS", raw)
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("AO_HARNESS_UPDATE_CHECKS=%q: %v", raw, err)
+		}
+		if cfg.HarnessUpdateChecks {
+			t.Fatalf("AO_HARNESS_UPDATE_CHECKS=%q turned harness update checks on", raw)
+		}
 	}
 }
 

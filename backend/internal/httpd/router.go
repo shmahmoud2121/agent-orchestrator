@@ -63,10 +63,10 @@ func NewRouterWithControl(cfg config.Config, log *slog.Logger, termMgr *terminal
 	r.Use(middleware.RequestID)
 	r.Use(requestLogger(log, deps.Telemetry))
 	r.Use(recoverTelemetry(log, deps.Telemetry))
-	// Account-management routes do not inherit the general localhost preview
-	// exception. This guard must wrap corsMiddleware so hostile preflights are
+	// Account and Connect Mobile routes accept only the exact renderer
+	// origins. This guard must wrap corsMiddleware so hostile preflights are
 	// rejected before the general CORS layer can answer them.
-	r.Use(codexAccountOriginMiddleware(cfg.AllowedOrigins))
+	r.Use(appOriginMiddleware(cfg.AllowedOrigins))
 	r.Use(corsMiddleware(cfg.AllowedOrigins))
 	r.Use(previewOriginMiddleware(api.sessions))
 
@@ -84,7 +84,9 @@ func NewRouterWithControl(cfg config.Config, log *slog.Logger, termMgr *terminal
 	mountMobile(r, deps.Mobile)
 	mountBrowserLive(r, deps.BrowserLive)
 	mountAwake(r, &controllers.AwakeController{Svc: deps.Awake})
-	mountMobileDevices(r, &controllers.MobileDevicesController{Registry: deps.DeviceRoster, Presence: deps.DeviceLive})
+	if deps.DeviceRoster != nil || deps.DeviceLive != nil {
+		mountMobileDevices(r, &controllers.MobileDevicesController{Registry: deps.DeviceRoster, Presence: deps.DeviceLive})
+	}
 	api.Register(r)
 
 	return r
@@ -234,13 +236,15 @@ func mountMobile(r chi.Router, c *controllers.MobileController) {
 // the LAN socket, so the "a phone must not manage the roster" invariant is
 // enforced by the transport rather than by a spoofable header.
 //
-// The routes are mounted unconditionally, even when c.Registry is nil (a
-// corrupt ~/.ao/data/mobile/push-devices.json failed to load): each handler
-// answers 503 DEVICE_REGISTRY_UNAVAILABLE in that case, so the desktop can tell
-// "the registry failed to load" apart from "this route doesn't exist / talking
-// to an old daemon" (a 404 would be ambiguous with both). Only a nil controller
-// pointer — meaning the roster surface was never wired into APIDeps at all —
-// skips mounting, matching mountMobile's convention for an absent controller.
+// Once any roster dependency is wired, the routes are mounted even when
+// c.Registry is nil (a corrupt ~/.ao/data/mobile/push-devices.json failed to
+// load): each handler answers 503 DEVICE_REGISTRY_UNAVAILABLE in that case, so
+// the desktop can tell "the registry failed to load" apart from "this route
+// doesn't exist / talking to an old daemon" (a 404 would be ambiguous with
+// both). A nil controller pointer skips mounting, matching mountMobile's
+// convention for an absent controller, and the router does not mount the
+// roster at all when neither DeviceRoster nor DeviceLive is wired (the
+// local-only daemon wires no mobile surface).
 func mountMobileDevices(r chi.Router, c *controllers.MobileDevicesController) {
 	if c == nil {
 		return

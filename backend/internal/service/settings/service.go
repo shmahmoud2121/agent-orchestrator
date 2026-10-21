@@ -74,12 +74,13 @@ func OfferingFromConfig(cfg config.Config) Offering {
 	}
 }
 
-// CloudEnabled resolves the effective cloud gate for one settings snapshot:
-// the user's toggle (or the env override), and a configured control plane.
-// A missing control-plane URL fails closed instead of surfacing broken cloud
-// UI.
-func (o Offering) CloudEnabled(snapshot Snapshot) bool {
-	return (o.CloudForced || snapshot.CloudOffering) && o.CloudControlPlaneURL != ""
+// CloudEnabled resolves the effective cloud gate for one settings snapshot.
+// This build is local-only, so the cloud offering is always off: neither the
+// user's toggle, the AO_CLOUD_OFFERING override, nor a configured control
+// plane can enable it. The persisted toggle is still stored so it survives a
+// later build that brings cloud back.
+func (Offering) CloudEnabled(Snapshot) bool {
+	return false
 }
 
 // ChatCapability reports which harnesses can run in chat mode, so the UI can warn

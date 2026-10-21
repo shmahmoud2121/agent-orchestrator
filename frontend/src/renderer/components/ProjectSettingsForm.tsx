@@ -173,6 +173,7 @@ function SettingsBody({ project, projectId, hostId, hostConnected, onSaved, sect
 		...(verifiable && {
 			verifyCommand: formatVerifyCommand(config.verifyCommand),
 			verifyTimeoutSeconds: config.verifyTimeoutSeconds ? String(config.verifyTimeoutSeconds) : "",
+			pushAfterMerge: config.pushAfterMerge ?? false,
 		}),
 	};
 	const lastOrchestratorRef = useRef(config.orchestrator?.agent ?? "");
@@ -262,6 +263,7 @@ function SettingsBody({ project, projectId, hostId, hostConnected, onSaved, sect
 					autoReview: values.autoReview,
 					workersRequestReview: values.workersRequestReview || undefined,
 					...(verifiable && verifyConfig(values)),
+					...(verifiable && { pushAfterMerge: values.pushAfterMerge || undefined }),
 				};
 		const { error } = await (hostId ? clientForHost(hostId) : apiClient).PUT("/api/v1/projects/{id}", {
 			params: { path: { id: projectId } },
@@ -332,7 +334,7 @@ function SettingsBody({ project, projectId, hostId, hostConnected, onSaved, sect
 		}
 	};
 	return <ProjectSettingsEditor initialValues={initialValues} section={section} disabled={!hostConnected}
-		capabilities={{ workflow: !isScratchProject, sessionPrefix: !isScratchProject, intake: intakeVisible, reviewer: !isScratchProject, requiredAgents: true, workersRequestReview: !isScratchProject, verifyCommand: verifiable }}
+		capabilities={{ workflow: !isScratchProject, sessionPrefix: !isScratchProject, intake: intakeVisible, reviewer: !isScratchProject, requiredAgents: true, workersRequestReview: !isScratchProject, verifyCommand: verifiable, pushAfterMerge: verifiable }}
 		details={[{ label: t("settings.project.path"), value: project.path, href: hostId ? undefined : `file://${encodeURI(project.path)}` }, { label: t("settings.project.repo"), value: project.repo || "—", href: project.repo ? repositoryHref(project.repo) : undefined }]}
 		workspaceRepos={project.kind === "workspace" ? project.workspaceRepos ?? [] : undefined} repository={project.repo}
 		modelScope={() => projectId} defaultReviewer={(draft) => WORKER_DEFAULT_REVIEWERS[draft.workerAgent] ?? "claude-code"}

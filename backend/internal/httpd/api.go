@@ -12,6 +12,7 @@ import (
 	"github.com/aoagents/agent-orchestrator/backend/internal/attachmentstore"
 	"github.com/aoagents/agent-orchestrator/backend/internal/cdc"
 	"github.com/aoagents/agent-orchestrator/backend/internal/config"
+	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/httpd/apispec"
 	"github.com/aoagents/agent-orchestrator/backend/internal/httpd/controllers"
 	"github.com/aoagents/agent-orchestrator/backend/internal/httpd/envelope"
@@ -41,6 +42,7 @@ type APIDeps struct {
 	SessionSteps       controllers.SessionStepsReader
 	PRs                prsvc.ActionManager
 	Reviews            reviewsvc.Manager
+	LocalMerge         controllers.LocalMergeService
 	Notifications      controllers.NotificationService
 	Reports            controllers.ReportService
 	NotificationStream controllers.NotificationStream
@@ -132,6 +134,7 @@ type API struct {
 	usage         *controllers.UsageController
 	prs           *controllers.PRsController
 	reviews       *controllers.ReviewsController
+	localMerge    *controllers.LocalMergeController
 	notifications *controllers.NotificationsController
 	reports       *controllers.ReportsController
 	push          *controllers.PushController
@@ -194,6 +197,7 @@ func newAPIWithLogger(cfg config.Config, deps APIDeps, log *slog.Logger) *API {
 		usage:         &controllers.UsageController{Svc: deps.UsageSummary, Log: loggerOrDefault(log), Memory: deps.SessionMemory, Steps: deps.SessionSteps, Pressure: memoryPressure(deps.SessionMemory)},
 		prs:           &controllers.PRsController{Svc: deps.PRs},
 		reviews:       &controllers.ReviewsController{Svc: deps.Reviews},
+		localMerge:    &controllers.LocalMergeController{Svc: deps.LocalMerge},
 		notifications: &controllers.NotificationsController{Svc: deps.Notifications, Stream: deps.NotificationStream},
 		reports:       &controllers.ReportsController{Svc: deps.Reports},
 		push:          &controllers.PushController{Registry: deps.Push},
@@ -260,6 +264,9 @@ func (a *API) Register(root chi.Router) {
 			r.Use(func(next http.Handler) http.Handler {
 				ordinary := middleware.Timeout(timeout)(next)
 				upload := middleware.Timeout(max(timeout, 10*time.Minute))(next)
+				// A local merge may run the project's verify command, which is
+				// bounded by its own (capped) timeout, twice if base moves.
+				localMerge := middleware.Timeout(max(timeout, 2*domain.MaxVerifyTimeoutSeconds*time.Second+5*time.Minute))(next)
 				return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 					// A spawn, an orchestrator start or a restore runs the project's
 					// Setup inside the request, and a Setup step may take far longer
@@ -275,6 +282,10 @@ func (a *API) Register(root chi.Router) {
 					}
 					if attachmentUploadRoute(req) {
 						upload.ServeHTTP(w, req)
+						return
+					}
+					if req.Method == http.MethodPost && chi.RouteContext(req.Context()).RoutePattern() == "/api/v1/sessions/{sessionId}/merge" {
+						localMerge.ServeHTTP(w, req)
 						return
 					}
 					// A managed preview carries the dev server's HMR socket and event
@@ -299,6 +310,7 @@ func (a *API) Register(root chi.Router) {
 			a.usage.Register(r)
 			a.prs.Register(r)
 			a.reviews.Register(r)
+			a.localMerge.Register(r)
 			a.notifications.Register(r)
 			a.reports.Register(r)
 			a.push.Register(r)

@@ -88,6 +88,7 @@ var reviewerDisallowedTools = []string{
 	// The reviewer must never merge. No allow rule admits it, so this only
 	// documents the intent and survives a future broader gh allow entry.
 	"Bash(gh pr merge:*)",
+	"Bash(gh pr create:*)",
 }
 
 // ReviewCommand builds a claude-code invocation that reviews the worker's

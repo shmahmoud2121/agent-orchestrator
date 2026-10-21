@@ -47,6 +47,12 @@ const { mobileStatus } = vi.hoisted(() => ({
 
 // This suite exercises the mobile UI; shared desktop/mobile ownership is
 // covered with the real useAwake hook in AwakeControl.test.tsx.
+// This file covers the Connect Mobile / Remote hosts code kept for when the
+// build is not local-only; the local-only build hides it (SettingsDialog.test).
+vi.mock("../../shared/local-only", async (importOriginal) => ({
+	...(await importOriginal<typeof import("../../shared/local-only")>()),
+	LOCAL_ONLY_BUILD: false,
+}));
 vi.mock("../hooks/useAwake", () => ({
 	useAwake: () => ({ state: { sessions: [], rules: [], capabilities: [{ id: "idle", available: true }] }, actAsync: vi.fn().mockResolvedValue({ active: true }), busy: false }),
 	awakeCapability: () => ({ available: true }),
