@@ -8,15 +8,29 @@ import (
 // Command creates a non-interactive child process. On Windows it suppresses
 // transient console windows for CLI tools launched by the desktop daemon.
 func Command(name string, args ...string) *exec.Cmd {
+	var gitErr error
+	if isGit(name) {
+		args, gitErr = hardenGit(args)
+	}
 	cmd := exec.Command(name, args...)
 	configureHidden(cmd)
+	if gitErr != nil {
+		cmd.Err = gitErr
+	}
 	return cmd
 }
 
 // CommandContext is Command with cancellation support.
 func CommandContext(ctx context.Context, name string, args ...string) *exec.Cmd {
+	var gitErr error
+	if isGit(name) {
+		args, gitErr = hardenGit(args)
+	}
 	cmd := exec.CommandContext(ctx, name, args...) //nolint:gosec // Callers intentionally select argv; project hooks execute user-authored shell commands.
 	configureHidden(cmd)
+	if gitErr != nil {
+		cmd.Err = gitErr
+	}
 	return cmd
 }
 
