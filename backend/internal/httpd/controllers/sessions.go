@@ -34,6 +34,7 @@ import (
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/httpd/apispec"
 	"github.com/aoagents/agent-orchestrator/backend/internal/httpd/envelope"
+	"github.com/aoagents/agent-orchestrator/backend/internal/httpd/requestscope"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 	previewutil "github.com/aoagents/agent-orchestrator/backend/internal/preview"
 	"github.com/aoagents/agent-orchestrator/backend/internal/previewserver"
@@ -558,11 +559,28 @@ func (c *SessionsController) previewArtifactFile(w http.ResponseWriter, r *http.
 	c.serveRootedPreviewFile(w, r, sess.Metadata.ArtifactDir, asset)
 }
 
+// apiOriginPreviewCSP sandboxes workspace content served from the daemon's own
+// loopback origin. Opened in a browser, an agent's or a cloned repo's HTML page
+// would otherwise be same-origin with the no-auth API: its reads carry no
+// Origin, so no CORS check sees them. The sandbox gives the page an opaque
+// origin, whose API calls carry Origin "null" and are refused. The renderer
+// only fetches these routes or loads them as media, which a CSP does not
+// affect. LAN requests are left alone: a remote desktop's proxy serves them
+// under a preview origin of its own.
+const apiOriginPreviewCSP = "sandbox allow-scripts allow-forms"
+
+func sandboxAPIOriginPreview(w http.ResponseWriter, r *http.Request) {
+	if !requestscope.IsLAN(r.Context()) {
+		w.Header().Set("Content-Security-Policy", apiOriginPreviewCSP)
+	}
+}
+
 func (c *SessionsController) previewFile(w http.ResponseWriter, r *http.Request) {
 	if c.Svc == nil {
 		apispec.NotImplemented(w, r, "GET", "/api/v1/sessions/{sessionId}/preview/files/*")
 		return
 	}
+	sandboxAPIOriginPreview(w, r)
 	sess, err := c.Svc.Get(r.Context(), sessionID(r))
 	if err != nil {
 		envelope.WriteError(w, r, err)
@@ -719,6 +737,9 @@ func (c *SessionsController) previewApp(w http.ResponseWriter, r *http.Request) 
 		envelope.WriteAPIError(w, r, http.StatusNotFound, "not_found", "PREVIEW_NOT_FOUND", "Preview not found", nil)
 		return
 	}
+	// The proxy adds the dev server's headers to this one, so its own CSP,
+	// if any, applies alongside the sandbox rather than replacing it.
+	sandboxAPIOriginPreview(w, r)
 	proxy := &httputil.ReverseProxy{
 		Transport: previewTransport,
 		Rewrite: func(req *httputil.ProxyRequest) {
