@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/config"
+	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/runfile"
 )
 
@@ -21,6 +22,10 @@ import (
 // timeout. A spawn or a restore runs the project's Setup and has no client
 // timeout (postSetupJSON).
 const commandTimeout = 2 * time.Minute
+
+// mergeTimeout leaves room for the daemon to run a project's verify command,
+// which may take up to domain.MaxVerifyTimeoutSeconds, before it merges.
+const mergeTimeout = domain.MaxVerifyTimeoutSeconds*time.Second + commandTimeout
 
 // maxDrainedBodyBytes bounds how much of an unused response body the CLI
 // discards for keep-alive reuse without an unbounded read.

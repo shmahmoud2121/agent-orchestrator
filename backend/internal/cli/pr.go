@@ -3,6 +3,7 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -46,7 +47,7 @@ func newPRMergeCommand(ctx *commandContext) *cobra.Command {
 				return err
 			}
 			var res mergePRResponse
-			if err := ctx.postJSON(cmd.Context(), "prs/"+url.PathEscape(prNumber)+"/merge", struct{}{}, &res); err != nil {
+			if err := ctx.doJSONPathWithHeadersAndTimeout(cmd.Context(), http.MethodPost, "/api/v1/prs/"+url.PathEscape(prNumber)+"/merge", struct{}{}, &res, nil, mergeTimeout); err != nil {
 				return err
 			}
 			if method := strings.TrimSpace(res.Method); method != "" {

@@ -8,7 +8,10 @@ import { deriveRepoHost, deriveRepoPath, IntakeFields, intakeNeedsRule } from ".
 import { ProductExternalLink } from "./ProductExternalLink";
 import { AgentModelField, ProjectAutoReviewToggle, ProjectWorkersRequestReviewToggle } from "./settings/ProjectAgentRoleControls";
 import { SettingsOptionMenu } from "./settings/SettingsOptionMenu";
+import { SettingsRow } from "./settings/SettingsRow";
 import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { DEFAULT_VERIFY_TIMEOUT_SECONDS, MAX_VERIFY_TIMEOUT_SECONDS, parseVerifyCommand, parseVerifyTimeout } from "../lib/verify-command";
 
 export type ProjectSettingsDraft = {
 	displayName: string;
@@ -35,6 +38,10 @@ export type ProjectSettingsDraft = {
 	intakeEnabled: boolean;
 	intakeRepo: string;
 	intakeAssignee: string;
+	/** Local-only: the command the daemon runs on a PR's head before merging, as one line. */
+	verifyCommand?: string;
+	/** Local-only: whole seconds; blank means the daemon default. */
+	verifyTimeoutSeconds?: string;
 };
 
 const roles = ["worker", "orchestrator", "reviewer"] as const;
@@ -54,6 +61,8 @@ type Capabilities = {
 	reviewer: boolean;
 	requiredAgents: boolean;
 	workersRequestReview?: boolean;
+	/** The daemon verifies merges only for local single-repo projects. */
+	verifyCommand?: boolean;
 	nameLimit?: number;
 	requiredBranch?: boolean;
 	/** Cloud defaults and tuning belong to its runtime, rather than the local catalog. */
@@ -133,6 +142,12 @@ export function ProjectSettingsEditor({ initialValues, section, capabilities, de
 		if ([...draft.displayName.trim()].length > nameLimit && draft.displayName.trim() !== initialValues.displayName.trim()) return t("settings.project.nameTooLong", { max: nameLimit });
 		if (capabilities.requiredBranch && (!draft.defaultBranch.trim() || [...draft.defaultBranch.trim()].length > 255)) return t("settings.cloudProject.identityValidation");
 		if (visibleRoles.some((role) => !validity[role])) return t("settings.project.tuningInvalid");
+		if (capabilities.verifyCommand) {
+			const verifyCommand = parseVerifyCommand(draft.verifyCommand ?? "");
+			if (!verifyCommand) return t("settings.project.verifyCommandUnclosedQuote");
+			// The time limit is hidden, and cleared on save, while there is no command.
+			if (verifyCommand.length && Number.isNaN(parseVerifyTimeout(draft.verifyTimeoutSeconds ?? ""))) return t("settings.project.verifyTimeoutInvalid", { max: MAX_VERIFY_TIMEOUT_SECONDS });
+		}
 		return undefined;
 	};
 	const submit = () => {
@@ -183,6 +198,10 @@ export function ProjectSettingsEditor({ initialValues, section, capabilities, de
 					<ProjectSettingsSection title={t("settings.project.pullRequests")} grouped>
 						<ProjectAutoReviewToggle description={autoReviewDescription} checked={draft.autoReview} onCheckedChange={(autoReview) => patch({ autoReview })} />
 						{capabilities.workersRequestReview && <ProjectWorkersRequestReviewToggle checked={draft.workersRequestReview ?? false} onCheckedChange={(workersRequestReview) => patch({ workersRequestReview })} />}
+						{capabilities.verifyCommand && <>
+							<SettingsRow label={t("settings.project.verifyCommand")} description={t("settings.project.verifyCommandDescription")}><Input id="verifyCommand" aria-label={t("settings.project.verifyCommand")} className="w-80 max-w-full font-mono" autoComplete="off" spellCheck={false} value={draft.verifyCommand ?? ""} placeholder="go test ./..." onChange={(event) => patch({ verifyCommand: event.target.value })} /></SettingsRow>
+							{draft.verifyCommand?.trim() && <SettingsRow label={t("settings.project.verifyTimeout")} description={t("settings.project.verifyTimeoutDescription", { max: MAX_VERIFY_TIMEOUT_SECONDS })}><Input id="verifyTimeoutSeconds" aria-label={t("settings.project.verifyTimeout")} className="w-28 max-w-full" inputMode="numeric" value={draft.verifyTimeoutSeconds ?? ""} placeholder={String(DEFAULT_VERIFY_TIMEOUT_SECONDS)} onChange={(event) => patch({ verifyTimeoutSeconds: event.target.value })} /></SettingsRow>}
+						</>}
 					</ProjectSettingsSection>
 				</>}
 				{generalExtra}

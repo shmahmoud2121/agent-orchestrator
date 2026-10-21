@@ -98,6 +98,8 @@ func writePRError(w http.ResponseWriter, r *http.Request, err error) {
 		envelope.WriteAPIError(w, r, http.StatusConflict, "conflict", "PR_NOT_MERGEABLE", "PR is not mergeable", nil)
 	case errors.Is(err, prsvc.ErrPRHeadChanged):
 		envelope.WriteAPIError(w, r, http.StatusConflict, "conflict", "PR_HEAD_CHANGED", "PR head changed; refresh before merging", nil)
+	case errors.Is(err, prsvc.ErrPRVerifyFailed):
+		envelope.WriteAPIError(w, r, http.StatusUnprocessableEntity, "unprocessable", "PR_VERIFY_FAILED", "PR verification command did not pass", map[string]any{"reason": err.Error()})
 	case errors.Is(err, prsvc.ErrPRPreconditions):
 		envelope.WriteAPIError(w, r, http.StatusUnprocessableEntity, "unprocessable", "PR_PRECONDITIONS_UNMET", "PR merge preconditions are not met", nil)
 	case errors.Is(err, prsvc.ErrNothingToResolve):

@@ -9,6 +9,11 @@ func TestProjectConfigValidate(t *testing.T) {
 		wantErr bool
 	}{
 		{"empty ok", ProjectConfig{}, false},
+		{"good verify command", ProjectConfig{VerifyCommand: []string{"go", "test", "./..."}, VerifyTimeoutSeconds: 900}, false},
+		{"verify command blank program", ProjectConfig{VerifyCommand: []string{" ", "test"}}, true},
+		{"verify command NUL", ProjectConfig{VerifyCommand: []string{"go", "te\x00st"}}, true},
+		{"verify timeout negative", ProjectConfig{VerifyTimeoutSeconds: -1}, true},
+		{"verify timeout too long", ProjectConfig{VerifyTimeoutSeconds: MaxVerifyTimeoutSeconds + 1}, true},
 		{"good agent config", ProjectConfig{AgentConfig: AgentConfig{Model: "m", Permissions: PermissionModeAuto}}, false},
 		{"good agent mode", ProjectConfig{AgentConfig: AgentConfig{Mode: "ultra"}}, false},
 		{"bad agent mode", ProjectConfig{AgentConfig: AgentConfig{Mode: "turbo"}}, true},

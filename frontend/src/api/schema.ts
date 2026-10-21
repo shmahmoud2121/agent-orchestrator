@@ -6134,6 +6134,8 @@ export interface components {
             sessionPrefix?: string;
             symlinks?: string[];
             trackerIntake?: components["schemas"]["TrackerIntakeConfig"];
+            verifyCommand?: string[];
+            verifyTimeoutSeconds?: number;
             worker?: components["schemas"]["RoleOverride"];
             workersRequestReview?: boolean;
         };

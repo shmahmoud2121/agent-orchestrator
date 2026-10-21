@@ -17491,6 +17491,12 @@ components:
           type: array
         trackerIntake:
           $ref: '#/components/schemas/TrackerIntakeConfig'
+        verifyCommand:
+          items:
+            type: string
+          type: array
+        verifyTimeoutSeconds:
+          type: integer
         worker:
           $ref: '#/components/schemas/RoleOverride'
         workersRequestReview:

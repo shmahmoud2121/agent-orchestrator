@@ -2,10 +2,12 @@ package controllers_test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -119,6 +121,18 @@ func TestPRsRoutes_Merge_422(t *testing.T) {
 	body, status, headers := doRequest(t, srv, "POST", "/api/v1/prs/1/merge", validMergeBody)
 	assertJSON(t, headers)
 	assertErrorCode(t, body, status, http.StatusUnprocessableEntity, "PR_PRECONDITIONS_UNMET")
+}
+
+func TestPRsRoutes_Merge_422VerifyFailed(t *testing.T) {
+	svc := &fakePRService{mergeErr: fmt.Errorf("%w: go test exited 1", prsvc.ErrPRVerifyFailed)}
+	srv := newPRTestServer(t, svc)
+
+	body, status, headers := doRequest(t, srv, "POST", "/api/v1/prs/1/merge", validMergeBody)
+	assertJSON(t, headers)
+	assertErrorCode(t, body, status, http.StatusUnprocessableEntity, "PR_VERIFY_FAILED")
+	if !strings.Contains(string(body), "go test exited 1") {
+		t.Fatalf("body does not carry the verify reason: %s", body)
+	}
 }
 
 // ---- ResolveComments: 200 ----

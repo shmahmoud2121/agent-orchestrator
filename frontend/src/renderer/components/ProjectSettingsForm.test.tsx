@@ -783,6 +783,95 @@ describe("ProjectSettingsForm", () => {
 		expect(request?.body.config.reviewers).toBeUndefined();
 	});
 
+	it("loads and saves the merge check command as an argument list", async () => {
+		mockProject({
+			id: "proj-1",
+			name: "Project One",
+			kind: "single_repo",
+			path: "/repo/project-one",
+			repo: "",
+			defaultBranch: "main",
+			config: {
+				worker: { agent: "codex" },
+				orchestrator: { agent: "claude-code" },
+				verifyCommand: ["npm", "run", "test all"],
+				verifyTimeoutSeconds: 900,
+			},
+		});
+
+		renderSettings("proj-1", undefined, "general");
+
+		const command = await screen.findByRole("textbox", { name: "Merge check command" });
+		expect(command).toHaveValue("npm run 'test all'");
+		expect(screen.getByRole("textbox", { name: "Merge check time limit" })).toHaveValue("900");
+
+		fireEvent.change(command, { target: { value: `sh -c "make test && make lint"` } });
+		fireEvent.change(screen.getByRole("textbox", { name: "Merge check time limit" }), { target: { value: "" } });
+		submitSettings();
+
+		await waitFor(() => expect(putMock).toHaveBeenCalledTimes(1));
+		const config = putMock.mock.calls[0]?.[1]?.body.config;
+		expect(config.verifyCommand).toEqual(["sh", "-c", "make test && make lint"]);
+		expect(config.verifyTimeoutSeconds).toBeUndefined();
+	});
+
+	it("clears the merge check and refuses malformed values", async () => {
+		mockProject({
+			id: "proj-1",
+			name: "Project One",
+			kind: "single_repo",
+			path: "/repo/project-one",
+			repo: "",
+			defaultBranch: "main",
+			config: {
+				worker: { agent: "codex" },
+				orchestrator: { agent: "claude-code" },
+				verifyCommand: ["go", "test", "./..."],
+				verifyTimeoutSeconds: 900,
+			},
+		});
+
+		renderSettings("proj-1", undefined, "general");
+
+		const command = await screen.findByRole("textbox", { name: "Merge check command" });
+		fireEvent.change(command, { target: { value: `go test "./...` } });
+		submitSettings();
+		expect(await screen.findByText("The merge check command has an unclosed quote.")).toBeInTheDocument();
+
+		fireEvent.change(command, { target: { value: "go test ./..." } });
+		fireEvent.change(screen.getByRole("textbox", { name: "Merge check time limit" }), { target: { value: "9000" } });
+		submitSettings();
+		expect(await screen.findByText("The merge check time limit must be a whole number of seconds from 1 to 7200.")).toBeInTheDocument();
+		expect(putMock).not.toHaveBeenCalled();
+
+		fireEvent.change(command, { target: { value: "  " } });
+		submitSettings();
+		await waitFor(() => expect(putMock).toHaveBeenCalledTimes(1));
+		const config = putMock.mock.calls[0]?.[1]?.body.config;
+		expect(config.verifyCommand).toBeUndefined();
+		expect(config.verifyTimeoutSeconds).toBeUndefined();
+	});
+
+	it("offers the merge check only for single-repo projects", async () => {
+		mockProject({
+			id: "proj-1",
+			name: "Workspace",
+			kind: "workspace",
+			path: "/repo/workspace",
+			repo: "",
+			defaultBranch: "main",
+			config: {
+				worker: { agent: "codex" },
+				orchestrator: { agent: "claude-code" },
+			},
+		});
+
+		renderSettings("proj-1", undefined, "general");
+
+		await screen.findByRole("switch", { name: "Workers request AO review" });
+		expect(screen.queryByRole("textbox", { name: "Merge check command" })).not.toBeInTheDocument();
+	});
+
 	// With no reviewer configured the daemon reviews with the default worker
 	// agent and its model, so the reviewer row must show that model.
 	it("shows the default worker model as the inherited reviewer model", async () => {
