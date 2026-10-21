@@ -8,6 +8,9 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
+
+	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 
 	"github.com/spf13/cobra"
 )
@@ -48,6 +51,10 @@ type mergeSessionResponse struct {
 	PushError         string         `json:"pushError,omitempty"`
 }
 
+// A base-moved retry can run the full verify command twice; leave time for
+// the bounded push and best-effort notifications after landing.
+const localMergeTimeout = 2*domain.MaxVerifyTimeoutSeconds*time.Second + 5*time.Minute
+
 type mergeOptions struct {
 	dryRun bool
 	json   bool
@@ -72,8 +79,8 @@ Only the orchestrator (or a person) can merge: worker sessions are refused.
 When the project's pushAfterMerge setting is on, AO pushes the base branch to
 origin after the merge landed; a failed push never undoes the merge.
 
---dry-run checks the merge and reports overlapping work without changing
-anything.`,
+--dry-run merges and runs the project verify command in a throwaway worktree,
+then discards it without advancing a branch, pushing, or messaging anyone.`,
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 1 || strings.TrimSpace(args[0]) == "" {
 				return usageError{errors.New("usage: ao merge <worker-session-id> [--dry-run]")}
@@ -84,7 +91,7 @@ anything.`,
 			session := strings.TrimSpace(args[0])
 			req := mergeSessionRequest{DryRun: opts.dryRun, CallerSessionID: strings.TrimSpace(os.Getenv("AO_SESSION_ID"))}
 			var res mergeSessionResponse
-			if err := ctx.doJSONPathWithHeadersAndTimeout(cmd.Context(), http.MethodPost, "/api/v1/sessions/"+url.PathEscape(session)+"/merge", req, &res, nil, mergeTimeout); err != nil {
+			if err := ctx.doJSONPathWithHeadersAndTimeout(cmd.Context(), http.MethodPost, "/api/v1/sessions/"+url.PathEscape(session)+"/merge", req, &res, nil, localMergeTimeout); err != nil {
 				return err
 			}
 			if opts.json {

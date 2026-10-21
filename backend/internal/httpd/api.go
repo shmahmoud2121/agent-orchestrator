@@ -265,8 +265,8 @@ func (a *API) Register(root chi.Router) {
 				ordinary := middleware.Timeout(timeout)(next)
 				upload := middleware.Timeout(max(timeout, 10*time.Minute))(next)
 				// A local merge may run the project's verify command, which is
-				// bounded by its own (capped) timeout, before it lands.
-				localMerge := middleware.Timeout(max(timeout, domain.MaxVerifyTimeoutSeconds*time.Second+5*time.Minute))(next)
+				// bounded by its own (capped) timeout, twice if base moves.
+				localMerge := middleware.Timeout(max(timeout, 2*domain.MaxVerifyTimeoutSeconds*time.Second+5*time.Minute))(next)
 				return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 					// A spawn, an orchestrator start or a restore runs the project's
 					// Setup inside the request, and a Setup step may take far longer

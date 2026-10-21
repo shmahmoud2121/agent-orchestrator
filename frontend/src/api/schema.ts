@@ -5987,7 +5987,7 @@ export interface components {
         MergeSessionRequest: {
             /** @description AO session making the request, if any. Only an orchestrator of the same project may merge; worker sessions get 403. Omit for a person. */
             callerSessionId?: string;
-            /** @description Check the merge in a throwaway worktree and report the outcome without moving any branch or messaging any session. */
+            /** @description Merge and run the project verify command in a throwaway worktree, without advancing any branch, pushing, or messaging any session. */
             dryRun?: boolean;
         };
         MergeSessionResponse: {

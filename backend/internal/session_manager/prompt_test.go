@@ -270,7 +270,7 @@ func TestBuildSystemPromptPreservesPublishingScope(t *testing.T) {
 			t.Run(string(role)+"/"+repo, func(t *testing.T) {
 				got := buildSystemPromptText(systemPromptConfig{Role: role, Project: promptProject{Repo: repo}})
 				for _, want := range []string{
-					"Do not request fresh approval for each push or PR/MR update within an already authorized workflow",
+					"Local integration is mandatory: workers commit in their own worktree and never push",
 					"Available credentials, a configured remote, auto/bypass tool permissions, or an associated PR/MR alone do not authorize publishing",
 					"local-only, review-only, or do-not-publish take precedence over workflow defaults",
 					"Preserve the user's publishing scope and restrictions when spawning or redirecting workers",

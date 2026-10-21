@@ -184,18 +184,11 @@ func (s *Service) Merge(ctx context.Context, req Request) (Result, error) {
 	if err := s.authorize(ctx, t, req.CallerSessionID); err != nil {
 		return Result{}, err
 	}
-	if t.worktree != "" {
-		dirty, err := porcelain(ctx, t.worktree, true)
-		if err != nil {
-			return Result{}, internal("read worker worktree status", err)
-		}
-		if len(dirty) > 0 {
-			return Result{}, apierr.Conflict(CodeWorkerDirty, fmt.Sprintf(
-				"Worker %s has uncommitted or untracked changes in %s. The worker must commit (or remove) them on branch %s, leaving its worktree clean, before it can be merged. Dirty paths: %s",
-				t.session.ID, t.worktree, t.branch, listForMessage(dirty, maxMessageFiles)),
-				map[string]any{"worktree": t.worktree, "paths": capList(dirty)})
-		}
+	unlock, err := s.lock(ctx, t.repo)
+	if err != nil {
+		return Result{}, internal("wait for another merge into this repository", err)
 	}
+	defer unlock()
 	base, err := s.resolveBase(ctx, t)
 	if err != nil {
 		return Result{}, err
@@ -204,13 +197,8 @@ func (s *Service) Merge(ctx context.Context, req Request) (Result, error) {
 		return Result{}, err
 	}
 
-	unlock, err := s.lock(ctx, t.repo)
-	if err != nil {
-		return Result{}, internal("wait for another merge into this repository", err)
-	}
 	res, err := s.mergeLocked(ctx, t, base, req.DryRun)
 	if err != nil {
-		unlock()
 		return Result{}, err
 	}
 	res.Overlaps, res.Warnings = s.overlaps(ctx, t, res)
@@ -247,6 +235,9 @@ func (s *Service) mergeLocked(ctx context.Context, t target, base string, dryRun
 // attempt merges once against the current base tip. It returns errBaseMoved
 // when the compare-and-swap of the base ref loses a race.
 func (s *Service) attempt(ctx context.Context, t target, base string, dryRun bool) (Result, error) {
+	if err := checkWorkerClean(ctx, t); err != nil {
+		return Result{}, err
+	}
 	baseRef := "refs/heads/" + base
 	oldTip, err := revParse(ctx, t.repo, baseRef)
 	if err != nil {
@@ -266,13 +257,9 @@ func (s *Service) attempt(ctx context.Context, t target, base string, dryRun boo
 			"Nothing to merge: branch %s has no commits that are not already on %s. The worker must commit its work on its branch first.", t.branch, base),
 			map[string]any{"baseBranch": base, "branch": t.branch})
 	}
-	files, err := nameList(ctx, t.repo, "diff", "--name-only", "-z", oldTip+"..."+branchTip)
-	if err != nil {
-		return Result{}, internal("list changed files", err)
-	}
 	res := Result{
 		SessionID: t.session.ID, Branch: t.branch, BaseBranch: base, DryRun: dryRun,
-		BaseBefore: oldTip, CommitCount: count, ChangedFiles: capList(files), ChangedFilesTotal: len(files),
+		BaseBefore: oldTip, CommitCount: count,
 	}
 
 	dir, cleanup, err := verify.AddTempWorktree(ctx, t.repo, s.tempDir, oldTip, s.logger)
@@ -282,12 +269,11 @@ func (s *Service) attempt(ctx context.Context, t target, base string, dryRun boo
 	defer cleanup()
 
 	args := []string{"-c", "user.useConfigOnly=true", "merge", "--no-ff", "--no-edit", "-m", mergeMessage(t, base)}
-	if dryRun {
-		args = append(args, "--no-commit")
-	}
 	if out, mergeErr := git(ctx, dir, append(args, branchTip)...); mergeErr != nil {
 		conflicts, _ := nameList(ctx, dir, "diff", "--name-only", "--diff-filter=U", "-z")
-		if abortOut, err := git(ctx, dir, "merge", "--abort"); err != nil {
+		abortCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+		defer cancel()
+		if abortOut, err := git(abortCtx, dir, "merge", "--abort"); err != nil {
 			s.logger.Warn("local merge: merge --abort failed in throwaway worktree", "dir", dir, "err", err, "output", abortOut)
 		}
 		if len(conflicts) > 0 {
@@ -295,16 +281,17 @@ func (s *Service) attempt(ctx context.Context, t target, base string, dryRun boo
 		}
 		return Result{}, internal("merge "+t.branch, fmt.Errorf("%w: %s", mergeErr, out))
 	}
-	if dryRun {
-		if out, err := git(ctx, dir, "merge", "--abort"); err != nil {
-			s.logger.Warn("local merge: dry-run merge --abort failed", "dir", dir, "err", err, "output", out)
-		}
-		return res, nil
-	}
+
 	mergeSHA, err := revParse(ctx, dir, "HEAD")
 	if err != nil {
 		return Result{}, internal("read merge commit", err)
 	}
+
+	files, err := nameList(ctx, t.repo, "diff", "--name-only", "-z", oldTip, mergeSHA)
+	if err != nil {
+		return Result{}, internal("list merged files", err)
+	}
+	res.ChangedFiles, res.ChangedFilesTotal = capList(files), len(files)
 
 	if cmd := t.project.Config.VerifyCommand; len(cmd) > 0 {
 		if err := verify.RunCommand(ctx, dir, cmd, t.project.Config.VerifyTimeoutSeconds); err != nil {
@@ -317,7 +304,23 @@ func (s *Service) attempt(ctx context.Context, t target, base string, dryRun boo
 
 	checkout, err := baseCheckout(ctx, t.repo, baseRef)
 	if err != nil {
+		var api *apierr.Error
+		if errors.As(err, &api) {
+			return Result{}, api
+		}
 		return Result{}, internal("list worktrees", err)
+	}
+	if checkout != "" {
+		if err := checkCheckoutClean(ctx, checkout, base); err != nil {
+			return Result{}, err
+		}
+	}
+	if err := checkWorkerClean(ctx, t); err != nil {
+		return Result{}, err
+	}
+	if dryRun {
+		// The temporary merge commit was verified too. Cleanup discards it.
+		return res, nil
 	}
 	if checkout == "" {
 		// Compare-and-swap: the ref only moves if nobody moved it since we read it.
@@ -385,22 +388,18 @@ func (s *Service) push(ctx context.Context, repo string, res *Result) {
 
 // fastForwardCheckout advances a base branch that is checked out somewhere
 // (usually the user's main checkout) so its working tree follows the ref. It
-// refuses a checkout with tracked changes; untracked files are left alone and
-// git itself refuses to fast-forward over one the merge would overwrite.
+// refuses any tracked or untracked changes. Git itself also refuses to
+// fast-forward over local changes introduced after our status check.
 func (s *Service) fastForwardCheckout(ctx context.Context, t target, base, checkout, baseRef, oldTip, mergeSHA string) error {
-	dirty, err := porcelain(ctx, checkout, false)
-	if err != nil {
-		return internal("read status of "+checkout, err)
-	}
-	if len(dirty) > 0 {
-		return apierr.Conflict(CodeBaseCheckoutDirty, fmt.Sprintf(
-			"%s is checked out in %s, which has uncommitted changes; nothing landed. Commit or stash those changes there, then ask for the merge again. Changed paths: %s",
-			base, checkout, listForMessage(dirty, maxMessageFiles)),
-			map[string]any{"baseBranch": base, "checkout": checkout, "paths": capList(dirty)})
+	if err := checkCheckoutClean(ctx, checkout, base); err != nil {
+		return err
 	}
 	head, err := gitOut(ctx, checkout, "symbolic-ref", "-q", "HEAD")
 	if err != nil || strings.TrimSpace(head) != baseRef {
 		// The checkout switched branches since we listed it; re-plan.
+		return errBaseMoved
+	}
+	if moved(ctx, t.repo, baseRef, oldTip) {
 		return errBaseMoved
 	}
 	if out, err := git(ctx, checkout, "merge", "--ff-only", "--no-edit", mergeSHA); err != nil {
@@ -410,6 +409,37 @@ func (s *Service) fastForwardCheckout(ctx context.Context, t target, base, check
 		return apierr.Conflict(CodeBaseCheckoutBlocked, fmt.Sprintf(
 			"Could not fast-forward %s in %s to the merge; nothing landed. git said: %s", base, checkout, tail(out)),
 			map[string]any{"baseBranch": base, "checkout": checkout})
+	}
+	return nil
+}
+
+func checkCheckoutClean(ctx context.Context, checkout, base string) error {
+	dirty, err := porcelain(ctx, checkout, true)
+	if err != nil {
+		return internal("read status of "+checkout, err)
+	}
+	if len(dirty) > 0 {
+		return apierr.Conflict(CodeBaseCheckoutDirty, fmt.Sprintf(
+			"%s is checked out in %s, which has uncommitted changes; nothing landed. Commit or stash those changes there, then ask for the merge again. Changed paths: %s",
+			base, checkout, listForMessage(dirty)),
+			map[string]any{"baseBranch": base, "checkout": checkout, "paths": capList(dirty)})
+	}
+	return nil
+}
+
+func checkWorkerClean(ctx context.Context, t target) error {
+	if t.worktree == "" {
+		return nil
+	}
+	dirty, err := porcelain(ctx, t.worktree, true)
+	if err != nil {
+		return internal("read worker worktree status", err)
+	}
+	if len(dirty) > 0 {
+		return apierr.Conflict(CodeWorkerDirty, fmt.Sprintf(
+			"Worker %s must commit (or remove) changes in %s before merging. Dirty paths: %s",
+			t.session.ID, t.worktree, listForMessage(dirty)),
+			map[string]any{"worktree": t.worktree, "paths": capList(dirty)})
 	}
 	return nil
 }
@@ -453,10 +483,15 @@ func (s *Service) load(ctx context.Context, id domain.SessionID) (target, error)
 	}
 	worktree := strings.TrimSpace(sess.Metadata.WorkspacePath)
 	if worktree != "" {
-		if info, err := os.Stat(worktree); err != nil || !info.IsDir() {
-			// A torn-down worktree has no uncommitted work left to protect;
-			// the branch itself is still mergeable.
+		info, err := os.Stat(worktree)
+		switch {
+		case os.IsNotExist(err):
+			// A torn-down worktree has no uncommitted work left to protect.
 			worktree = ""
+		case err != nil:
+			return target{}, internal("inspect worker worktree", err)
+		case !info.IsDir():
+			return target{}, unsupported("Worker worktree %s is not a directory", worktree)
 		}
 	}
 	return target{session: sess, project: project, repo: project.Path, branch: branch, worktree: worktree}, nil
@@ -558,7 +593,7 @@ func (s *Service) notifyBehind(ctx context.Context, t target, res Result) ([]dom
 		short = short[:12]
 	}
 	msg := fmt.Sprintf("%s moved: %s (%s) was merged as %s. Merge %s into your branch in your own worktree before asking for your own merge: run `git merge %s`, resolve any conflicts, run the tests, commit, then report done again. Files changed: %s",
-		res.BaseBranch, t.session.ID, t.branch, short, res.BaseBranch, res.BaseBranch, listForMessage(res.ChangedFiles, maxMessageFiles))
+		res.BaseBranch, t.session.ID, t.branch, short, res.BaseBranch, res.BaseBranch, listForMessage(res.ChangedFiles))
 	var notified []domain.SessionID
 	var warnings []string
 	for _, o := range others {
@@ -611,12 +646,15 @@ func (s *Service) otherWorkers(ctx context.Context, t target) ([]target, error) 
 
 // lock serializes merges per repository. Waiting honors ctx.
 func (s *Service) lock(ctx context.Context, repo string) (func(), error) {
-	key := repo
-	if abs, err := filepath.Abs(repo); err == nil {
-		key = abs
+	// Linked worktrees and separate project registrations still share one
+	// object/ref database. Key the lock by that database, not the checkout.
+	common, err := gitOut(ctx, repo, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	if err != nil {
+		return nil, err
 	}
-	if real, err := filepath.EvalSymlinks(key); err == nil {
-		key = real
+	key := strings.TrimSpace(common)
+	if resolved, err := filepath.EvalSymlinks(key); err == nil {
+		key = resolved
 	}
 	s.mu.Lock()
 	ch := s.locks[key]
@@ -637,30 +675,34 @@ func (s *Service) lock(ctx context.Context, repo string) (func(), error) {
 // baseCheckout returns the worktree (main or linked) that has baseRef checked
 // out, or "" when none does.
 func baseCheckout(ctx context.Context, repo, baseRef string) (string, error) {
-	out, err := gitOut(ctx, repo, "worktree", "list", "--porcelain")
+	out, err := gitOut(ctx, repo, "worktree", "list", "--porcelain", "-z")
 	if err != nil {
 		return "", err
 	}
-	var path string
-	for _, line := range strings.Split(out, "\n") {
+	var path, checkout string
+	for _, line := range strings.Split(out, "\x00") {
 		switch {
 		case strings.HasPrefix(line, "worktree "):
 			path = strings.TrimPrefix(line, "worktree ")
 		case line == "branch "+baseRef:
-			if info, err := os.Stat(path); err == nil && info.IsDir() {
-				return path, nil
+			if info, err := os.Stat(path); err != nil || !info.IsDir() {
+				return "", apierr.Conflict(CodeBaseCheckoutBlocked, "Cannot inspect base checkout "+path+"; nothing landed", nil)
 			}
+			if checkout != "" {
+				return "", apierr.Conflict(CodeBaseCheckoutBlocked, "Base branch is checked out in multiple worktrees; nothing landed", nil)
+			}
+			checkout = path
 		}
 	}
-	return "", nil
+	return checkout, nil
 }
 
 func conflictError(t target, base string, files []string) error {
 	instruction := fmt.Sprintf("In worker %s's own worktree, run `git merge %s`, resolve the conflicts, run the tests, commit, and ask for the merge again.", t.session.ID, base)
 	return apierr.Conflict(CodeConflict, fmt.Sprintf(
 		"Merging %s into %s conflicts; nothing landed. Conflicting files: %s. %s",
-		t.branch, base, listForMessage(files, maxMessageFiles), instruction),
-		map[string]any{"baseBranch": base, "branch": t.branch, "conflictingFiles": capList(files), "instruction": instruction})
+		t.branch, base, listForMessage(files), instruction),
+		map[string]any{"baseBranch": base, "branch": t.branch, "conflictingFiles": files, "instruction": instruction})
 }
 
 func mergeMessage(t target, base string) string {
@@ -740,7 +782,7 @@ func nameList(ctx context.Context, dir string, args ...string) ([]string, error)
 	}
 	var names []string
 	for _, n := range strings.Split(out, "\x00") {
-		if n = strings.TrimSpace(n); n != "" {
+		if n != "" {
 			names = append(names, n)
 		}
 	}
@@ -772,6 +814,8 @@ func gitOut(ctx context.Context, dir string, args ...string) (string, error) {
 func gitCommand(ctx context.Context, dir string, args ...string) *exec.Cmd {
 	cmd := process.CommandContext(ctx, "git", append([]string{"-C", dir}, args...)...)
 	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GCM_INTERACTIVE=Never")
+	process.ConfigureTreeCancellation(cmd)
+	cmd.WaitDelay = 5 * time.Second
 	return cmd
 }
 
@@ -804,7 +848,8 @@ func capList(files []string) []string {
 	return files
 }
 
-func listForMessage(files []string, limit int) string {
+func listForMessage(files []string) string {
+	const limit = maxMessageFiles
 	if len(files) == 0 {
 		return "(none)"
 	}
@@ -816,9 +861,9 @@ func listForMessage(files []string, limit int) string {
 
 func tail(s string) string {
 	s = strings.TrimSpace(s)
-	const max = 2000
-	if len(s) > max {
-		return "..." + s[len(s)-max:]
+	const maxBytes = 2000
+	if len(s) > maxBytes {
+		return "..." + s[len(s)-maxBytes:]
 	}
 	return s
 }

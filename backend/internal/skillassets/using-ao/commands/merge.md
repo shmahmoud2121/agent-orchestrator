@@ -18,7 +18,7 @@ ao merge <worker-session-id> [flags]
 
 | Flag | Meaning | Default / Required |
 |---|---|---|
-| `--dry-run` | Check the merge and report overlapping work without moving any branch, pushing, or messaging anyone | Optional |
+| `--dry-run` | Merge, verify, and report overlapping work without moving any branch, pushing, or messaging anyone | Optional |
 | `--json` | Print the result as JSON | Optional |
 
 ## What it does
@@ -31,7 +31,7 @@ ao merge <worker-session-id> [flags]
 3. Runs the project's verify command on the merge result, if one is set. A
    failure lands nothing (`MERGE_VERIFY_FAILED`).
 4. Advances the base branch atomically. If the base branch is checked out (usually
-   the user's main checkout), that checkout must have no tracked changes and is
+   the user's main checkout), that checkout must have no tracked or untracked changes and is
    fast-forwarded (`MERGE_BASE_CHECKOUT_DIRTY` otherwise).
 5. Tells every other live worker whose branch is now behind that the base moved,
    and warns about workers touching the same files.

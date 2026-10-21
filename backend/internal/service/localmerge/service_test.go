@@ -5,12 +5,14 @@ package localmerge
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/httpd/apierr"
@@ -229,7 +231,6 @@ func TestMergeFastForwardsCleanMainCheckout(t *testing.T) {
 	f := newFixture(t)
 	w1 := f.addWorker("w1")
 	commitFile(t, w1, "feature.txt", "feature\n", "feat: feature")
-	writeFile(t, f.repo, "scratch.local", "untracked files in the main checkout are left alone\n")
 
 	res, err := f.svc.Merge(context.Background(), Request{SessionID: "w1"})
 	if err != nil {
@@ -663,4 +664,91 @@ func TestMergeReportsBaseThatKeepsMoving(t *testing.T) {
 		t.Fatal("feature landed although the merge reported failure")
 	}
 	f.assertNoTempWorktrees()
+}
+
+func TestMergeRefusesUntrackedMainCheckout(t *testing.T) {
+	f := newFixture(t)
+	w := f.addWorker("w1")
+	commitFile(t, w, "feature.txt", "feature\n", "feature")
+	writeFile(t, f.repo, "scratch.local", "user notes\n")
+	before := f.mainTip()
+	for _, dryRun := range []bool{false, true} {
+		_, err := f.svc.Merge(context.Background(), Request{SessionID: "w1", DryRun: dryRun})
+		requireCode(t, err, CodeBaseCheckoutDirty)
+		if f.mainTip() != before {
+			t.Fatal("dirty base moved")
+		}
+	}
+	f.assertNoTempWorktrees()
+}
+
+func TestDryRunVerifiesMergedHEAD(t *testing.T) {
+	f := newFixture(t)
+	w := f.addWorker("w1")
+	commitFile(t, w, "feature.txt", "feature\n", "feature")
+	before := f.mainTip()
+	f.store.project.Config.VerifyCommand = []string{"sh", "-c", "git show HEAD:feature.txt | grep -qx feature"}
+	res, err := f.svc.Merge(context.Background(), Request{SessionID: "w1", DryRun: true})
+	if err != nil || !res.Verified {
+		t.Fatalf("dry run did not verify merge HEAD: %+v %v", res, err)
+	}
+	f.store.project.Config.VerifyCommand = []string{"sh", "-c", "echo failed; exit 1"}
+	_, err = f.svc.Merge(context.Background(), Request{SessionID: "w1", DryRun: true})
+	requireCode(t, err, CodeVerifyFailed)
+	if f.mainTip() != before || len(f.messenger.ids()) != 0 {
+		t.Fatal("dry run changed base or messaged workers")
+	}
+	f.assertNoTempWorktrees()
+}
+
+func TestRepositoryLockSharedByLinkedCheckoutPaths(t *testing.T) {
+	f := newFixture(t)
+	w := f.addWorker("w1")
+	unlock, err := f.svc.lock(context.Background(), f.repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unlock()
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	if release, err := f.svc.lock(ctx, w); err == nil {
+		release()
+		t.Fatal("linked checkout acquired a separate repository lock")
+	}
+	f.svc.mu.Lock()
+	defer f.svc.mu.Unlock()
+	if len(f.svc.locks) != 1 {
+		t.Fatalf("one repository has %d locks", len(f.svc.locks))
+	}
+}
+
+func TestWorkerDirtiedDuringVerificationIsRefused(t *testing.T) {
+	f := newFixture(t)
+	w := f.addWorker("w1")
+	commitFile(t, w, "feature.txt", "feature\n", "feature")
+	before := f.mainTip()
+	f.store.project.Config.VerifyCommand = []string{"sh", "-c", `echo wip > "$1/notes.txt"`, "sh", w}
+	_, err := f.svc.Merge(context.Background(), Request{SessionID: "w1"})
+	requireCode(t, err, CodeWorkerDirty)
+	if f.mainTip() != before {
+		t.Fatal("base moved despite worker changes during verification")
+	}
+}
+
+func TestMergeRefusesScratchAndStandalone(t *testing.T) {
+	for _, standalone := range []bool{false, true} {
+		t.Run(fmt.Sprint(standalone), func(t *testing.T) {
+			f := newFixture(t)
+			f.addWorker("w1")
+			if standalone {
+				s := f.store.sessions["w1"]
+				s.ProjectID = ""
+				f.store.sessions["w1"] = s
+			} else {
+				f.store.project.Kind = domain.ProjectKindScratch
+			}
+			_, err := f.svc.Merge(context.Background(), Request{SessionID: "w1"})
+			requireCode(t, err, CodeUnsupported)
+		})
+	}
 }

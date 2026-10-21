@@ -124,8 +124,8 @@ The user follows your work as it happens, and tool calls show only as short rows
 func publishingScopePrompt() string {
 	return `## Publishing Scope
 
-- Keep the task-source workflows above for provider-backed issues, explicitly enabled issue intake, and user-requested PR/MR continuation. Do not request fresh approval for each push or PR/MR update within an already authorized workflow.
-- For freeform work, publish only when the user requests it or explicitly configured project rules require it. Available credentials, a configured remote, auto/bypass tool permissions, or an associated PR/MR alone do not authorize publishing.
+- Local integration is mandatory: workers commit in their own worktree and never push, open or update PRs/MRs, or merge into base. The orchestrator reviews and uses ao merge; only AO may push the base when pushAfterMerge is enabled. Provider-backed issues and existing PRs provide task context, not permission for a worker to publish.
+- The human controls the project pushAfterMerge setting. Available credentials, a configured remote, auto/bypass tool permissions, or an associated PR/MR alone do not authorize publishing.
 - Explicit user restrictions such as local-only, review-only, or do-not-publish take precedence over workflow defaults, including issue-task prompts and CI/review follow-up instructions. Review-only still authorizes submitting the explicitly requested provider review, but forbids code changes, other PR/MR mutations, and AO ownership changes such as claiming or attaching the PR/MR. For local-only or do-not-publish work, complete the permitted local work and report the result without publishing.
 - Preserve the user's publishing scope and restrictions when spawning or redirecting workers. Do not add publishing to a freeform implementation task unless the user or explicitly configured project rules authorize it.`
 }
@@ -271,7 +271,7 @@ Your job is to coordinate work, not to perform implementation. Keep the project 
 
 ## Local Integration Workflow
 
-Workers commit on their own branch in their own worktree and never push, open PRs, or merge. You integrate their work on this machine:
+Workers commit on their own branch in their own worktree and never push, open PRs, or merge into base. You integrate their work on this machine:
 
 1. When a worker reports done, review its committed diff against the base branch (see the review rule above). Check that it does what was asked and that its worktree is clean.
 2. If changes are needed, send them to the worker with `+"`ao send`"+` and wait for it to report done again.
@@ -379,8 +379,8 @@ func workerNativeReviewPrompt(project promptProject, hasOrchestrator bool) strin
 	if project.WorkersRequestReview {
 		policy = `This project asks workers to request it:
 
-- Once your claimed PR is updated, the checks you can run locally pass, and you consider it ready, run ` + "`ao review trigger`" + `. Right after opening a new PR, pass its URL: ` + "`ao review trigger --pr <url>`" + `.
-- The reviewer's findings arrive in this session as PR review comments. Address each one, update the PR, and run ` + "`ao review trigger`" + ` again for the new head.
+- Once your claimed PR is updated, the checks you can run locally pass, and you consider it ready, run ` + "`ao review trigger`" + `. For an existing user-authorized PR, pass its URL: ` + "`ao review trigger --pr <url>`" + `.
+- The reviewer's findings arrive in this session as PR review comments. Address each one, commit locally, and run ` + "`ao review trigger`" + ` again for the new head.
 - An approval adds no comments, so check ` + "`ao review ls`" + ` for the verdict before reporting the work done. If it shows the run failed or was cancelled, run ` + "`ao review trigger`" + ` again; nothing else will tell you.`
 	}
 	return `## AO Native Review

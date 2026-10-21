@@ -21,7 +21,7 @@ type LocalMergeService interface {
 
 // MergeSessionRequest is the optional body of POST /api/v1/sessions/{sessionId}/merge.
 type MergeSessionRequest struct {
-	DryRun bool `json:"dryRun,omitempty" description:"Check the merge in a throwaway worktree and report the outcome without moving any branch or messaging any session."`
+	DryRun bool `json:"dryRun,omitempty" description:"Merge and run the project verify command in a throwaway worktree, without advancing any branch, pushing, or messaging any session."`
 	// CallerSessionID is the AO session asking (the CLI sends AO_SESSION_ID).
 	// Worker sessions are refused with 403; empty means a person.
 	CallerSessionID string `json:"callerSessionId,omitempty" description:"AO session making the request, if any. Only an orchestrator of the same project may merge; worker sessions get 403. Omit for a person."`
