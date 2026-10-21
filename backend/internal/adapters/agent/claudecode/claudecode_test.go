@@ -1112,6 +1112,32 @@ func TestGetLaunchCommandOmitsToolFlagsWhenUnset(t *testing.T) {
 	}
 }
 
+func TestGetLaunchCommandDeniesPublishingToWorkersOnly(t *testing.T) {
+	p := &Plugin{resolvedBinary: "claude"}
+
+	worker, err := p.GetLaunchCommand(context.Background(), ports.LaunchConfig{Kind: domain.KindWorker, Prompt: "do it"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsSubsequence(worker, []string{"--disallowedTools", "Bash(git push:*),Bash(gh pr create:*),Bash(gh pr merge:*)"}) {
+		t.Fatalf("worker launch lacks the publish deny rules; got %#v", worker)
+	}
+	for _, kind := range []domain.SessionKind{domain.KindOrchestrator, ""} {
+		cmd, err := p.GetLaunchCommand(context.Background(), ports.LaunchConfig{Kind: kind, Prompt: "do it"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if contains(cmd, "--disallowedTools") {
+			t.Fatalf("%q launch must not get worker deny rules; got %#v", kind, cmd)
+		}
+	}
+	// Existing rules are kept and not duplicated.
+	got := workerDisallowedTools(domain.KindWorker, []string{"Edit", "Bash(git push:*)"})
+	if strings.Join(got, ",") != "Edit,Bash(git push:*),Bash(gh pr create:*),Bash(gh pr merge:*)" {
+		t.Fatalf("merged deny rules = %v", got)
+	}
+}
+
 func TestComposerIsEmptyUsesClaudePromptMarker(t *testing.T) {
 	plugin := &Plugin{}
 	if !plugin.ComposerIsEmpty("\x1b[39m❯\u00a0") {
