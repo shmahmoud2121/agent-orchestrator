@@ -8674,6 +8674,68 @@ paths:
       summary: Mark a session terminated and tear down runtime/workspace resources
       tags:
       - sessions
+  /api/v1/sessions/{sessionId}/merge:
+    post:
+      operationId: mergeSession
+      parameters:
+      - description: Session identifier, e.g. project-1.
+        in: path
+        name: sessionId
+        required: true
+        schema:
+          description: Session identifier, e.g. project-1.
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MergeSessionRequest'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MergeSessionResponse'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Bad Request
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Not Found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Conflict
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Internal Server Error
+        "501":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Not Implemented
+      summary: Merge a worker session's branch into the project's base branch locally
+      tags:
+      - sessions
   /api/v1/sessions/{sessionId}/merge-policy:
     patch:
       operationId: setSessionMergePolicy
@@ -17016,6 +17078,21 @@ components:
       - pressureRaw
       - pressureSource
       type: object
+    MergeOverlap:
+      properties:
+        branch:
+          type: string
+        files:
+          items:
+            type: string
+          type: array
+        sessionId:
+          type: string
+      required:
+      - sessionId
+      - branch
+      - files
+      type: object
     MergePRRequest:
       properties:
         expectedHeadSha:
@@ -17049,6 +17126,97 @@ components:
       - method
       - state
       - stateChangedAt
+      type: object
+    MergeSessionRequest:
+      properties:
+        callerSessionId:
+          description: AO session making the request, if any. Only an orchestrator
+            of the same project may merge; worker sessions get 403. Omit for a person.
+          type: string
+        dryRun:
+          description: Check the merge in a throwaway worktree and report the outcome
+            without moving any branch or messaging any session.
+          type: boolean
+      type: object
+    MergeSessionResponse:
+      properties:
+        baseBefore:
+          description: Base branch tip the merge was computed against.
+          type: string
+        baseBranch:
+          type: string
+        branch:
+          type: string
+        changedFiles:
+          description: Files the branch changes relative to the base branch (capped).
+          items:
+            type: string
+          type: array
+        changedFilesTotal:
+          type: integer
+        commitCount:
+          description: Commits the branch brings into the base branch.
+          type: integer
+        dryRun:
+          type: boolean
+        mergeCommit:
+          description: New base branch tip. Empty for a dry run.
+          type: string
+        notified:
+          description: Live workers told that the base branch moved.
+          items:
+            type: string
+          type: array
+        overlaps:
+          description: Other live workers whose committed or uncommitted changes touch
+            the same files.
+          items:
+            $ref: '#/components/schemas/MergeOverlap'
+          type: array
+        pushAttempted:
+          description: True when the project's pushAfterMerge setting asked to push
+            the base branch to origin.
+          type: boolean
+        pushError:
+          description: Why the push after merge failed (tail of git's output).
+          type: string
+        pushed:
+          description: True when origin accepted the push. A failed push never undoes
+            the local merge.
+          type: boolean
+        pushedCommit:
+          type: string
+        pushedRef:
+          type: string
+        sessionId:
+          type: string
+        updatedCheckout:
+          description: Checkout that had the base branch checked out and was fast-forwarded.
+          type: string
+        verified:
+          description: True when the project's verify command passed on the merge
+            result.
+          type: boolean
+        warnings:
+          description: Best-effort steps that failed without stopping the merge.
+          items:
+            type: string
+          type: array
+      required:
+      - sessionId
+      - branch
+      - baseBranch
+      - dryRun
+      - baseBefore
+      - commitCount
+      - changedFiles
+      - changedFilesTotal
+      - verified
+      - overlaps
+      - notified
+      - warnings
+      - pushAttempted
+      - pushed
       type: object
     MobileDeviceResponse:
       properties:
@@ -17479,6 +17647,8 @@ components:
           items:
             type: string
           type: array
+        pushAfterMerge:
+          type: boolean
         reviewers:
           items:
             $ref: '#/components/schemas/DomainReviewerConfig'

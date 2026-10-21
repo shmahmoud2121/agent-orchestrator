@@ -95,6 +95,12 @@ type ProjectConfig struct {
 	VerifyCommand []string `json:"verifyCommand,omitempty"`
 	// VerifyTimeoutSeconds bounds VerifyCommand; 0 means DefaultVerifyTimeout.
 	VerifyTimeoutSeconds int `json:"verifyTimeoutSeconds,omitempty"`
+
+	// PushAfterMerge makes AO's local merge (`ao merge`, run by the
+	// orchestrator or a person) push the advanced base branch to origin. Off by
+	// default: integration stays on this machine. A failed push never undoes
+	// the local merge. Workers never push.
+	PushAfterMerge bool `json:"pushAfterMerge,omitempty"`
 }
 
 // DefaultVerifyTimeoutSeconds bounds a project VerifyCommand without its own

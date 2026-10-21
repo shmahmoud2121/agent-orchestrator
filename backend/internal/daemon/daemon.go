@@ -68,6 +68,7 @@ import (
 	"github.com/aoagents/agent-orchestrator/backend/internal/service/hookprocess"
 	importsvc "github.com/aoagents/agent-orchestrator/backend/internal/service/importer"
 	linkpreviewsvc "github.com/aoagents/agent-orchestrator/backend/internal/service/linkpreview"
+	localmergesvc "github.com/aoagents/agent-orchestrator/backend/internal/service/localmerge"
 	notificationsvc "github.com/aoagents/agent-orchestrator/backend/internal/service/notification"
 	prsvc "github.com/aoagents/agent-orchestrator/backend/internal/service/pr"
 	projectsvc "github.com/aoagents/agent-orchestrator/backend/internal/service/project"
@@ -1056,6 +1057,7 @@ func Run() error {
 		DesktopWorkspaces:  sessionSvc,
 		PRs:                prActions,
 		Reviews:            reviewSvc,
+		LocalMerge:         localmergesvc.New(localmergesvc.Deps{Store: store, Messenger: sessionSvc, Logger: log}),
 		Notifications:      notifier,
 		Reports:            reportSvc,
 		NotificationStream: notificationHub,

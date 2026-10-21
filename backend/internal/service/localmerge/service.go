@@ -2,8 +2,9 @@
 // branch entirely on this machine. AO's own code does the merge in a throwaway
 // worktree, runs the project's verify command on the result, and only then
 // advances the base branch with a compare-and-swap, so a worker's branch lands
-// whole or not at all. Nothing here pushes, fetches, or touches a remote, and
-// the worker's branch is never rewritten.
+// whole or not at all. Nothing here fetches, and the worker's branch is never
+// rewritten. The only remote operation is the project's opt-in pushAfterMerge,
+// which pushes the advanced base branch (never forced) after the merge landed.
 package localmerge
 
 import (
@@ -44,6 +45,7 @@ const (
 	CodeBaseCheckoutDirty   = "MERGE_BASE_CHECKOUT_DIRTY"
 	CodeBaseCheckoutBlocked = "MERGE_BASE_CHECKOUT_BLOCKED"
 	CodeBaseMoved           = "MERGE_BASE_MOVED"
+	CodeForbidden           = "MERGE_FORBIDDEN"
 )
 
 const (
@@ -53,6 +55,8 @@ const (
 	maxMessageFiles = 20
 	// notifyTimeout bounds delivering one "base moved" note.
 	notifyTimeout = 30 * time.Second
+	// pushTimeout bounds the optional push after merge.
+	pushTimeout = 2 * time.Minute
 )
 
 // errBaseMoved means the base branch changed between reading its tip and
@@ -108,6 +112,12 @@ type Request struct {
 	// throwaway worktree, then discards it: no commit lands, no ref moves, no
 	// session is messaged.
 	DryRun bool
+	// CallerSessionID is the AO session asking for the merge, empty for a
+	// person (desktop app, plain CLI). Only an orchestrator of the same
+	// project may merge; worker sessions are refused. The CLI fills it from
+	// AO_SESSION_ID, so this guards against agent mistakes, not against a
+	// caller that deliberately lies about who it is.
+	CallerSessionID domain.SessionID
 }
 
 // Overlap is another live worker whose work touches files the merged branch
@@ -145,6 +155,15 @@ type Result struct {
 	// Warnings collects best-effort failures (overlap scan, notifications)
 	// that did not stop the merge.
 	Warnings []string
+	// PushAttempted is true when the project's pushAfterMerge setting asked
+	// for the base branch to be pushed to origin after the merge landed.
+	PushAttempted bool
+	// Pushed reports that origin accepted the push of PushedRef at
+	// PushedCommit. A failed push (PushError) never undoes the local merge.
+	Pushed       bool
+	PushedRef    string
+	PushedCommit string
+	PushError    string
 }
 
 type target struct {
@@ -160,6 +179,9 @@ type target struct {
 func (s *Service) Merge(ctx context.Context, req Request) (Result, error) {
 	t, err := s.load(ctx, req.SessionID)
 	if err != nil {
+		return Result{}, err
+	}
+	if err := s.authorize(ctx, t, req.CallerSessionID); err != nil {
 		return Result{}, err
 	}
 	if t.worktree != "" {
@@ -192,6 +214,10 @@ func (s *Service) Merge(ctx context.Context, req Request) (Result, error) {
 		return Result{}, err
 	}
 	res.Overlaps, res.Warnings = s.overlaps(ctx, t, res)
+	if !req.DryRun && t.project.Config.PushAfterMerge {
+		// Still under the lock, so base is exactly the merge commit.
+		s.push(ctx, t.repo, &res)
+	}
 	unlock()
 
 	if !req.DryRun {
@@ -309,6 +335,52 @@ func (s *Service) attempt(ctx context.Context, t target, base string, dryRun boo
 	}
 	res.MergeCommit = mergeSHA
 	return res, nil
+}
+
+// authorize refuses worker sessions: integration is the orchestrator's job.
+// An empty caller is a person (desktop app or a plain terminal).
+func (s *Service) authorize(ctx context.Context, t target, caller domain.SessionID) error {
+	caller = domain.SessionID(strings.TrimSpace(string(caller)))
+	if caller == "" {
+		return nil
+	}
+	sess, ok, err := s.store.GetSession(ctx, caller)
+	if err != nil {
+		return internal("load calling session", err)
+	}
+	if !ok {
+		return apierr.Forbidden(CodeForbidden, fmt.Sprintf("Only the orchestrator can merge: calling session %s is unknown", caller))
+	}
+	if sess.Kind != domain.KindOrchestrator {
+		return apierr.Forbidden(CodeForbidden, fmt.Sprintf(
+			"Only the orchestrator can merge. Session %s is a worker: commit your work on your own branch and report done with `ao report --done`; the orchestrator reviews and merges it.", caller))
+	}
+	if sess.ProjectID != t.session.ProjectID {
+		return apierr.Forbidden(CodeForbidden, fmt.Sprintf("Only the orchestrator of project %s can merge %s", t.session.ProjectID, t.session.ID))
+	}
+	return nil
+}
+
+// push sends the advanced base branch to origin. Never forced; a rejection or
+// any other failure is recorded on res and leaves the local merge in place.
+func (s *Service) push(ctx context.Context, repo string, res *Result) {
+	res.PushAttempted = true
+	ref := "refs/heads/" + res.BaseBranch
+	res.PushedRef = ref
+	if _, err := gitOut(ctx, repo, "remote", "get-url", "origin"); err != nil {
+		res.PushError = "pushAfterMerge is on but the repository has no origin remote"
+		return
+	}
+	pushCtx, cancel := context.WithTimeout(ctx, pushTimeout)
+	defer cancel()
+	out, err := git(pushCtx, repo, "push", "--porcelain", "origin", ref+":"+ref)
+	if err != nil {
+		res.PushError = tail(fmt.Sprintf("%v: %s", err, out))
+		s.logger.Warn("local merge: push after merge failed; local merge kept", "base", res.BaseBranch, "err", err, "output", out)
+		return
+	}
+	res.Pushed = true
+	res.PushedCommit = res.MergeCommit
 }
 
 // fastForwardCheckout advances a base branch that is checked out somewhere

@@ -494,6 +494,112 @@ func TestMergeRequiresConfiguredGitIdentity(t *testing.T) {
 	}
 }
 
+func TestMergeAuthorizesOnlyOrchestratorsAndPeople(t *testing.T) {
+	f := newFixture(t)
+	w1 := f.addWorker("w1")
+	f.addWorker("w2")
+	commitFile(t, w1, "feature.txt", "feature\n", "feat: feature")
+	f.store.sessions["other-orchestrator"] = domain.SessionRecord{ID: "other-orchestrator", ProjectID: "p2", Kind: domain.KindOrchestrator}
+
+	for _, caller := range []domain.SessionID{"w1", "w2", "other-orchestrator", "ghost"} {
+		_, err := f.svc.Merge(context.Background(), Request{SessionID: "w1", CallerSessionID: caller})
+		e := requireCode(t, err, CodeForbidden)
+		if !strings.Contains(e.Message, "Only the orchestrator") {
+			t.Fatalf("caller %s: message = %s", caller, e.Message)
+		}
+	}
+	if _, err := f.svc.Merge(context.Background(), Request{SessionID: "w1", CallerSessionID: "p1-orchestrator", DryRun: true}); err != nil {
+		t.Fatalf("orchestrator dry run: %v", err)
+	}
+	if _, err := f.svc.Merge(context.Background(), Request{SessionID: "w1", CallerSessionID: "p1-orchestrator"}); err != nil {
+		t.Fatalf("orchestrator merge: %v", err)
+	}
+}
+
+// addOrigin gives the fixture repo a bare origin that has main.
+func (f *fixture) addOrigin() string {
+	f.t.Helper()
+	origin := filepath.Join(f.root, "origin.git")
+	runGit(f.t, f.root, "init", "-q", "--bare", origin)
+	runGit(f.t, f.repo, "remote", "add", "origin", origin)
+	runGit(f.t, f.repo, "push", "-q", "origin", "main")
+	return origin
+}
+
+func TestPushAfterMerge(t *testing.T) {
+	t.Run("off by default", func(t *testing.T) {
+		f := newFixture(t)
+		origin := f.addOrigin()
+		w1 := f.addWorker("w1")
+		commitFile(t, w1, "feature.txt", "feature\n", "feat: feature")
+		before := runGit(t, origin, "rev-parse", "refs/heads/main")
+		res, err := f.svc.Merge(context.Background(), Request{SessionID: "w1"})
+		if err != nil {
+			t.Fatalf("Merge: %v", err)
+		}
+		if res.PushAttempted || res.Pushed || runGit(t, origin, "rev-parse", "refs/heads/main") != before {
+			t.Fatalf("pushed although pushAfterMerge is off: %+v", res)
+		}
+	})
+	t.Run("on pushes the merge", func(t *testing.T) {
+		f := newFixture(t)
+		origin := f.addOrigin()
+		f.store.project.Config.PushAfterMerge = true
+		w1 := f.addWorker("w1")
+		commitFile(t, w1, "feature.txt", "feature\n", "feat: feature")
+		res, err := f.svc.Merge(context.Background(), Request{SessionID: "w1"})
+		if err != nil {
+			t.Fatalf("Merge: %v", err)
+		}
+		if !res.Pushed || res.PushedRef != "refs/heads/main" || res.PushedCommit != res.MergeCommit || res.PushError != "" {
+			t.Fatalf("push result = %+v", res)
+		}
+		if remote := runGit(t, origin, "rev-parse", "refs/heads/main"); remote != res.MergeCommit {
+			t.Fatalf("origin main = %s, want %s", remote, res.MergeCommit)
+		}
+	})
+	t.Run("rejected push keeps the local merge", func(t *testing.T) {
+		f := newFixture(t)
+		origin := f.addOrigin()
+		f.store.project.Config.PushAfterMerge = true
+		// Someone else advanced origin's main: a non-forced push is rejected.
+		other := filepath.Join(f.root, "other")
+		runGit(t, f.root, "clone", "-q", "-b", "main", origin, other)
+		runGit(t, other, "config", "user.name", "Other")
+		runGit(t, other, "config", "user.email", "other@test.invalid")
+		remoteTip := commitFile(t, other, "remote.txt", "remote\n", "feat: remote change")
+		runGit(t, other, "push", "-q", "origin", "main")
+		w1 := f.addWorker("w1")
+		commitFile(t, w1, "feature.txt", "feature\n", "feat: feature")
+
+		res, err := f.svc.Merge(context.Background(), Request{SessionID: "w1"})
+		if err != nil {
+			t.Fatalf("Merge: %v", err)
+		}
+		if !res.PushAttempted || res.Pushed || res.PushError == "" {
+			t.Fatalf("push result = %+v", res)
+		}
+		if f.mainTip() != res.MergeCommit {
+			t.Fatal("local merge was rolled back after a failed push")
+		}
+		if remote := runGit(t, origin, "rev-parse", "refs/heads/main"); remote != remoteTip {
+			t.Fatalf("origin main = %s, want untouched %s", remote, remoteTip)
+		}
+	})
+	t.Run("dry run never pushes", func(t *testing.T) {
+		f := newFixture(t)
+		origin := f.addOrigin()
+		f.store.project.Config.PushAfterMerge = true
+		w1 := f.addWorker("w1")
+		commitFile(t, w1, "feature.txt", "feature\n", "feat: feature")
+		before := runGit(t, origin, "rev-parse", "refs/heads/main")
+		res, err := f.svc.Merge(context.Background(), Request{SessionID: "w1", DryRun: true})
+		if err != nil || res.PushAttempted || runGit(t, origin, "rev-parse", "refs/heads/main") != before {
+			t.Fatalf("dry run pushed: %+v %v", res, err)
+		}
+	})
+}
+
 // moveBaseDuringVerify makes the verify command commit on main in checkout
 // once (or every time), standing in for someone advancing the base mid-merge.
 func moveBaseDuringVerify(f *fixture, checkout string, everyTime bool) {
