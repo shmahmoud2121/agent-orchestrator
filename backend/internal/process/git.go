@@ -2,9 +2,12 @@ package process
 
 import (
 	"errors"
+	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 // ErrUnsafeGitDir reports a checkout whose .git file points Git at a
@@ -51,7 +54,14 @@ func hardenGit(args []string) ([]string, error) {
 func checkGitLink(dir string) error {
 	link := filepath.Join(dir, ".git")
 	info, err := os.Lstat(link)
-	if err != nil || info.IsDir() {
+	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
+		return nil
+	}
+	if err != nil {
+		// A .git that cannot be inspected cannot be shown to be safe.
+		return fmt.Errorf("%w: %w", ErrUnsafeGitDir, err)
+	}
+	if info.IsDir() {
 		return nil
 	}
 	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {

@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -99,5 +100,28 @@ func TestSeparateGitDirAndMovedWorktreeStillRun(t *testing.T) {
 	}
 	if out, err := Command("git", "-C", sep, "status").CombinedOutput(); err != nil {
 		t.Fatalf("status with separate git dir failed: %v\n%s", err, out)
+	}
+}
+
+func TestCheckGitLinkRefusesAnUninspectableGitFile(t *testing.T) {
+	base := t.TempDir()
+	if err := checkGitLink(filepath.Join(base, "missing")); err != nil {
+		t.Fatalf("missing checkout: %v", err)
+	}
+	file := filepath.Join(base, "file")
+	if err := os.WriteFile(file, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := checkGitLink(file); err != nil {
+		t.Fatalf("non-directory path: %v", err)
+	}
+	if runtime.GOOS == "windows" {
+		t.Skip("name-length errors differ on Windows")
+	}
+	// A path component over NAME_MAX makes Lstat fail with something other
+	// than "not found", which must not be read as "no .git file".
+	long := filepath.Join(base, strings.Repeat("x", 300))
+	if err := checkGitLink(long); !errors.Is(err, ErrUnsafeGitDir) {
+		t.Fatalf("uninspectable .git err = %v, want ErrUnsafeGitDir", err)
 	}
 }
