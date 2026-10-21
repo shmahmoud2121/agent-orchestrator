@@ -46,7 +46,9 @@ import { TelemetryPolicyAuthority, resolveDesktopDataDir } from "./main/telemetr
 import { DaemonTelemetryPolicyClient } from "./main/daemon-telemetry-policy-client";
 import { DesktopTelemetryController } from "./main/desktop-telemetry-controller";
 import { AgentSwitchVisibilityController } from "./main/agent-switch-observability";
-import { readUpdateSettings, type UpdateSettings, type UpdateStatus } from "./main/update-settings";
+import { readUpdateSettings, updateUpdateSettings, type UpdateSettings, type UpdateStatus } from "./main/update-settings";
+import { LOCAL_ONLY_BUILD } from "./shared/local-only";
+import { installLocalOnlyCloudIpc, installLocalOnlyRemotesIpc, installLocalOnlyUpdateIpc } from "./main/local-only-ipc";
 import { readKeybindingOverrides, writeKeybindingOverrides } from "./main/keybinding-settings";
 import { readEditorSettings, writeEditorPreference } from "./main/editor-settings";
 import { createEditorHandoff } from "./main/editor-handoff";
@@ -139,8 +141,6 @@ import {
 import { installCloudLocalAuthIPC } from "./main/cloud-auth-local";
 import { createCloudAgentProxy } from "./main/cloud-agent-proxy";
 import { installCloudCpProxy } from "./main/cloud-cp-proxy";
-import { DEFAULT_POSTHOG_HOST, DEFAULT_POSTHOG_PROJECT_KEY } from "./shared/posthog-config";
-import { DEFAULT_SENTRY_DSN } from "./shared/sentry-config";
 import { buildTelemetryBootstrap, rendererTelemetryEnabled } from "./shared/telemetry";
 import {
 	TELEMETRY_CLEAR_RENDERER_QUEUES_CHANNEL,
@@ -506,8 +506,9 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 // Register ao-app:// as the deep-link protocol for WorkOS auth callbacks.
-// Must run before app.whenReady().
-registerCloudProtocol();
+// Must run before app.whenReady(). The local-only build has no AO Cloud, so it
+// does not claim the protocol.
+if (!LOCAL_ONLY_BUILD) registerCloudProtocol();
 if (!app.requestSingleInstanceLock()) {
 	app.exit(0);
 }
@@ -1285,29 +1286,23 @@ let shellEnvPromise: Promise<void> | null = null;
 let terminalShellPreference: TerminalShellPreference = { ...DEFAULT_TERMINAL_SHELL };
 const configuredLoginShell = process.platform === "darwin" ? (os.userInfo().shell ?? undefined) : undefined;
 
-// Telemetry defaults stamped on the daemon env on every platform; explicit env
-// always wins.
+// Telemetry settings stamped on the daemon env on every platform.
 //
-// Unpackaged builds keep local event recording but never export to PostHog: a
-// dev loop or a CI job driving the real app would otherwise bill production
-// events and inflate install/DAU counts. Set AO_TELEMETRY_REMOTE explicitly to
-// exercise the export path from a dev build.
+// This build is local-only: the daemon records events locally but never
+// exports them. Remote export (PostHog) and daemon Sentry are forced off and
+// cannot be re-enabled from the environment; the daemon enforces the same rule
+// on its side (backend/internal/daemon/local_only.go).
 function telemetryOverrides(): Record<string, string> {
 	return {
 		AO_TELEMETRY_EVENTS: process.env.AO_TELEMETRY_EVENTS ?? "on",
-		AO_TELEMETRY_REMOTE: process.env.AO_TELEMETRY_REMOTE ?? (isDev ? "off" : "posthog"),
-		AO_TELEMETRY_POSTHOG_KEY: process.env.AO_TELEMETRY_POSTHOG_KEY ?? DEFAULT_POSTHOG_PROJECT_KEY,
-		AO_TELEMETRY_POSTHOG_HOST: process.env.AO_TELEMETRY_POSTHOG_HOST ?? DEFAULT_POSTHOG_HOST,
-		// Daemon-side Sentry (5xx + panics with Go stacks). Stamped on the daemon
-		// env so the spawned daemon inherits the DSN; off in dev to match the
-		// PostHog remote gate, and an explicit env always wins. A blank value
-		// leaves the daemon's Sentry a no-op.
-		AO_SENTRY_DSN: process.env.AO_SENTRY_DSN ?? (isDev ? "" : DEFAULT_SENTRY_DSN),
+		AO_TELEMETRY_REMOTE: "off",
+		AO_TELEMETRY_POSTHOG_KEY: "",
+		AO_TELEMETRY_POSTHOG_HOST: "",
+		AO_SENTRY_DSN: "",
 		// The daemon binary has no version of its own that release tooling sets,
-		// so without this every daemon event lands unattributable to a release.
+		// so without this local daemon events carry no release.
 		AO_TELEMETRY_APP_VERSION: process.env.AO_TELEMETRY_APP_VERSION ?? app.getVersion(),
-		// Kill switch: forwarded so a noisy stream can be silenced by env on an
-		// install that already exists, without shipping a new build.
+		// Kill switch: forwarded so a noisy stream can be silenced by env.
 		...(process.env.AO_TELEMETRY_DISABLED_EVENTS
 			? { AO_TELEMETRY_DISABLED_EVENTS: process.env.AO_TELEMETRY_DISABLED_EVENTS }
 			: {}),
@@ -2737,17 +2732,23 @@ const remoteRegistry = new RemoteRegistry((entry) => {
 	const devUrl = typeof MAIN_WINDOW_VITE_DEV_SERVER_URL === "undefined" ? undefined : MAIN_WINDOW_VITE_DEV_SERVER_URL;
 	return startRemoteProxy(entry, devUrl ? new URL(devUrl).origin : RENDERER_ORIGIN);
 });
-registerRemotesIpc(ipcMain, {
-	file: remotesFilePath(),
-	registry: remoteRegistry,
-	requireAccount: async () => {
-		if (!await getCloudSession(cloudDataDir())) throw new Error("Sign in to AO Cloud to use remote hosts.");
-	},
-	getAccountId: async () => (await getCloudSession(cloudDataDir()))?.user.id ?? "",
-	localIdentity: createLocalHostIdentity(() => daemonStatus.state === "ready" && daemonStatus.port
-		? { port: daemonStatus.port, pid: daemonStatus.pid, generation: daemonAttachmentGeneration }
-		: null),
-});
+// Local-only build: no remote hosts. The stubs answer the renderer's
+// remote-host calls with an empty list instead of connecting anywhere.
+if (LOCAL_ONLY_BUILD) {
+	installLocalOnlyRemotesIpc(ipcMain);
+} else {
+	registerRemotesIpc(ipcMain, {
+		file: remotesFilePath(),
+		registry: remoteRegistry,
+		requireAccount: async () => {
+			if (!await getCloudSession(cloudDataDir())) throw new Error("Sign in to AO Cloud to use remote hosts.");
+		},
+		getAccountId: async () => (await getCloudSession(cloudDataDir()))?.user.id ?? "",
+		localIdentity: createLocalHostIdentity(() => daemonStatus.state === "ready" && daemonStatus.port
+			? { port: daemonStatus.port, pid: daemonStatus.pid, generation: daemonAttachmentGeneration }
+			: null),
+	});
+}
 
 ipcMain.handle("app:chooseDirectory", async (_event, input?: string | { title?: string; defaultPath?: string }) => {
 	const title = typeof input === "string"
@@ -2916,6 +2917,15 @@ ipcMain.handle("updateSettings:get", async (): Promise<UpdateSettings> => {
 ipcMain.handle("updateSettings:set", async (_event, settings: UpdateSettings) => {
 	const runFile = runFilePath();
 	if (!runFile) return;
+	if (LOCAL_ONLY_BUILD) {
+		// Persist the preference only: the local-only build configures no update
+		// feed and schedules no checks.
+		await updateUpdateSettings(path.dirname(runFile), (current) => ({
+			...settings,
+			macDifferentialUpdates: current.macDifferentialUpdates === true,
+		}));
+		return;
+	}
 	await setUpdateSettings(path.dirname(runFile), settings);
 });
 ipcMain.handle("updateSettings:setMacDifferentialUpdates", async (_event, enabled: unknown) => {
@@ -2953,24 +2963,32 @@ ipcMain.handle("keybindings:setRecording", (event, active: unknown): void => {
 	keybindingRecordingActive = active;
 });
 
-ipcMain.handle("featureBuilds:list", () => listFeatureBuilds());
+// Reads the running build's own version; no network.
 ipcMain.handle("featureBuilds:getActive", () => getActiveFeatureBuild());
+// Local-only build: no feature-build listing (GitHub API) and no update feed.
+// The stubs settle every update request with an "unsupported" status so the
+// Updates settings keep working.
+if (LOCAL_ONLY_BUILD) {
+	installLocalOnlyUpdateIpc(ipcMain);
+} else {
+	ipcMain.handle("featureBuilds:list", () => listFeatureBuilds());
 
-ipcMain.handle("updates:getStatus", (): UpdateStatus => getUpdateStatus());
-ipcMain.handle("updates:check", async (_event, options?: UpdateCheckOptions) => {
-	const runFile = runFilePath();
-	if (!runFile) return;
-	await checkForUpdatesNow(path.dirname(runFile), options);
-});
-ipcMain.handle("updates:returnHome", async (_event, requestId?: string) => {
-	const runFile = runFilePath();
-	if (!runFile) return;
-	await returnToHome(path.dirname(runFile), requestId);
-});
-ipcMain.handle("updates:download", async (_event, requestId?: string) => {
-	await downloadUpdateNow(requestId);
-});
-ipcMain.handle("updates:install", (_event, confirmedVersion?: string) => quitAndInstallUpdate(confirmedVersion));
+	ipcMain.handle("updates:getStatus", (): UpdateStatus => getUpdateStatus());
+	ipcMain.handle("updates:check", async (_event, options?: UpdateCheckOptions) => {
+		const runFile = runFilePath();
+		if (!runFile) return;
+		await checkForUpdatesNow(path.dirname(runFile), options);
+	});
+	ipcMain.handle("updates:returnHome", async (_event, requestId?: string) => {
+		const runFile = runFilePath();
+		if (!runFile) return;
+		await returnToHome(path.dirname(runFile), requestId);
+	});
+	ipcMain.handle("updates:download", async (_event, requestId?: string) => {
+		await downloadUpdateNow(requestId);
+	});
+	ipcMain.handle("updates:install", (_event, confirmedVersion?: string) => quitAndInstallUpdate(confirmedVersion));
+}
 // Retry after a failed macOS preparation: Squirrel can't reset a stalled staging
 // in-process, so restart AO like a manual quit-and-reopen. install-on-quit is
 // already off on the failed path, so quitting can't apply a half-prepared build.
@@ -3185,18 +3203,26 @@ function notifyRenderersOfCloudSession(account: import("./shared/cloud-account")
 	contents.send("cloud:sessionChanged", account);
 }
 
-installCloudIPC(cloudDataDir, notifyRenderersOfCloudSession);
+// Local-only build: no AO Cloud. The stubs keep the renderer signed out and
+// refuse control-plane requests; none of them touches the network.
+if (LOCAL_ONLY_BUILD) {
+	installLocalOnlyCloudIpc(ipcMain);
+} else {
+	installCloudIPC(cloudDataDir, notifyRenderersOfCloudSession);
+}
 
 // Dev-only local (email/password) sign-in against a loopback Docker control
 // plane running AO_CLOUD_LOCAL_AUTH. Gated to unpackaged/dev builds + loopback
 // CP inside the handlers; a no-op surface for production/WorkOS users.
-installCloudLocalAuthIPC(cloudDataDir, notifyRenderersOfCloudSession);
+if (!LOCAL_ONLY_BUILD) installCloudLocalAuthIPC(cloudDataDir, notifyRenderersOfCloudSession);
 
 // Cloud control-plane proxy IPC — cloudCp:request/openStream/closeStream.
 // CP calls go through main so the WorkOS bearer token never reaches a renderer.
-installCloudCpProxy(cloudDataDir);
-ipcMain.handle("cloudCp:agentBrowserUrl", (_event, baseUrl: unknown, orgId: unknown, sessionId: unknown) =>
-	cloudAgentProxy.agentBrowserUrl(baseUrl, orgId, sessionId));
+if (!LOCAL_ONLY_BUILD) {
+	installCloudCpProxy(cloudDataDir);
+	ipcMain.handle("cloudCp:agentBrowserUrl", (_event, baseUrl: unknown, orgId: unknown, sessionId: unknown) =>
+		cloudAgentProxy.agentBrowserUrl(baseUrl, orgId, sessionId));
+}
 
 function focusCloudWindow(): void {
 	const window = BaseWindow.getAllWindows()[0];
@@ -3208,6 +3234,9 @@ function focusCloudWindow(): void {
 
 async function handleCloudDeepLinkAndFocus(url: string): Promise<void> {
 	focusCloudWindow();
+	// Local-only build: an ao-app:// link (sign-in callback, billing return)
+	// only focuses the window; it never exchanges a token with AO Cloud.
+	if (LOCAL_ONLY_BUILD) return;
 	// Stripe Checkout and the Customer Portal return here (via the control
 	// plane's /billing/return page): open Settings on Billing, which re-reads
 	// the plan when it mounts.
@@ -3281,6 +3310,8 @@ app.on("second-instance", (_event, argv) => {
 // frontend/docs/desktop-release.md.
 function initAutoUpdates(): void {
 	if (!app.isPackaged) return;
+	// Local-only build: never configure the update feed or schedule checks.
+	if (LOCAL_ONLY_BUILD) return;
 	const runFile = runFilePath();
 	if (!runFile) return;
 	const stateDir = path.dirname(runFile);
@@ -3340,13 +3371,16 @@ async function writeAppStateOnLaunch(): Promise<void> {
 }
 
 app.whenReady().then(async () => {
-	if (app.isPackaged) {
+	// Local-only build: no desktop version-floor fetch at startup, and GitHub
+	// owners are loaded only when the UI asks (app:refreshGitHubOwners), not
+	// on launch.
+	if (app.isPackaged && !LOCAL_ONLY_BUILD) {
 		const { checkDesktopVersionFloor } = await import("./main/desktop-version-floor");
 		await checkDesktopVersionFloor().catch((err) =>
 			console.warn("desktop version floor check failed:", err),
 		);
 	}
-	void refreshGitHubOwners();
+	if (!LOCAL_ONLY_BUILD) void refreshGitHubOwners();
 	const visibilityKillSwitched = (process.env.AO_TELEMETRY_DISABLED_EVENTS ?? "").split(",").some((name) => name.trim() === "ao.agent_switch.visibility_failure");
 	// The approved release gate is intentionally closed. Tests inject the
 	// dedicated no-cache sender; the shipping composition creates no visibility

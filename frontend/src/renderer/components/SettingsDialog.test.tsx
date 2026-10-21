@@ -8,8 +8,9 @@ import type { ProjectSettingsSaveState } from "./ProjectSettingsForm";
 import { SettingsDialog } from "./SettingsPageTestHarness";
 import { globalSettingsItemsFor, visibleGlobalSettings } from "./settings/settingsCatalog";
 
-const { postMock, cloudProjectsState, localWorkspacesState } = vi.hoisted(() => ({
+const { postMock, getMock, cloudProjectsState, localWorkspacesState } = vi.hoisted(() => ({
 	postMock: vi.fn(),
+	getMock: vi.fn(),
 	cloudProjectsState: {
 		data: [] as Array<{ id: string; orgId?: string; displayName: string }> | undefined,
 		isLoading: false,
@@ -28,7 +29,7 @@ const accountsResponse = {
 };
 
 vi.mock("../lib/api-client", () => ({
-	apiClient: { POST: postMock },
+	apiClient: { POST: postMock, GET: getMock },
 	apiErrorCode: (error: { code?: string }) => error?.code,
 	apiErrorMessage: () => "request failed",
 	hasTrustedApiBaseUrl: () => true,
@@ -119,6 +120,7 @@ describe("SettingsDialog", () => {
 		postMock.mockReset().mockImplementation((path: string) => path === "/api/v1/agents/codex/accounts/ensure"
 			? Promise.resolve({ data: accountsResponse })
 			: Promise.resolve({ data: { operationId: "login-1", status: "cancelled" } }));
+		getMock.mockReset().mockResolvedValue({ data: undefined, error: { message: "not found" } });
 		useUiStore.setState({ developerMode: false, settingsModal: null });
 		cloudProjectsState.data = [];
 		cloudProjectsState.isLoading = false;
@@ -255,24 +257,37 @@ describe("SettingsDialog", () => {
 	});
 
 	it("opens the requested global settings page", async () => {
-		useUiStore.getState().openGlobalSettings("mobile");
+		useUiStore.getState().openGlobalSettings("shortcuts");
 		renderSettingsDialog();
 
-		expect(await screen.findByTestId("global-settings-section")).toHaveTextContent("mobile");
-		expect(screen.getByRole("button", { name: "Mobile" })).toHaveAttribute("data-active", "true");
+		expect(await screen.findByTestId("global-settings-section")).toHaveTextContent("shortcuts");
+		expect(screen.getByRole("button", { name: "Shortcuts" })).toHaveAttribute("data-active", "true");
 		await vi.waitFor(() => expect(postMock).toHaveBeenCalledWith(
 			"/api/v1/agents/codex/accounts/ensure",
 			{ body: { accountIds: [], includeUsage: true, forceAuthentication: true, forceDeviceReconciliation: true } },
 		));
 	});
 
-	it("shows Remote hosts with Developer mode on even while the connection switch is off", async () => {
-		useUiStore.setState({ developerMode: true, remoteHosts: false });
+	it("hides Mobile, redirects its settings page, and never asks the daemon for mobile state (local-only)", async () => {
+		useUiStore.getState().openGlobalSettings("mobile");
+		renderSettingsDialog();
+
+		expect(await screen.findByTestId("global-settings-section")).toHaveTextContent("general");
+		expect(screen.queryByRole("button", { name: "Mobile" })).not.toBeInTheDocument();
+		await vi.waitFor(() => expect(postMock).toHaveBeenCalledWith(
+			"/api/v1/agents/codex/accounts/ensure",
+			expect.anything(),
+		));
+		expect(getMock.mock.calls.filter(([path]) => String(path).startsWith("/api/v1/mobile/"))).toEqual([]);
+	});
+
+	it("hides Remote hosts even with Developer mode on (local-only)", async () => {
+		useUiStore.setState({ developerMode: true, remoteHosts: true });
 		useUiStore.getState().openGlobalSettings("remoteHosts");
 		renderSettingsDialog();
 
-		expect(await screen.findByTestId("global-settings-section")).toHaveTextContent("remoteHosts");
-		expect(screen.getByRole("button", { name: "Remote hosts" })).toHaveAttribute("data-active", "true");
+		expect(await screen.findByTestId("global-settings-section")).toHaveTextContent("general");
+		expect(screen.queryByRole("button", { name: "Remote hosts" })).not.toBeInTheDocument();
 	});
 
 	it("hides Remote hosts and redirects its settings page when Developer mode is off", async () => {

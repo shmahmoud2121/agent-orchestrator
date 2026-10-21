@@ -2,6 +2,7 @@ import { useIsMutating, useMutation, useMutationState, useQuery, useQueryClient 
 import type { components } from "../../api/schema";
 import { apiClient, apiErrorMessage } from "../lib/api-client";
 import { mobileStatusQueryKey } from "../lib/mobile-status-key";
+import { LOCAL_ONLY_BUILD } from "../../shared/local-only";
 import { awakeCapability, awakeQueryKey, type AwakeState, useAwake } from "./useAwake";
 
 type MobileStatus = components["schemas"]["MobileStatusResponse"];
@@ -14,7 +15,9 @@ export function useStayAwake(enabled = true) {
 	const awake = useAwake(enabled);
 	const mobile = useQuery({
 		queryKey: mobileStatusQueryKey,
-		enabled,
+		// The local-only daemon serves no /api/v1/mobile routes: Stay Awake is
+		// the desktop awake service alone.
+		enabled: enabled && !LOCAL_ONLY_BUILD,
 		queryFn: async ({ signal }) => {
 			const { data, error } = await apiClient.GET("/api/v1/mobile/status", { signal });
 			if (error) throw new Error(apiErrorMessage(error));
@@ -52,6 +55,7 @@ export function useStayAwake(enabled = true) {
 			// Cancel an older status read before writing the authoritative response.
 			await cache.cancelQueries({ queryKey: mobileStatusQueryKey });
 			const updateMobile = async (on: boolean, lidClosed: boolean) => {
+				if (LOCAL_ONLY_BUILD) return;
 				const { data, error } = await apiClient.POST("/api/v1/mobile/keep-awake", { body: { enabled: on, lidClosed } });
 				if (error) throw new Error(apiErrorMessage(error));
 				if (!data) throw new Error("Mobile status is unavailable");
