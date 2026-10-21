@@ -181,6 +181,11 @@ export function ProjectWorkersRequestReviewToggle({ checked, onCheckedChange }: 
 	return <ProjectToggleRow id="project-workers-request-review" label={t("settings.project.workersRequestReviewToggle")} description={t("settings.project.workersRequestReviewDescription")} checked={checked} onCheckedChange={onCheckedChange} />;
 }
 
+export function ProjectPushAfterMergeToggle({ checked, onCheckedChange }: { checked: boolean; onCheckedChange: (checked: boolean) => void }) {
+	const { t } = useTranslation();
+	return <ProjectToggleRow id="project-push-after-merge" label={t("settings.project.pushAfterMergeToggle")} description={t("settings.project.pushAfterMergeDescription")} checked={checked} onCheckedChange={onCheckedChange} />;
+}
+
 function ProjectToggleRow({ id, label, description, checked, onCheckedChange }: { id: string; label: string; description: string; checked: boolean; onCheckedChange: (checked: boolean) => void }) {
 	return (
 		<SettingsRow label={label} description={description}>

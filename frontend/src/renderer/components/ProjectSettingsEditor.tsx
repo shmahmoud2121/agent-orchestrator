@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import type { ProjectSettingsSaveState, ProjectSettingsSection as SettingsSection } from "./ProjectSettingsForm";
 import { deriveRepoHost, deriveRepoPath, IntakeFields, intakeNeedsRule } from "./IntakeFields";
 import { ProductExternalLink } from "./ProductExternalLink";
-import { AgentModelField, ProjectAutoReviewToggle, ProjectWorkersRequestReviewToggle } from "./settings/ProjectAgentRoleControls";
+import { AgentModelField, ProjectAutoReviewToggle, ProjectPushAfterMergeToggle, ProjectWorkersRequestReviewToggle } from "./settings/ProjectAgentRoleControls";
 import { SettingsOptionMenu } from "./settings/SettingsOptionMenu";
 import { SettingsRow } from "./settings/SettingsRow";
 import { Button } from "./ui/button";
@@ -42,6 +42,8 @@ export type ProjectSettingsDraft = {
 	verifyCommand?: string;
 	/** Local-only: whole seconds; blank means the daemon default. */
 	verifyTimeoutSeconds?: string;
+	/** Local-only: `ao merge` pushes the base branch to origin after it lands. */
+	pushAfterMerge?: boolean;
 };
 
 const roles = ["worker", "orchestrator", "reviewer"] as const;
@@ -63,6 +65,8 @@ type Capabilities = {
 	workersRequestReview?: boolean;
 	/** The daemon verifies merges only for local single-repo projects. */
 	verifyCommand?: boolean;
+	/** Local merge (and its optional push) supports local single-repo projects only. */
+	pushAfterMerge?: boolean;
 	nameLimit?: number;
 	requiredBranch?: boolean;
 	/** Cloud defaults and tuning belong to its runtime, rather than the local catalog. */
@@ -202,6 +206,7 @@ export function ProjectSettingsEditor({ initialValues, section, capabilities, de
 							<SettingsRow label={t("settings.project.verifyCommand")} description={t("settings.project.verifyCommandDescription")}><Input id="verifyCommand" aria-label={t("settings.project.verifyCommand")} className="w-80 max-w-full font-mono" autoComplete="off" spellCheck={false} value={draft.verifyCommand ?? ""} placeholder="go test ./..." onChange={(event) => patch({ verifyCommand: event.target.value })} /></SettingsRow>
 							{draft.verifyCommand?.trim() && <SettingsRow label={t("settings.project.verifyTimeout")} description={t("settings.project.verifyTimeoutDescription", { max: MAX_VERIFY_TIMEOUT_SECONDS })}><Input id="verifyTimeoutSeconds" aria-label={t("settings.project.verifyTimeout")} className="w-28 max-w-full" inputMode="numeric" value={draft.verifyTimeoutSeconds ?? ""} placeholder={String(DEFAULT_VERIFY_TIMEOUT_SECONDS)} onChange={(event) => patch({ verifyTimeoutSeconds: event.target.value })} /></SettingsRow>}
 						</>}
+						{capabilities.pushAfterMerge && <ProjectPushAfterMergeToggle checked={draft.pushAfterMerge ?? false} onCheckedChange={(pushAfterMerge) => patch({ pushAfterMerge })} />}
 					</ProjectSettingsSection>
 				</>}
 				{generalExtra}

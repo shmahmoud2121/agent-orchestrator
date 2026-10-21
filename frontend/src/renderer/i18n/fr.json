@@ -2829,6 +2829,8 @@
 	"settings.project.autoReview": "Auto review",
 	"settings.project.autoReviewToggle": "Auto review PRs",
 	"settings.project.workersRequestReviewDescription": "When enabled, new workers start an AO review of their own PR once it is ready, and again after each fix. When disabled, workers ask before starting one.",
+	"settings.project.pushAfterMergeDescription": "Si activé, ao merge pousse la branche de base vers origin après la fusion locale de la branche d'un worker. Un push échoué n'annule jamais la fusion. Les workers ne poussent jamais.",
+	"settings.project.pushAfterMergeToggle": "Pousser après la fusion",
 	"settings.project.workersRequestReviewToggle": "Workers request AO review",
 	"settings.project.verifyCommand": "Merge check command",
 	"settings.project.verifyCommandDescription": "AO runs this on the PR's exact head in a throwaway checkout before it merges, and refuses the merge if it fails. It runs directly, not through a shell; quote arguments that contain spaces.",

@@ -755,8 +755,9 @@ type LaunchConfig struct {
 	// it runs in a non-bypass permission mode (allow rules auto-approve, deny
 	// rules auto-reject). They are the enforced read-only guarantee the reviewer
 	// relies on: bypassPermissions ignores both lists, so a restricted launch
-	// must leave Permissions off bypass. Empty means no restriction, so worker
-	// sessions are unaffected.
+	// must leave Permissions off bypass. Empty means no restriction from the
+	// caller; an adapter may still add its own worker deny rules (claude-code
+	// denies git push and gh pr create/merge to worker sessions).
 	AllowedTools     []string
 	DisallowedTools  []string
 	SystemPrompt     string
