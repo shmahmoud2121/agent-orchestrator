@@ -10,7 +10,7 @@ import (
 )
 
 func secureDir(path string) error {
-	if err := os.Chmod(path, 0o700); err != nil {
+	if err := os.Chmod(path, 0o700); err != nil { // #nosec G302 -- directories need owner execute permission for traversal.
 		return fmt.Errorf("secure API token directory: %w", err)
 	}
 	return nil
@@ -24,7 +24,7 @@ func secureFile(info os.FileInfo) error {
 	if !ok {
 		return errors.New("cannot verify API token file owner")
 	}
-	if stat.Uid != uint32(os.Geteuid()) {
+	if int64(stat.Uid) != int64(os.Geteuid()) {
 		return errors.New("API token file is not owned by the current user")
 	}
 	return nil
