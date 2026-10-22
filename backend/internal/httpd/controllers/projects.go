@@ -24,6 +24,9 @@ type ProjectsController struct {
 
 // Register mounts the project routes on the supplied router.
 func (c *ProjectsController) Register(r chi.Router) {
+	r.Get("/projects/{id}/repo-trust", c.repoTrust)
+	r.Post("/projects/{id}/repo-trust", c.repoTrust)
+	r.Delete("/projects/{id}/repo-trust", c.repoTrust)
 	r.Get("/projects", c.list)
 	r.Post("/projects", c.add)
 	r.Post("/projects/clone", c.clone)

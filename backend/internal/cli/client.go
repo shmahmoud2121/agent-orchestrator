@@ -208,6 +208,9 @@ func (c *commandContext) doJSONPathWithHeadersAndTimeout(
 	for name, value := range headers {
 		req.Header.Set(name, value)
 	}
+	if sessionID := os.Getenv("AO_SESSION_ID"); sessionID != "" {
+		req.Header.Set("X-AO-Session-ID", sessionID)
+	}
 	// Authentication is not caller-overridable: every daemon request uses the
 	// per-install token read from the protected data directory.
 	req.Header.Set("Authorization", "Bearer "+token)

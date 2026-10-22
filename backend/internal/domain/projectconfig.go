@@ -18,6 +18,9 @@ import (
 // yet exist (tracker/SCM per-project config) are intentionally absent and land in
 // focused follow-up PRs alongside the code that reads them.
 type ProjectConfig struct {
+	// TrustedRepoConfigFingerprint is set only by the explicit repository trust API.
+	TrustedRepoConfigFingerprint string `json:"trustedRepoConfigFingerprint,omitempty"`
+
 	// CanonicalRepoURL explicitly trusts one upstream repository for PR claims.
 	// Numeric PR references use this repository when set; checkout/push stays on origin.
 	CanonicalRepoURL string `json:"canonicalRepoURL,omitempty"`
@@ -236,6 +239,12 @@ func (c ProjectConfig) IsZero() bool {
 // Validate rejects values outside the typed vocabulary so a bad config is
 // refused when it is set (CLI/API) rather than surfacing at spawn.
 func (c ProjectConfig) Validate() error {
+	if f := c.TrustedRepoConfigFingerprint; f != "" {
+		if len(f) != 64 || strings.Trim(f, "0123456789abcdef") != "" {
+			return fmt.Errorf("trustedRepoConfigFingerprint must be a lowercase SHA-256 fingerprint")
+		}
+	}
+
 	for i, arg := range c.VerifyCommand {
 		if (i == 0 && strings.TrimSpace(arg) == "") || strings.ContainsRune(arg, '\x00') {
 			return fmt.Errorf("verifyCommand[%d]: invalid argument", i)

@@ -80,6 +80,9 @@ vi.mock("../lib/api-client", () => ({
 	},
 }));
 
+// Repository trust has its own HTTP and interaction tests. Keep this suite scoped to the settings draft lifecycle.
+vi.mock("./RepoTrustSettings", () => ({ RepoTrustSettings: () => null }));
+
 import { ProjectSettingsForm, type ProjectSettingsSaveState, type ProjectSettingsSection } from "./ProjectSettingsForm";
 import { workspaceQueryKey } from "../hooks/useWorkspaceQuery";
 import type { WorkspaceSummary } from "../types/workspace";
