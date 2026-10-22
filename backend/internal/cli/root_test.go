@@ -19,6 +19,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/aoagents/agent-orchestrator/backend/internal/apitoken"
 	"github.com/aoagents/agent-orchestrator/backend/internal/daemonmeta"
 	"github.com/aoagents/agent-orchestrator/backend/internal/runfile"
 	"github.com/aoagents/agent-orchestrator/backend/internal/telemetrymeta"
@@ -452,6 +453,9 @@ func setConfigEnv(t *testing.T) testConfig {
 	// Code must not leak it into exact hook-body assertions.
 	t.Setenv("CLAUDE_CODE_ENTRYPOINT", "")
 	t.Setenv("CLAUDE_PID", "")
+	if _, err := apitoken.LoadOrCreate(cfg.dataDir); err != nil {
+		t.Fatalf("create test API token: %v", err)
+	}
 	return cfg
 }
 
@@ -517,5 +521,35 @@ func jsonResponse(status int, body string) *http.Response {
 		StatusCode: status,
 		Header:     make(http.Header),
 		Body:       io.NopCloser(strings.NewReader(body)),
+	}
+}
+
+func TestStatusReadsDaemonExecutableFromAuthenticatedReadyz(t *testing.T) {
+	cfg := setConfigEnv(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/healthz":
+			// The unauthenticated probe is minimal and carries no filesystem identity.
+			_, _ = fmt.Fprintf(w, `{"status":"ok","service":%q,"pid":%d}`, daemonmeta.ServiceName, os.Getpid())
+		case "/readyz":
+			if !strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
+				http.Error(w, "token required", http.StatusUnauthorized)
+				return
+			}
+			_, _ = fmt.Fprintf(w, `{"status":"ready","service":%q,"pid":%d,"executablePath":"/opt/ao/bin/ao"}`, daemonmeta.ServiceName, os.Getpid())
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+	if err := runfile.Write(cfg.runFile, runfile.Info{PID: os.Getpid(), Port: serverPort(t, srv.URL), StartedAt: time.Unix(100, 0).UTC()}); err != nil {
+		t.Fatal(err)
+	}
+	out, _, err := executeCLI(t, Deps{ProcessAlive: func(pid int) bool { return pid == os.Getpid() }}, "status", "--json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, `"executablePath": "/opt/ao/bin/ao"`) || !strings.Contains(out, `"state": "ready"`) {
+		t.Fatalf("status did not report the readyz executable:\n%s", out)
 	}
 }

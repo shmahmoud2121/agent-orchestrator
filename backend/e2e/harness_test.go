@@ -35,6 +35,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/aoagents/agent-orchestrator/backend/internal/apitoken"
 )
 
 const gateEnv = "AO_CHAT_E2E"
@@ -276,6 +278,9 @@ func (d *daemon) call(method, path string, body, out any) (int, error) {
 	if body != nil {
 		req.Header.Set("content-type", "application/json")
 	}
+	if err := d.authorize(req); err != nil {
+		return 0, err
+	}
 	res, err := httpClient.Do(req)
 	if err != nil {
 		return 0, err
@@ -292,6 +297,17 @@ func (d *daemon) call(method, path string, body, out any) (int, error) {
 		}
 	}
 	return res.StatusCode, nil
+}
+
+// authorize adds the daemon's per-install API token. The daemon writes it on
+// boot, so a missing file is a retryable error while waitReady polls.
+func (d *daemon) authorize(req *http.Request) error {
+	token, err := apitoken.Load(apitoken.Path(d.dataDir))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	return nil
 }
 
 // mustCall fails the test unless the response status matches.

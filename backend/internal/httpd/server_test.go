@@ -1,6 +1,7 @@
 package httpd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -9,15 +10,44 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/aoagents/agent-orchestrator/backend/internal/apitoken"
 	"github.com/aoagents/agent-orchestrator/backend/internal/config"
 	"github.com/aoagents/agent-orchestrator/backend/internal/runfile"
 )
 
 func discardLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
+
+func TestServerRefusesInsecureAPITokenPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows relies on the user-profile ACL")
+	}
+	root := t.TempDir()
+	dataDir := filepath.Join(root, "data")
+	if err := os.Mkdir(dataDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(apitoken.Path(dataDir), []byte(testAPIToken+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := NewWithDeps(config.Config{
+		Host:        config.LoopbackHost,
+		Port:        0,
+		DataDir:     dataDir,
+		RunFilePath: filepath.Join(root, "running.json"),
+	}, discardLogger(), nil, APIDeps{})
+	if err == nil {
+		t.Fatal("NewWithDeps accepted a group/world-readable API token")
+	}
+	if !strings.Contains(err.Error(), "permissions") {
+		t.Fatalf("error = %q, want clear permissions error", err)
+	}
 }
 
 func TestHealthProbes(t *testing.T) {
@@ -39,6 +69,20 @@ func TestHealthProbes(t *testing.T) {
 			t.Errorf("GET %s Content-Type = %q, want JSON", path, ct)
 		}
 	}
+	resp, err := client.Get(srv.URL + "/healthz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var health map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&health); err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range []string{"executablePath", "workingDirectory", "startupWorkingDirectory", "appImagePath"} {
+		if _, ok := health[field]; ok {
+			t.Errorf("GET /healthz exposes %s", field)
+		}
+	}
 }
 
 func TestHealthProbesIncludeDaemonIdentity(t *testing.T) {
@@ -56,7 +100,7 @@ func TestHealthProbesIncludeDaemonIdentity(t *testing.T) {
 	}
 
 	client := &http.Client{Timeout: 2 * time.Second}
-	for _, path := range []string{"/healthz", "/readyz"} {
+	for _, path := range []string{"/readyz"} {
 		resp, err := client.Get(srv.URL + path)
 		if err != nil {
 			t.Fatalf("GET %s: %v", path, err)
@@ -91,7 +135,7 @@ func TestHealthProbesIncludeAppImageIdentity(t *testing.T) {
 		srv := httptest.NewServer(router)
 		defer srv.Close()
 
-		for _, path := range []string{"/healthz", "/readyz"} {
+		for _, path := range []string{"/readyz"} {
 			resp, err := client.Get(srv.URL + path)
 			if err != nil {
 				t.Fatalf("GET %s: %v", path, err)
@@ -168,6 +212,17 @@ func TestServerLifecycle(t *testing.T) {
 	}
 	if info.Port == 0 {
 		t.Error("run-file recorded port 0; want the actual bound port")
+	}
+	token, err := apitoken.Load(apitoken.Path(filepath.Join(filepath.Dir(runPath), "data")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	runFileData, err := os.ReadFile(runPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(runFileData, []byte(token)) {
+		t.Fatal("running.json contains API token")
 	}
 
 	cancel()
@@ -248,7 +303,16 @@ func TestServerShutdownEndpoint(t *testing.T) {
 	// a flaky 5s failure under -race). DisableKeepAlives keeps this POST off
 	// the shared pool entirely.
 	client := &http.Client{Timeout: 2 * time.Second, Transport: &http.Transport{DisableKeepAlives: true}}
-	resp, err := client.Post(base+"/shutdown", "application/json", nil)
+	req, err := http.NewRequest(http.MethodPost, base+"/shutdown", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	token, err := apitoken.Load(apitoken.Path(filepath.Join(filepath.Dir(runPath), "data")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("POST /shutdown: %v", err)
 	}

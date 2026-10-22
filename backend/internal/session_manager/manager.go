@@ -231,6 +231,10 @@ const (
 	// session. AO_DATA_DIR is durable storage, not daemon discovery; custom and
 	// isolated daemons therefore need this coordinate explicitly.
 	EnvRunFile = "AO_RUN_FILE"
+	// EnvAPIToken is stripped from session env and never injected: the tmux
+	// runtime exports env on the shell command line, where other OS users can
+	// read it. AO-launched clients read the token file from AO_DATA_DIR instead.
+	EnvAPIToken = "AO_API_TOKEN" //nolint:gosec // Environment variable name, not a credential.
 	// EnvBrowserCapability proves ownership of the session's browser target.
 	EnvBrowserCapability = "AO_BROWSER_CAPABILITY"
 	// EnvBrowserRuntimeToken must never be inherited by a worker. It authenticates
@@ -6096,6 +6100,7 @@ func (m *Manager) runtimeEnvChecked(id domain.SessionID, project domain.ProjectI
 	if runFilePath != "" {
 		env[EnvRunFile] = runFilePath
 	}
+	deleteProtectedEnv(env, EnvAPIToken, caseInsensitive)
 	setProtectedEnv(env, EnvBrowserCapability, "", caseInsensitive)
 	setProtectedEnv(env, EnvBrowserRuntimeToken, "", caseInsensitive)
 	setProtectedEnv(env, EnvBrowserRuntimeTokenStdin, "", caseInsensitive)

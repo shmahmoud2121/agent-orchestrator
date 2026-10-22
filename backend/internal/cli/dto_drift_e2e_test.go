@@ -31,6 +31,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aoagents/agent-orchestrator/backend/internal/apitoken"
 	"github.com/aoagents/agent-orchestrator/backend/internal/config"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/httpd"
@@ -194,8 +195,14 @@ func startDriftTestDaemon(t *testing.T, sessions controllers.SessionService, pro
 
 	port := srv.Listener.Addr().(*net.TCPAddr).Port
 
-	rfPath := filepath.Join(t.TempDir(), "running.json")
+	stateDir := t.TempDir()
+	rfPath := filepath.Join(stateDir, "running.json")
+	dataDir := filepath.Join(stateDir, "data")
 	t.Setenv("AO_RUN_FILE", rfPath)
+	t.Setenv("AO_DATA_DIR", dataDir)
+	if _, err := apitoken.LoadOrCreate(dataDir); err != nil {
+		t.Fatalf("create API token: %v", err)
+	}
 	if err := runfile.Write(rfPath, runfile.Info{PID: os.Getpid(), Port: port, StartedAt: time.Now()}); err != nil {
 		t.Fatalf("write run-file: %v", err)
 	}

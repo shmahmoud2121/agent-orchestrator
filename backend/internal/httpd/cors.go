@@ -12,8 +12,8 @@ import (
 )
 
 // corsMiddleware grants cross-origin read access to the allowlisted browser
-// origins only. The daemon is a no-auth loopback service, so CORS is the one
-// boundary between it and hostile browser content running on the same
+// origins only. The API token protects native local access, while CORS remains
+// an independent boundary against hostile browser content running on the same
 // machine: the allowlist must never contain "*" or the opaque "null" origin
 // (every file:// page and sandboxed iframe on any website presents "null").
 // The packaged Electron renderer is served from app://renderer specifically

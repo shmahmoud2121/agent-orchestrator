@@ -9,7 +9,30 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/aoagents/agent-orchestrator/backend/internal/apitoken"
 )
+
+func TestDaemonClientSendsAPIToken(t *testing.T) {
+	cfg := setConfigEnv(t)
+	want, err := apitoken.Load(apitoken.Path(cfg.dataDir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Authorization"); got != "Bearer "+want {
+			t.Errorf("Authorization = %q, want bearer token", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{}`)
+	}))
+	defer server.Close()
+	c := transportContext(t, cfg, server)
+	var out map[string]any
+	if err := c.getJSON(context.Background(), "sessions", &out); err != nil {
+		t.Fatal(err)
+	}
+}
 
 // transportServer returns an httptest server that always answers with the
 // given status and body for any CLI daemon call.

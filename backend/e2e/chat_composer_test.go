@@ -205,6 +205,9 @@ func readAttachmentPreview(t *testing.T, d *daemon, session, attachmentPath, cac
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := d.authorize(req); err != nil {
+		t.Fatal(err)
+	}
 	res, err := httpClient.Do(req)
 	if err != nil {
 		t.Fatalf("preview %s: %v", attachmentPath, err)

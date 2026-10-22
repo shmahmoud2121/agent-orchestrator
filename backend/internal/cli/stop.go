@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/aoagents/agent-orchestrator/backend/internal/apitoken"
 	"github.com/aoagents/agent-orchestrator/backend/internal/config"
 	"github.com/aoagents/agent-orchestrator/backend/internal/runfile"
 )
@@ -84,6 +85,15 @@ func (c *commandContext) requestShutdown(ctx context.Context, port int) error {
 	if err != nil {
 		return err
 	}
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	token, err := apitoken.Load(apitoken.Path(cfg.DataDir))
+	if err != nil {
+		return fmt.Errorf("load daemon API token: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
 	resp, err := c.deps.HTTPClient.Do(req)
 	if err != nil {
 		return err

@@ -8,9 +8,11 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
+	"github.com/aoagents/agent-orchestrator/backend/internal/apitoken"
 	"github.com/aoagents/agent-orchestrator/backend/internal/config"
 	"github.com/aoagents/agent-orchestrator/backend/internal/runfile"
 	"github.com/aoagents/agent-orchestrator/backend/internal/terminal"
@@ -44,6 +46,14 @@ type Server struct {
 // reads, so the fallback propagates to the renderer with no UI changes.
 func NewWithDeps(cfg config.Config, log *slog.Logger, termMgr *terminal.Manager, deps APIDeps) (*Server, error) {
 	log = loggerOrDefault(log)
+	tokenDir := cfg.DataDir
+	if tokenDir == "" && cfg.RunFilePath != "" {
+		tokenDir = filepath.Join(filepath.Dir(cfg.RunFilePath), "data")
+	}
+	token, err := apitoken.LoadOrCreate(tokenDir)
+	if err != nil {
+		return nil, fmt.Errorf("load API token: %w", err)
+	}
 	ln, err := net.Listen("tcp", cfg.Addr())
 	if err != nil {
 		if !isAddrInUse(err) {
@@ -70,7 +80,7 @@ func NewWithDeps(cfg config.Config, log *slog.Logger, termMgr *terminal.Manager,
 		AgentSwitchPolicy: deps.AgentSwitchPolicy,
 	})
 	srv.http = &http.Server{
-		Handler: loopbackHostGuard(srv.router),
+		Handler: loopbackHostGuard(apiTokenMiddleware(token, srv.router)),
 		// ReadHeaderTimeout guards against slow-loris even on loopback;
 		// per-request body/handler timeouts are applied per-surface.
 		ReadHeaderTimeout: 10 * time.Second,
