@@ -732,7 +732,7 @@ func (s *Service) Start(ctx context.Context, cfg StartConfig) (*Controller, erro
 	}
 	// Remap before recording and before the driver launches so the durable
 	// approval mode matches session/set_mode (bypass→acceptEdits when sandboxed).
-	cfg.Permissions = claudecode.EffectiveWorkerPermission(cfg.Kind, cfg.WorkerSandbox, cfg.Permissions)
+	cfg.Permissions = effectiveChatPermission(cfg)
 	if cfg.ProviderConversationID == "" {
 		if err := capabilityAdmissionError(cfg.Harness, caps, cfg.Permissions); err != nil {
 			return nil, err
@@ -2628,6 +2628,16 @@ func (s *Service) RelaySessionChatTurn(ctx context.Context, id domain.SessionID,
 // StopChat releases a session's controller.
 func (s *Service) StopChat(ctx context.Context, id domain.SessionID) error {
 	return s.Stop(ctx, id)
+}
+
+// effectiveChatPermission remaps bypass→acceptEdits for sandboxed Claude Code
+// workers. The worker sandbox is Claude-only, so other harnesses keep the
+// requested mode.
+func effectiveChatPermission(cfg StartConfig) ports.PermissionMode {
+	if cfg.Harness != domain.HarnessClaudeCode {
+		return cfg.Permissions
+	}
+	return claudecode.EffectiveWorkerPermission(cfg.Kind, cfg.WorkerSandbox, cfg.Permissions)
 }
 
 // sandboxedClaudeWorker reports whether the live controller was started as a

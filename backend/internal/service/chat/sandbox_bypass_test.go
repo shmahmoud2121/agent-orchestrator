@@ -52,3 +52,18 @@ func TestRefuseSandboxedBypassConfig(t *testing.T) {
 		t.Fatalf("orchestrator should allow bypass: %v", err)
 	}
 }
+
+func TestEffectiveChatPermissionOnlyRemapsClaude(t *testing.T) {
+	enabled := true
+	sandbox := domain.WorkerSandboxConfig{Enabled: &enabled}
+	claude := StartConfig{Harness: domain.HarnessClaudeCode, Kind: domain.KindWorker,
+		WorkerSandbox: sandbox, Permissions: ports.PermissionModeBypassPermissions}
+	if got := effectiveChatPermission(claude); got != ports.PermissionModeAcceptEdits {
+		t.Fatalf("sandboxed Claude worker = %q, want acceptEdits", got)
+	}
+	codex := claude
+	codex.Harness = domain.HarnessCodex
+	if got := effectiveChatPermission(codex); got != ports.PermissionModeBypassPermissions {
+		t.Fatalf("sandboxed Codex worker = %q, want bypassPermissions", got)
+	}
+}

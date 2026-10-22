@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 )
@@ -478,7 +477,7 @@ func (s *Service) CreateIndependentSideChat(ctx context.Context, id domain.Sessi
 	}
 	frozenConfig, err := json.Marshal(frozenSideConfig{
 		DataDir: cfg.DataDir, WorkspacePath: cfg.WorkspacePath, Env: cfg.Env,
-		Permissions: claudecode.EffectiveWorkerPermission(cfg.Kind, cfg.WorkerSandbox, cfg.Permissions),
+		Permissions: effectiveChatPermission(cfg),
 		Kind:        cfg.Kind, WorkerSandbox: cfg.WorkerSandbox,
 		ReadOnly: cfg.ReadOnly, SystemPrompt: sideIdentityPrompt(cfg.SystemPrompt),
 		AdditionalDirectories: cfg.AdditionalDirectories, MCPServers: cfg.MCPServers,

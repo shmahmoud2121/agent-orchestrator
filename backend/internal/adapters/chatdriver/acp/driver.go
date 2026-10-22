@@ -54,8 +54,10 @@ type LaunchConfig struct {
 
 // sandboxBlocksBypass reports whether this launch must refuse bypassPermissions.
 // Claude's OS sandbox only covers Bash; bypass auto-approves Edit/Write anywhere.
-func sandboxBlocksBypass(cfg LaunchConfig) bool {
-	return cfg.Kind == domain.KindWorker && cfg.WorkerSandbox.IsEnabled()
+// The worker sandbox is Claude-only, so other ACP harnesses are unaffected.
+func (d *Driver) sandboxBlocksBypass(cfg LaunchConfig) bool {
+	return d.cfg.Harness == domain.HarnessClaudeCode &&
+		cfg.Kind == domain.KindWorker && cfg.WorkerSandbox.IsEnabled()
 }
 
 // Config binds one harness to an ACP agent implementation.
@@ -335,7 +337,7 @@ func (d *Driver) openNewSession(
 		d.cfg.SessionMode, d.cfg.SessionOptions, d.cfg.PermissionPolicy,
 		settings.Approval, d.cfg.ValidateTurnSettings, resp.ConfigOptions,
 		conv.legacyWire.modelState(), resp.Modes,
-		sandboxBlocksBypass(launchCfg),
+		d.sandboxBlocksBypass(launchCfg),
 	)
 	if d.cfg.EncodeProviderConversationID != nil {
 		conv.setReportedProviderConversationID(d.cfg.EncodeProviderConversationID(string(resp.SessionId)))
@@ -468,7 +470,7 @@ func (d *Driver) Resume(ctx context.Context, cfg ports.ChatResumeConfig) (ports.
 			d.cfg.SessionMode, d.cfg.SessionOptions, d.cfg.PermissionPolicy,
 			cfg.Permissions, d.cfg.ValidateTurnSettings, setup.ConfigOptions,
 			setup.Models, setup.Modes,
-			sandboxBlocksBypass(launchCfg),
+			d.sandboxBlocksBypass(launchCfg),
 		)
 		conv.setReportedProviderConversationID(reportedProviderConversationID)
 		conv.initialPermission = ports.PermissionMode(live.InitialPermissions)
@@ -562,7 +564,7 @@ func (d *Driver) resumeSession(
 		d.cfg.SessionMode, d.cfg.SessionOptions, d.cfg.PermissionPolicy,
 		cfg.Permissions, d.cfg.ValidateTurnSettings, configOptions,
 		conv.legacyWire.modelState(), modes,
-		sandboxBlocksBypass(launchCfg),
+		d.sandboxBlocksBypass(launchCfg),
 	)
 	conv.setReportedProviderConversationID(reportedProviderConversationID)
 	// Standing context is process input, not transcript history, so a resumed

@@ -136,3 +136,34 @@ func TestSandboxedWorkerRefusesMidSessionBypassSwitch(t *testing.T) {
 		t.Fatalf("applyTurnSettings bypass error = %v, want ErrChatSandboxBypassDisabled", err)
 	}
 }
+
+func TestSandboxedNonClaudeWorkerKeepsBypassMode(t *testing.T) {
+	agent := &fakeAgent{}
+	driver := New(Config{
+		Harness:     domain.HarnessCodex,
+		Probe:       func(context.Context) error { return nil },
+		Launch:      func(context.Context, LaunchConfig) (Launch, error) { return Launch{Command: "fake"}, nil },
+		SessionMode: claudeLikeSessionMode,
+	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	driver.useTestProcess(fakeSpawn(agent))
+
+	enabled := true
+	opened, err := driver.Start(context.Background(), ports.ChatStartConfig{
+		WorkspacePath: t.TempDir(),
+		Permissions:   ports.PermissionModeBypassPermissions,
+		Kind:          domain.KindWorker,
+		WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &enabled},
+	})
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	defer opened.Close()
+	if agent.mode != "bypassPermissions" {
+		t.Fatalf("session/set_mode = %q, want bypassPermissions", agent.mode)
+	}
+	if err := opened.(*conversation).applyTurnSettings(context.Background(), ports.ChatTurnSettings{
+		Approval: ports.PermissionModeBypassPermissions,
+	}); errors.Is(err, ports.ErrChatSandboxBypassDisabled) {
+		t.Fatalf("non-Claude worker refused bypass: %v", err)
+	}
+}
