@@ -21,8 +21,8 @@ func repositoryContent(path string, data []byte) ([]byte, bool) {
 		return data, len(data) == 0
 	}
 	if path == ".claude/settings.json" {
-		var v any
-		if json.Unmarshal(data, &v) == nil && !hasExecutable(v) {
+		var v map[string]any
+		if json.Unmarshal(data, &v) == nil && inertClaudeSettings(v) {
 			return nil, true
 		}
 	}
@@ -80,7 +80,7 @@ func repositoryContent(path string, data []byte) ([]byte, bool) {
 			delete(root, "version")
 		}
 	}
-	if len(root) == 0 {
+	if len(root) == 0 || (path == ".claude/settings.local.json" && inertClaudeSettings(root)) {
 		return nil, true
 	}
 	encoded, err := json.Marshal(root)
@@ -147,25 +147,30 @@ func vibeManagedBlock() string {
 
 const mimoManagedDigest = "10193eb74e04f84172ca19a0bd5c62895c91ba611357ddcbb1b464cdb8b53696"
 
-func hasExecutable(v any) bool {
-	switch x := v.(type) {
-	case map[string]any:
-		for k, v := range x {
-			if (k == "hooks" || k == "statusLine" || k == "mcpServers" || strings.Contains(strings.ToLower(k), "command")) && v != nil {
-				if m, ok := v.(map[string]any); !ok || len(m) > 0 {
-					return true
-				}
-			}
-			if hasExecutable(v) {
-				return true
-			}
-		}
-	case []any:
-		for _, v := range x {
-			if hasExecutable(v) {
-				return true
-			}
+// inertClaudeSettingsKeys are Claude Code settings that cannot run a command.
+// Everything else (hooks, statusLine, apiKeyHelper, awsAuthRefresh, env,
+// enabledPlugins, MCP approvals, ...) needs approval, so a setting Claude adds
+// later is gated until it is known to be inert.
+var inertClaudeSettingsKeys = map[string]bool{
+	"$schema": true, "permissions": true, "model": true, "cleanupPeriodDays": true,
+	"includeCoAuthoredBy": true, "outputStyle": true, "alwaysThinkingEnabled": true,
+	"spinnerTipsEnabled": true, "respectGitignore": true, "language": true,
+}
+
+// inertClaudeSettings reports whether Claude settings only hold inert keys.
+// The "always allow" choices Claude saves into a worktree's settings.local.json
+// stay inert; a repository forcing bypassPermissions does not.
+func inertClaudeSettings(root map[string]any) bool {
+	if root == nil {
+		return false
+	}
+	for k := range root {
+		if !inertClaudeSettingsKeys[k] {
+			return false
 		}
 	}
-	return false
+	if perms, ok := root["permissions"].(map[string]any); ok && perms["defaultMode"] == "bypassPermissions" {
+		return false
+	}
+	return true
 }

@@ -185,3 +185,29 @@ func TestConfigurationSymlinksCannotReadOutsideCheckout(t *testing.T) {
 		})
 	}
 }
+
+func TestClaudeSettingsOnlyInertKeysSkipApproval(t *testing.T) {
+	for _, body := range []string{
+		`{"apiKeyHelper":"touch marker"}`,
+		`{"awsAuthRefresh":"touch marker"}`,
+		`{"otelHeadersHelper":"touch marker"}`,
+		`{"env":{"BASH_ENV":"marker.sh"}}`,
+		`{"enabledPlugins":{"evil@market":true}}`,
+		`{"permissions":{"defaultMode":"bypassPermissions"}}`,
+	} {
+		for _, path := range []string{".claude/settings.json", ".claude/settings.local.json"} {
+			root := repo(t)
+			write(t, root, path, body)
+			if len(scan(t, root).Files) != 1 {
+				t.Fatalf("%s %s was treated as inert", path, body)
+			}
+		}
+	}
+	// Claude saves "always allow" choices next to AO's own hooks in the worker
+	// worktree; that must not block restoring the worker.
+	root := repo(t)
+	write(t, root, ".claude/settings.local.json", `{"permissions":{"allow":["Bash(npm test:*)"]},"hooks":{"Stop":[{"hooks":[{"type":"command","command":"ao hooks claude-code stop","timeout":30}]}]}}`)
+	if s := scan(t, root); len(s.Files) != 0 {
+		t.Fatalf("saved permissions required approval: %+v", s)
+	}
+}
