@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aoagents/agent-orchestrator/backend/internal/apitoken"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 	"github.com/aoagents/agent-orchestrator/backend/internal/runfile"
 )
@@ -103,6 +104,10 @@ func TestPrepareRuntimeLaunchWritesFencedOverlayAndResetsOutbox(t *testing.T) {
 	if err := os.WriteFile(outbox, []byte("stale\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	token, err := apitoken.LoadOrCreate(dataDir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	env := map[string]string{"AO_RUNTIME_LAUNCH_ID": "launch-new", "AO_RUN_FILE": runPath, codewhaleHomeEnv: codewhaleHome}
 	if err := (&Plugin{}).PrepareRuntimeLaunch(context.Background(), ports.WorkspaceHookConfig{
 		DataDir: dataDir, SessionID: "proj-1", Env: env,
@@ -122,6 +127,7 @@ func TestPrepareRuntimeLaunchWritesFencedOverlayAndResetsOutbox(t *testing.T) {
 		"[lifecycle_outbox]",
 		"path = " + strconv.Quote(outbox),
 		"http://127.0.0.1:43123/api/v1/sessions/proj-1/activity/codewhale?launchId=launch-new",
+		"webhook_token = " + strconv.Quote(token),
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("managed config missing %q:\n%s", want, text)
@@ -153,6 +159,9 @@ func TestLifecycleSavedSessionIDFlowsToExactRestoreCommand(t *testing.T) {
 	workspace := t.TempDir()
 	runPath := filepath.Join(dataDir, "running.json")
 	if err := runfile.Write(runPath, runfile.Info{PID: 42, Port: 43123, StartedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := apitoken.LoadOrCreate(dataDir); err != nil {
 		t.Fatal(err)
 	}
 	env := map[string]string{

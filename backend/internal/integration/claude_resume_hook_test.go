@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aoagents/agent-orchestrator/backend/internal/apitoken"
 	"github.com/aoagents/agent-orchestrator/backend/internal/cli"
 	"github.com/aoagents/agent-orchestrator/backend/internal/config"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
@@ -72,7 +73,11 @@ func TestClaudeResumeHookConfirmsNativeIdentityForCurrentLaunch(t *testing.T) {
 		t.Fatalf("write daemon run file: %v", err)
 	}
 	t.Setenv("AO_RUN_FILE", runPath)
-	t.Setenv("AO_DATA_DIR", t.TempDir())
+	dataDir := t.TempDir()
+	if _, err := apitoken.LoadOrCreate(dataDir); err != nil {
+		t.Fatalf("create daemon API token: %v", err)
+	}
+	t.Setenv("AO_DATA_DIR", dataDir)
 	t.Setenv("AO_SESSION_ID", string(session.ID))
 	t.Setenv("AO_RUNTIME_LAUNCH_ID", "launch-resumed")
 

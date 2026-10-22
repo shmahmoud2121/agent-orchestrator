@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/aoagents/agent-orchestrator/backend/internal/apitoken"
 	"github.com/aoagents/agent-orchestrator/backend/internal/config"
 	"github.com/aoagents/agent-orchestrator/backend/internal/daemonmeta"
 	"github.com/aoagents/agent-orchestrator/backend/internal/runfile"
@@ -117,7 +118,6 @@ func (c *commandContext) inspectDaemon(ctx context.Context) (daemonStatus, error
 		return st, nil
 	}
 	st.owned = true
-	st.ExecutablePath = health.ExecutablePath
 	st.Health = health.Status
 	if health.Status != "ok" {
 		st.State = stateUnhealthy
@@ -136,6 +136,8 @@ func (c *commandContext) inspectDaemon(ctx context.Context) (daemonStatus, error
 		st.Error = err.Error()
 		return st, nil
 	}
+	// /healthz is unauthenticated and minimal; the executable comes from /readyz.
+	st.ExecutablePath = ready.ExecutablePath
 	st.Ready = ready.Status
 	if ready.Status == string(stateReady) {
 		st.State = stateReady
@@ -152,6 +154,17 @@ func (c *commandContext) readProbe(ctx context.Context, port int, path string) (
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, fmt.Sprintf("http://%s:%d/%s", config.LoopbackHost, port, path), http.NoBody)
 	if err != nil {
 		return probeResult{}, err
+	}
+	if path != "healthz" {
+		cfg, err := config.Load()
+		if err != nil {
+			return probeResult{}, err
+		}
+		token, err := apitoken.Load(apitoken.Path(cfg.DataDir))
+		if err != nil {
+			return probeResult{}, fmt.Errorf("load daemon API token: %w", err)
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	resp, err := c.deps.HTTPClient.Do(req)
 	if err != nil {

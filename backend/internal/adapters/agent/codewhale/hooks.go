@@ -16,6 +16,7 @@ import (
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/hookutil"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/chatdriver/processenv"
+	"github.com/aoagents/agent-orchestrator/backend/internal/apitoken"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 	aoprocess "github.com/aoagents/agent-orchestrator/backend/internal/process"
 	"github.com/aoagents/agent-orchestrator/backend/internal/runfile"
@@ -122,6 +123,12 @@ func (p *Plugin) PrepareRuntimeLaunch(ctx context.Context, cfg ports.WorkspaceHo
 	if dataDir == "" || sessionID == "" || launchID == "" || runFilePath == "" {
 		return errors.New("codewhale.PrepareRuntimeLaunch: data dir, session id, launch id, and run file are required")
 	}
+	// The token is read from the protected data dir, never passed through the
+	// launch environment: tmux exports env on the shell command line.
+	apiToken, err := apitoken.Load(apitoken.Path(dataDir))
+	if err != nil {
+		return fmt.Errorf("codewhale.PrepareRuntimeLaunch: load AO API token: %w", err)
+	}
 	if filepath.Base(sessionID) != sessionID || sessionID == "." || sessionID == ".." {
 		return fmt.Errorf("codewhale.PrepareRuntimeLaunch: unsafe session id %q", sessionID)
 	}
@@ -173,7 +180,8 @@ func (p *Plugin) PrepareRuntimeLaunch(ctx context.Context, cfg ports.WorkspaceHo
 	config := "# managed by agent-orchestrator; Codewhale user config and hooks remain authoritative\n" +
 		"[lifecycle_outbox]\n" +
 		"path = " + strconv.Quote(outbox) + "\n" +
-		"webhook_url = " + strconv.Quote(webhook.String()) + "\n"
+		"webhook_url = " + strconv.Quote(webhook.String()) + "\n" +
+		"webhook_token = " + strconv.Quote(apiToken) + "\n"
 	configPath := filepath.Join(dir, "managed-config.toml")
 	if err := hookutil.AtomicWriteFile(configPath, []byte(config), 0o600); err != nil {
 		return fmt.Errorf("codewhale.PrepareRuntimeLaunch: write managed config: %w", err)

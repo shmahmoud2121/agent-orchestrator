@@ -27,6 +27,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/aoagents/agent-orchestrator/backend/internal/apitoken"
 )
 
 // aoBin is the path to the binary built once for the whole suite.
@@ -277,12 +279,17 @@ func TestE2E_ShutdownGuard(t *testing.T) {
 	e := newEnv(t)
 	e.startDaemon(t)
 
-	// A cross-site Origin header must be rejected without stopping the daemon.
-	if code := postShutdown(t, e.port, func(r *http.Request) { r.Header.Set("Origin", "https://evil.example") }); code != http.StatusForbidden {
+	// A caller without the per-install token is rejected outright.
+	if code := postShutdown(t, e, func(r *http.Request) { r.Header.Del("Authorization") }); code != http.StatusUnauthorized {
+		t.Fatalf("tokenless /shutdown = %d, want 401", code)
+	}
+	// Even with the token, a cross-site Origin header must be rejected without
+	// stopping the daemon.
+	if code := postShutdown(t, e, func(r *http.Request) { r.Header.Set("Origin", "https://evil.example") }); code != http.StatusForbidden {
 		t.Fatalf("cross-origin /shutdown = %d, want 403", code)
 	}
 	// A non-loopback Host (DNS-rebinding) must be rejected too.
-	if code := postShutdown(t, e.port, func(r *http.Request) { r.Host = "evil.example" }); code != http.StatusForbidden {
+	if code := postShutdown(t, e, func(r *http.Request) { r.Host = "evil.example" }); code != http.StatusForbidden {
 		t.Fatalf("rebinding-host /shutdown = %d, want 403", code)
 	}
 	// The daemon survived both.
@@ -358,12 +365,13 @@ func httpGet(t *testing.T, port int, path string) string {
 }
 
 // postShutdown issues POST /shutdown with mutator applied, returns the status code.
-func postShutdown(t *testing.T, port int, mutate func(*http.Request)) int {
+func postShutdown(t *testing.T, e env, mutate func(*http.Request)) int {
 	t.Helper()
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://127.0.0.1:%d/shutdown", port), nil)
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://127.0.0.1:%d/shutdown", e.port), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	req.Header.Set("Authorization", "Bearer "+daemonToken(t, e))
 	mutate(req)
 	resp, err := httpClient().Do(req)
 	if err != nil {
@@ -371,4 +379,14 @@ func postShutdown(t *testing.T, port int, mutate func(*http.Request)) int {
 	}
 	defer resp.Body.Close()
 	return resp.StatusCode
+}
+
+// daemonToken reads the per-install API token the daemon created in its data dir.
+func daemonToken(t *testing.T, e env) string {
+	t.Helper()
+	token, err := apitoken.Load(apitoken.Path(e.dataDir))
+	if err != nil {
+		t.Fatalf("load daemon API token: %v", err)
+	}
+	return token
 }

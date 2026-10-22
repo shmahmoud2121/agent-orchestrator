@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aoagents/agent-orchestrator/backend/internal/apitoken"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 )
@@ -112,6 +113,24 @@ func TestRuntimeEnvClearsDaemonBrowserRuntimeSecrets(t *testing.T) {
 	}
 }
 
+func TestRuntimeEnvNeverCarriesDaemonAPIToken(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), "data")
+	if _, err := apitoken.LoadOrCreate(dataDir); err != nil {
+		t.Fatal(err)
+	}
+	manager := &Manager{
+		dataDir:    dataDir,
+		executable: func() (string, error) { return filepath.Join("/opt", "aod", "ao"), nil },
+		logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+	env := manager.runtimeEnv("mer-1", "mer", "", map[string]string{EnvAPIToken: "project-spoof"})
+	// The tmux runtime exports env on the shell command line, visible to other
+	// OS users; clients read the token file from AO_DATA_DIR instead.
+	if _, ok := env[EnvAPIToken]; ok {
+		t.Fatalf("%s leaked into the session launch environment", EnvAPIToken)
+	}
+}
+
 func TestRuntimeEnvWindowsRemovesCaseVariantsOfProtectedVariables(t *testing.T) {
 	daemonRunFile := filepath.Join(t.TempDir(), "daemon-running.json")
 	previous := envKeysCaseInsensitive
@@ -131,6 +150,7 @@ func TestRuntimeEnvWindowsRemovesCaseVariantsOfProtectedVariables(t *testing.T) 
 		"aO_Issue_ID":                    "hacked",
 		"Ao_Data_Dir":                    "hacked",
 		"ao_run_file":                    "hacked",
+		"ao_api_token":                   "hacked",
 		"ao_browser_runtime_token":       "runtime-secret",
 		"ao_browser_runtime_token_stdin": "1",
 		"buildMode":                      "production",
@@ -143,6 +163,7 @@ func TestRuntimeEnvWindowsRemovesCaseVariantsOfProtectedVariables(t *testing.T) 
 		"aO_Issue_ID",
 		"Ao_Data_Dir",
 		"ao_run_file",
+		"ao_api_token",
 		"ao_browser_runtime_token",
 		"ao_browser_runtime_token_stdin",
 	} {

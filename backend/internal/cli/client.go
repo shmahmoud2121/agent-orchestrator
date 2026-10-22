@@ -12,6 +12,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/aoagents/agent-orchestrator/backend/internal/apitoken"
 	"github.com/aoagents/agent-orchestrator/backend/internal/config"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/runfile"
@@ -200,12 +201,19 @@ func (c *commandContext) doJSONPathWithHeadersAndTimeout(
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
+	token, err := apitoken.Load(apitoken.Path(cfg.DataDir))
+	if err != nil {
+		return fmt.Errorf("load daemon API token: %w", err)
+	}
 	for name, value := range headers {
 		req.Header.Set(name, value)
 	}
 	if sessionID := os.Getenv("AO_SESSION_ID"); sessionID != "" {
 		req.Header.Set("X-AO-Session-ID", sessionID)
 	}
+	// Authentication is not caller-overridable: every daemon request uses the
+	// per-install token read from the protected data directory.
+	req.Header.Set("Authorization", "Bearer "+token)
 	if sideID := os.Getenv("AO_SIDE_CONVERSATION_ID"); sideID != "" {
 		req.Header.Set("X-AO-Side-Conversation", sideID)
 	}

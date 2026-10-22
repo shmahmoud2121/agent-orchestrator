@@ -165,17 +165,23 @@ func previewOriginMiddleware(sessions *controllers.SessionsController) func(http
 // supervisor polls before letting the renderer connect.
 func mountHealth(r chi.Router, cfg config.Config) {
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
-		envelope.WriteJSON(w, http.StatusOK, daemonProbePayload("ok", cfg))
+		envelope.WriteJSON(w, http.StatusOK, daemonHealthPayload())
 	})
 	r.Get("/readyz", func(w http.ResponseWriter, _ *http.Request) {
 		envelope.WriteJSON(w, http.StatusOK, daemonProbePayload("ready", cfg))
 	})
 }
 
+// daemonHealthPayload is intentionally minimal because /healthz is the sole
+// unauthenticated daemon-origin route. The PID is retained for the existing
+// daemon ownership check; filesystem and launch identity stay on /readyz.
+func daemonHealthPayload() map[string]any {
+	return map[string]any{"status": "ok", "service": daemonmeta.ServiceName, "pid": os.Getpid()}
+}
+
 // mountControl registers the loopback daemon-control endpoints. /shutdown is
-// unauthenticated and state-changing, so it is gated by localControlRequest to
-// keep a browser the user happens to have open (CSRF / DNS-rebinding) or a
-// remote client from being able to kill the daemon.
+// authenticated and state-changing; localControlRequest remains a second
+// boundary against CSRF, DNS rebinding, and remote clients.
 func mountControl(r chi.Router, deps ControlDeps) {
 	if deps.RequestShutdown == nil {
 		return
