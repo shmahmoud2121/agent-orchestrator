@@ -838,7 +838,13 @@ func TestTUIIdleAfterInputRequiresANewerIdleFact(t *testing.T) {
 func newTransitionManager(t *testing.T, mode domain.SessionMode) (*Manager, *transitionStore, *transitionRuntime, *transitionChat, *[]string) {
 	t.Helper()
 	store := newTransitionStore()
-	store.projects["proj"] = domain.ProjectRecord{ID: "proj", Path: "/repo"}
+	// Interface-transition fixtures are not about the worker OS sandbox. Keep
+	// it off so Claude Chat↔TUI round-trips remain valid (chat ACP is not
+	// sandboxed yet and is refused when the project sandbox is on).
+	sandboxOff := false
+	store.projects["proj"] = domain.ProjectRecord{ID: "proj", Path: "/repo", Config: domain.ProjectConfig{
+		WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &sandboxOff},
+	}}
 	metadata := domain.SessionMetadata{
 		WorkspacePath: "/ws/session-1", Branch: "ao/session-1", AgentSessionID: "native-1",
 	}

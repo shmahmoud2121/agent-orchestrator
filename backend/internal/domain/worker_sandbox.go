@@ -17,8 +17,10 @@ type WorkerSandboxConfig struct {
 	// Enabled turns the worker OS sandbox on. nil means true (the default).
 	Enabled *bool `json:"enabled,omitempty"`
 	// AllowedDomains is the sandbox network allowlist. Empty means no outbound
-	// network except the AO daemon loopback entry AO injects at launch.
-	// Entries are hostnames or "*.example.com" only — no schemes, paths, or ports.
+	// network through the sandbox proxy. The ao CLI is excluded from the
+	// sandbox (and allowlisted under permissions) so it can still reach the
+	// loopback daemon. Entries are hostnames or "*.example.com" only — no
+	// schemes, paths, or ports.
 	AllowedDomains []string `json:"allowedDomains,omitempty"`
 }
 
@@ -85,8 +87,8 @@ func validateHostnameLabels(host string) error {
 	if host == "" {
 		return fmt.Errorf("empty hostname")
 	}
-	// Reject IP literals: the project setting is a domain allowlist. Loopback
-	// daemon access is injected by AO at launch, not configured here.
+	// Reject IP literals: the project setting is a domain allowlist. Daemon
+	// access uses excludedCommands for ao, not allowlisted IP:port entries.
 	if ip := net.ParseIP(host); ip != nil {
 		return fmt.Errorf("IP addresses are not allowed; use a hostname")
 	}

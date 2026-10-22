@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 )
@@ -878,6 +879,9 @@ func (m *Manager) preflightInterfaceTarget(
 		if err != nil {
 			return err
 		}
+		if err := claudecode.RefuseChatWorkerSandbox(rec.Kind, rec.Harness, project.Config.WorkerSandbox); err != nil {
+			return err
+		}
 		permissions := effectiveAgentConfig(rec.Harness, rec.Kind, project.Config).Permissions
 		return m.chat.PreflightChat(ctx, rec.Harness, permissions)
 	}
@@ -932,11 +936,11 @@ func (m *Manager) preflightTerminalLaunch(
 		return err
 	}
 	config := restoredAgentConfig(rec, project.Config)
-	workerSandbox, daemonPort := workerSandboxLaunchFields(rec.Kind, project.Config, m.daemonPort())
+	workerSandbox := workerSandboxLaunchFields(rec.Kind, project.Config)
 	var cmd []string
 	if nativeConversationID == "" {
 		cmd, _, _, err = freshLaunchArgv(ctx, agent, rec.ID, rec.Metadata.WorkspacePath,
-			rec.Metadata, systemPrompt, "", config, rec.Kind, m.dataDir, true, workerSandbox, daemonPort)
+			rec.Metadata, systemPrompt, "", config, rec.Kind, m.dataDir, true, workerSandbox)
 	} else {
 		var resumable bool
 		cmd, resumable, err = agent.GetRestoreCommand(ctx, ports.RestoreConfig{
@@ -946,7 +950,7 @@ func (m *Manager) preflightTerminalLaunch(
 			},
 			Kind: rec.Kind, DataDir: m.dataDir, SystemPrompt: systemPrompt,
 			Config: config, Permissions: config.Permissions,
-			WorkerSandbox: workerSandbox, DaemonPort: daemonPort,
+			WorkerSandbox: workerSandbox,
 		})
 		if err == nil && !resumable {
 			return ErrNativeConversationMissing
@@ -1854,6 +1858,8 @@ func interfaceTransitionErrorCode(err error) string {
 	switch {
 	case errors.Is(err, ports.ErrChatUnsupported), errors.Is(err, ErrInterfaceHandoffUnsupported):
 		return "INTERFACE_HANDOFF_UNSUPPORTED"
+	case errors.Is(err, claudecode.ErrChatWorkerSandboxUnsupported):
+		return "CHAT_WORKER_SANDBOX_UNSUPPORTED"
 	case errors.Is(err, ports.ErrChatDriverUnavailable), errors.Is(err, ports.ErrAgentBinaryNotFound):
 		return "TARGET_UNAVAILABLE"
 	case errors.Is(err, ports.ErrChatDriverIncompatible):

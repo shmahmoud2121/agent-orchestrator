@@ -772,10 +772,6 @@ type LaunchConfig struct {
 	// workers honor it; other adapters ignore it. A zero value means enabled
 	// with no extra domains (see domain.WorkerSandboxConfig.IsEnabled).
 	WorkerSandbox domain.WorkerSandboxConfig
-	// DaemonPort is the loopback port the AO daemon currently listens on.
-	// Claude Code workers allow only this host:port through the sandbox proxy
-	// so `ao` can reach the authenticated local API. Zero omits the entry.
-	DaemonPort int
 }
 
 // WorkspaceHookConfig carries inputs needed to install workspace-local agent hooks.
@@ -809,10 +805,9 @@ type RestoreConfig struct {
 	// system-prompt flag should re-apply this in their resume command.
 	SystemPrompt     string
 	SystemPromptFile string
-	// WorkerSandbox and DaemonPort mirror LaunchConfig so a resumed worker
-	// keeps the same OS sandbox (a restore without them would escape it).
+	// WorkerSandbox mirrors LaunchConfig so a resumed worker keeps the same
+	// OS sandbox (a restore without it would escape the sandbox).
 	WorkerSandbox domain.WorkerSandboxConfig
-	DaemonPort    int
 }
 
 // SessionRef identifies an AO session whose agent-owned metadata may be read.

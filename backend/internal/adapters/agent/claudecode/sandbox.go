@@ -1,17 +1,18 @@
 package claudecode
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
-	"path/filepath"
+	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
-	"github.com/aoagents/agent-orchestrator/backend/internal/config"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 	"github.com/aoagents/agent-orchestrator/backend/pkg/agentruntime"
@@ -22,10 +23,28 @@ import (
 // back to an unsandboxed worker.
 var ErrSandboxUnavailable = errors.New("claude-code worker sandbox unavailable")
 
+// ErrSandboxClaudeTooOld is returned when the installed Claude Code binary is
+// older than the release that confines worktree sandbox writes to the shared
+// .git directory (hooks/ and config still denied). Widening allowWrite ourselves
+// would re-open those paths.
+var ErrSandboxClaudeTooOld = errors.New("claude-code worker sandbox requires Claude Code 2.1.149 or newer")
+
+// ErrChatWorkerSandboxUnsupported is returned when a Claude chat-mode worker
+// would start while the project worker sandbox is enabled. Chat launches through
+// claude-agent-acp and does not receive the CLI --settings sandbox block yet.
+var ErrChatWorkerSandboxUnsupported = errors.New(
+	"chat mode is not sandboxed yet; use the terminal view or turn off the worker sandbox for this project",
+)
+
 // sandboxUnavailableMessage is the actionable error shown in the UI and logs.
 const sandboxUnavailableMessage = "Claude Code worker sandbox cannot be enforced on this system " +
 	"(needs macOS Seatbelt, or bubblewrap and socat on Linux/WSL2). " +
 	"Install bubblewrap and socat, or turn off the worker sandbox for this project."
+
+// minWorktreeSandboxVersion is Claude Code v2.1.149, which fixed linked-worktree
+// sandboxing so writes go only to the shared main-repo .git (with hooks/ and
+// config denied). See https://github.com/anthropics/claude-code/releases/tag/v2.1.149
+var minWorktreeSandboxVersion = [3]int{2, 1, 149}
 
 // sandboxAvailability caches the one-shot platform probe used at daemon start
 // and again at each worker launch.
@@ -38,24 +57,65 @@ var (
 // lookPath is swapped in tests.
 var lookPath = exec.LookPath
 
-// gitRevParse runs `git rev-parse` in a worktree; swapped in tests.
-var gitRevParse = func(worktree string, args ...string) (string, error) {
-	cmd := exec.Command("git", append([]string{"-C", worktree}, args...)...) //nolint:gosec // fixed git argv
-	out, err := cmd.Output()
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(out)), nil
+// sandboxAvailabilityProbe is the platform check behind CheckSandboxAvailability.
+// Tests outside this package replace it via OverrideSandboxAvailabilityForTest.
+var sandboxAvailabilityProbe = defaultSandboxAvailabilityProbe
+
+func defaultSandboxAvailabilityProbe() error {
+	return probeSandboxAvailability(runtime.GOOS)
 }
+
+// claudeVersionCommand runs `claude --version`; swapped in tests.
+var claudeVersionCommand = func(ctx context.Context, binary string) ([]byte, error) {
+	return exec.CommandContext(ctx, binary, "--version").Output() //nolint:gosec // binary is adapter-resolved
+}
+
+var claudeVersionPattern = regexp.MustCompile(`(\d+)\.(\d+)\.(\d+)`)
+
+const claudeVersionProbeTimeout = 15 * time.Second
 
 // CheckSandboxAvailability reports whether Claude Code's OS sandbox can be
 // enforced on this host. The result is cached. Native Windows is unsupported;
 // macOS uses Seatbelt; Linux/WSL2 need bubblewrap and socat on PATH.
 func CheckSandboxAvailability() error {
 	sandboxAvailOnce.Do(func() {
-		sandboxAvailErr = probeSandboxAvailability(runtime.GOOS)
+		sandboxAvailErr = sandboxAvailabilityProbe()
 	})
 	return sandboxAvailErr
+}
+
+// OverrideSandboxAvailabilityForTest replaces the availability probe and clears
+// the cache. Restore undoes both. Intended for session_manager and other
+// packages whose tests are not about the sandbox but still build Claude worker
+// launch argv.
+func OverrideSandboxAvailabilityForTest(probe func() error) (restore func()) {
+	prevProbe := sandboxAvailabilityProbe
+	resetSandboxAvailabilityForTest()
+	if probe == nil {
+		sandboxAvailabilityProbe = defaultSandboxAvailabilityProbe
+	} else {
+		sandboxAvailabilityProbe = probe
+	}
+	return func() {
+		sandboxAvailabilityProbe = prevProbe
+		resetSandboxAvailabilityForTest()
+	}
+}
+
+// ForceSandboxReadyForTest makes the platform probe and the Claude Code
+// version gate succeed. session_manager TestMain uses this so fixtures that
+// build worker argv with a fake `claude` binary are not blocked by bubblewrap
+// or --version.
+func ForceSandboxReadyForTest() (restore func()) {
+	restoreAvail := OverrideSandboxAvailabilityForTest(func() error { return nil })
+	prevVersion := claudeVersionCommand
+	claudeVersionCommand = func(context.Context, string) ([]byte, error) {
+		return []byte("2.1.233 (Claude Code)\n"), nil
+	}
+	return func() {
+		claudeVersionCommand = prevVersion
+		restoreAvail()
+	}
 }
 
 // LogSandboxAvailabilityOnce logs the platform probe result a single time
@@ -103,6 +163,15 @@ func resetSandboxAvailabilityForTest() {
 	sandboxAvailLogged = sync.Once{}
 }
 
+// RefuseChatWorkerSandbox reports whether a Claude chat-mode worker must be
+// refused because the project sandbox is on and ACP cannot enforce it yet.
+func RefuseChatWorkerSandbox(kind domain.SessionKind, harness domain.AgentHarness, sandbox domain.WorkerSandboxConfig) error {
+	if kind != domain.KindWorker || harness != domain.HarnessClaudeCode || !sandbox.IsEnabled() {
+		return nil
+	}
+	return ErrChatWorkerSandboxUnsupported
+}
+
 // workerLaunchPolicy remaps bypass-permissions to accept-edits when the
 // worker sandbox is on. bypassPermissions skips deny rules and, unless
 // strictAllowlist is set, admits hosts outside the sandbox network allowlist;
@@ -120,14 +189,12 @@ func workerLaunchPolicy(kind domain.SessionKind, sandbox domain.WorkerSandboxCon
 }
 
 // workerProviderArgs builds the single --settings JSON (sandbox + permissions)
-// and any --add-dir flags a sandboxed worker needs. Non-workers keep the
-// existing auto-default nudge guard only.
+// a sandboxed worker needs. Non-workers keep the existing auto-default nudge
+// guard only.
 func workerProviderArgs(
 	kind domain.SessionKind,
 	policy agentruntime.PermissionPolicy,
 	sandbox domain.WorkerSandboxConfig,
-	workspacePath string,
-	daemonPort int,
 ) ([]string, error) {
 	if kind != domain.KindWorker || !sandbox.IsEnabled() {
 		return autoDefaultNudgeGuardArgs(policy), nil
@@ -137,7 +204,7 @@ func workerProviderArgs(
 	}
 
 	effective := workerLaunchPolicy(kind, sandbox, policy)
-	settings, addDirs, err := buildWorkerSandboxSettings(effective, sandbox, workspacePath, daemonPort)
+	settings, err := buildWorkerSandboxSettings(effective, sandbox)
 	if err != nil {
 		return nil, err
 	}
@@ -145,41 +212,29 @@ func workerProviderArgs(
 	if err != nil {
 		return nil, fmt.Errorf("claude-code: encode worker sandbox settings: %w", err)
 	}
-	args := []string{"--settings", string(raw)}
-	for _, dir := range addDirs {
-		args = append(args, "--add-dir", dir)
-	}
-	return args, nil
+	return []string{"--settings", string(raw)}, nil
 }
 
 func buildWorkerSandboxSettings(
 	policy agentruntime.PermissionPolicy,
 	sandbox domain.WorkerSandboxConfig,
-	workspacePath string,
-	daemonPort int,
-) (map[string]any, []string, error) {
+) (map[string]any, error) {
 	domains := append([]string(nil), sandbox.AllowedDomains...)
-	if daemonPort > 0 {
-		host := config.LoopbackHost
-		domains = appendUniqueDomain(domains, fmt.Sprintf("%s:%d", host, daemonPort))
-		domains = appendUniqueDomain(domains, fmt.Sprintf("localhost:%d", daemonPort))
-	}
-
-	gitDir, commonDir := resolveGitWritePaths(workspacePath)
-	allowWrite := uniqueExistingDirs(gitDir, commonDir)
 
 	sandboxBlock := map[string]any{
-		"enabled":                   true,
-		"failIfUnavailable":         true,
-		"allowUnsandboxedCommands":  false,
-		"autoAllowBashIfSandboxed":  true,
+		"enabled":                  true,
+		"failIfUnavailable":        true,
+		"allowUnsandboxedCommands": false,
+		"autoAllowBashIfSandboxed": true,
 		// ao talks to the loopback daemon. On Linux, bubblewrap gives the
 		// sandboxed command a private localhost that cannot reach the host
 		// daemon; Claude Code also sets NO_PROXY for localhost so the proxy
 		// allowlist never sees those connections
 		// (https://code.claude.com/docs/en/sandboxing#a-command-fails-to-reach-a-server-on-localhost).
 		// Exclude only the ao CLI so workers keep authenticated daemon access
-		// without unsandboxing arbitrary shell.
+		// without unsandboxing arbitrary shell. Matching permissions.allow
+		// rules below auto-approve those excluded commands under acceptEdits
+		// (https://code.claude.com/docs/en/permissions).
 		"excludedCommands": []string{"ao", "ao *"},
 		"network": map[string]any{
 			"allowedDomains": domains,
@@ -188,139 +243,85 @@ func buildWorkerSandboxSettings(
 			"strictAllowlist": true,
 		},
 	}
-	if len(allowWrite) > 0 {
-		sandboxBlock["filesystem"] = map[string]any{
-			"allowWrite": allowWrite,
-		}
-	}
 
-	permissions := map[string]any{}
+	// acceptEdits auto-approves Edit/Write only inside the working directory
+	// and additionalDirectories; edits elsewhere prompt the user, so they do
+	// not escape. Do not pair Edit(//**) with Edit(!…) carve-outs: Claude Code
+	// reads a ! pattern relative to the current directory even when /, ~/, or
+	// // follows the !, so the negation cannot reach an absolute-anchored deny
+	// (https://code.claude.com/docs/en/permissions).
+	permissions := map[string]any{
+		"allow": []string{"Bash(ao)", "Bash(ao *)"},
+	}
 	if flag := agentruntime.ClaudePermissionArgs(policy); len(flag) == 2 {
 		permissions["defaultMode"] = flag[1]
 	}
-	if deny := workerEditDenyRules(workspacePath); len(deny) > 0 {
-		permissions["deny"] = deny
-	}
 
-	settings := map[string]any{
-		"sandbox": sandboxBlock,
-	}
-	if len(permissions) > 0 {
-		settings["permissions"] = permissions
-	}
-	return settings, allowWrite, nil
+	return map[string]any{
+		"sandbox":     sandboxBlock,
+		"permissions": permissions,
+	}, nil
 }
 
-func appendUniqueDomain(domains []string, next string) []string {
-	for _, d := range domains {
-		if d == next {
-			return domains
-		}
+// requireMinClaudeSandboxVersion refuses sandboxed workers on Claude Code
+// older than minWorktreeSandboxVersion. That release added built-in worktree
+// .git write support with hooks/config still denied; AO must not widen those
+// paths itself.
+func requireMinClaudeSandboxVersion(ctx context.Context, binary string) error {
+	binary = strings.TrimSpace(binary)
+	if binary == "" {
+		return fmt.Errorf("%w: empty claude binary", ErrSandboxClaudeTooOld)
 	}
-	return append(domains, next)
-}
-
-func resolveGitWritePaths(workspacePath string) (gitDir, commonDir string) {
-	workspacePath = strings.TrimSpace(workspacePath)
-	if workspacePath == "" {
-		return "", ""
-	}
-	gitDir, err := gitRevParse(workspacePath, "rev-parse", "--git-dir")
+	ctx, cancel := context.WithTimeout(ctx, claudeVersionProbeTimeout)
+	defer cancel()
+	out, err := claudeVersionCommand(ctx, binary)
 	if err != nil {
-		return "", ""
+		return fmt.Errorf("%w: probe claude --version: %v", ErrSandboxClaudeTooOld, err)
 	}
-	commonDir, err = gitRevParse(workspacePath, "rev-parse", "--git-common-dir")
-	if err != nil {
-		commonDir = ""
+	if !claudeVersionAtLeast(string(out), minWorktreeSandboxVersion) {
+		return fmt.Errorf("%w (got %q)", ErrSandboxClaudeTooOld, strings.TrimSpace(string(out)))
 	}
-	gitDir = absFromWorktree(workspacePath, gitDir)
-	commonDir = absFromWorktree(workspacePath, commonDir)
-	return gitDir, commonDir
+	return nil
 }
 
-func absFromWorktree(worktree, p string) string {
-	p = strings.TrimSpace(p)
-	if p == "" {
-		return ""
+func claudeVersionAtLeast(output string, min [3]int) bool {
+	match := claudeVersionPattern.FindStringSubmatch(output)
+	if match == nil {
+		return false
 	}
-	if filepath.IsAbs(p) {
-		return filepath.Clean(p)
-	}
-	return filepath.Clean(filepath.Join(worktree, p))
-}
-
-func uniqueExistingDirs(paths ...string) []string {
-	seen := map[string]bool{}
-	var out []string
-	for _, p := range paths {
-		p = filepath.Clean(strings.TrimSpace(p))
-		if p == "" || p == "." || seen[p] {
-			continue
+	for i, want := range min {
+		got, err := strconv.Atoi(match[i+1])
+		if err != nil {
+			return false
 		}
-		info, err := os.Stat(p)
-		if err != nil || !info.IsDir() {
-			// git-dir for a linked worktree is a directory under
-			// .git/worktrees/<name>; if it is missing, skip rather than
-			// widening the allowlist.
-			continue
+		if got != want {
+			return got > want
 		}
-		seen[p] = true
-		out = append(out, p)
 	}
-	return out
-}
-
-// workerEditDenyRules block Claude's Edit/Write tools outside the worktree.
-// Write(path) rules never match; Edit(path) covers Write
-// (https://code.claude.com/docs/en/permissions). Deny beats allow, so a broad
-// absolute deny is paired with a gitignore-style negation for the worktree.
-func workerEditDenyRules(workspacePath string) []string {
-	workspacePath = strings.TrimSpace(workspacePath)
-	if workspacePath == "" || !filepath.IsAbs(workspacePath) {
-		return nil
-	}
-	pattern := absoluteEditPattern(workspacePath)
-	if pattern == "" {
-		return nil
-	}
-	return []string{
-		"Edit(//**)",
-		"Edit(!" + pattern + "/**)",
-	}
-}
-
-func absoluteEditPattern(abs string) string {
-	abs = filepath.Clean(abs)
-	if runtime.GOOS == "windows" {
-		slash := filepath.ToSlash(abs)
-		if len(slash) >= 2 && slash[1] == ':' {
-			drive := strings.ToLower(string(slash[0]))
-			rest := slash[2:]
-			return "//" + drive + rest
-		}
-		if strings.HasPrefix(slash, "/") {
-			return "//" + strings.TrimPrefix(slash, "/")
-		}
-		return ""
-	}
-	slash := filepath.ToSlash(abs)
-	if !strings.HasPrefix(slash, "/") {
-		return ""
-	}
-	return "//" + strings.TrimPrefix(slash, "/")
+	return true
 }
 
 // applyWorkerSandboxToLaunch is shared by GetLaunchCommand and GetRestoreCommand.
 func applyWorkerSandboxToLaunch(
+	ctx context.Context,
 	kind domain.SessionKind,
 	permissions ports.PermissionMode,
 	sandbox domain.WorkerSandboxConfig,
-	workspacePath string,
-	daemonPort int,
+	binary string,
 ) (policy agentruntime.PermissionPolicy, providerArgs []string, err error) {
 	base := agentruntime.PermissionPolicy(permissions)
 	policy = workerLaunchPolicy(kind, sandbox, base)
-	providerArgs, err = workerProviderArgs(kind, base, sandbox, workspacePath, daemonPort)
+	if kind == domain.KindWorker && sandbox.IsEnabled() {
+		// Availability before the version probe so a missing bubblewrap/socat
+		// surfaces as ErrSandboxUnavailable rather than a failed --version exec.
+		if err := CheckSandboxAvailability(); err != nil {
+			return "", nil, err
+		}
+		if err := requireMinClaudeSandboxVersion(ctx, binary); err != nil {
+			return "", nil, err
+		}
+	}
+	providerArgs, err = workerProviderArgs(kind, base, sandbox)
 	if err != nil {
 		return "", nil, err
 	}

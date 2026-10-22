@@ -190,7 +190,7 @@ func (p *Plugin) GetLaunchCommand(ctx context.Context, cfg ports.LaunchConfig) (
 		return nil, err
 	}
 	policy, providerArgs, err := applyWorkerSandboxToLaunch(
-		cfg.Kind, permissions, cfg.WorkerSandbox, cfg.WorkspacePath, cfg.DaemonPort,
+		ctx, cfg.Kind, permissions, cfg.WorkerSandbox, binary,
 	)
 	if err != nil {
 		return nil, err
@@ -408,9 +408,8 @@ func (p *Plugin) GetRestoreCommand(ctx context.Context, cfg ports.RestoreConfig)
 	if err != nil {
 		return nil, false, err
 	}
-	workspace := cfg.Session.WorkspacePath
 	policy, providerArgs, err := applyWorkerSandboxToLaunch(
-		cfg.Kind, cfg.Permissions, cfg.WorkerSandbox, workspace, cfg.DaemonPort,
+		ctx, cfg.Kind, cfg.Permissions, cfg.WorkerSandbox, binary,
 	)
 	if err != nil {
 		return nil, false, err

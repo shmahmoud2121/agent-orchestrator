@@ -1402,12 +1402,12 @@ func (m *Manager) prepareTargetActivation(ctx context.Context, store ports.Agent
 	if err != nil {
 		return preparedTargetActivation{}, err
 	}
-	workerSandbox, daemonPort := workerSandboxLaunchFields(rec.Kind, project.Config, m.daemonPort())
+	workerSandbox := workerSandboxLaunchFields(rec.Kind, project.Config)
 	launch := ports.LaunchConfig{
 		DataDir: m.dataDir, SessionID: string(rec.ID), WorkspacePath: rec.Metadata.WorkspacePath,
 		Kind: rec.Kind, SystemPrompt: systemPrompt, SystemPromptFile: systemFile,
 		Config: config, Permissions: config.Permissions,
-		WorkerSandbox: workerSandbox, DaemonPort: daemonPort,
+		WorkerSandbox: workerSandbox,
 	}
 	promptDelivery, err := agent.GetPromptDeliveryStrategy(ctx, launch)
 	if err != nil {
@@ -1423,7 +1423,7 @@ func (m *Manager) prepareTargetActivation(ctx context.Context, store ports.Agent
 			Session: ports.SessionRef{ID: string(rec.ID), WorkspacePath: rec.Metadata.WorkspacePath, Metadata: map[string]string{ports.MetadataKeyAgentSessionID: candidate.NativeSessionID}},
 			Kind:    rec.Kind, DataDir: m.dataDir, SystemPrompt: systemPrompt, SystemPromptFile: systemFile,
 			Config: config, Permissions: config.Permissions,
-			WorkerSandbox: workerSandbox, DaemonPort: daemonPort,
+			WorkerSandbox: workerSandbox,
 		})
 		if restoreErr != nil {
 			return preparedTargetActivation{}, fmt.Errorf("restore command: %w", restoreErr)
@@ -1581,7 +1581,7 @@ func (m *Manager) prepareTargetLaunchPrompt(ctx context.Context, rec domain.Sess
 			Kind: rec.Kind, DataDir: m.dataDir, Prompt: commandLaunch.Prompt,
 			SystemPrompt: launch.SystemPrompt, SystemPromptFile: launch.SystemPromptFile,
 			Config: launch.Config, Permissions: launch.Config.Permissions,
-			WorkerSandbox: launch.WorkerSandbox, DaemonPort: launch.DaemonPort,
+			WorkerSandbox: launch.WorkerSandbox,
 		})
 		if buildErr != nil {
 			return fmt.Errorf("restore command: %w", buildErr)

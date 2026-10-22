@@ -8,12 +8,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
+	"github.com/aoagents/agent-orchestrator/backend/pkg/agentruntime"
 )
 
 func boolPtr(v bool) *bool { return &v }
@@ -53,7 +53,6 @@ func TestGetLaunchCommandWorkerSandboxOn(t *testing.T) {
 	cmd, err := p.GetLaunchCommand(context.Background(), ports.LaunchConfig{
 		Kind:          domain.KindWorker,
 		WorkspacePath: worktree,
-		DaemonPort:    4567,
 		Permissions:   ports.PermissionModeAcceptEdits,
 		Prompt:        "do it",
 		WorkerSandbox: domain.WorkerSandboxConfig{
@@ -70,10 +69,13 @@ func TestGetLaunchCommandWorkerSandboxOn(t *testing.T) {
 		sandbox["allowUnsandboxedCommands"] != false || sandbox["autoAllowBashIfSandboxed"] != true {
 		t.Fatalf("sandbox block = %#v", sandbox)
 	}
+	if _, ok := sandbox["filesystem"]; ok {
+		t.Fatalf("must not set filesystem.allowWrite; Claude Code handles worktree .git: %#v", sandbox)
+	}
 	network := sandbox["network"].(map[string]any)
 	domains := asStringSlice(t, network["allowedDomains"])
-	if !containsAll(domains, "registry.npmjs.org", "127.0.0.1:4567", "localhost:4567") {
-		t.Fatalf("allowedDomains = %#v", domains)
+	if !reflect.DeepEqual(domains, []string{"registry.npmjs.org"}) {
+		t.Fatalf("allowedDomains = %#v; must not inject localhost/daemon ports", domains)
 	}
 	if network["strictAllowlist"] != true {
 		t.Fatal("expected strictAllowlist")
@@ -82,9 +84,12 @@ func TestGetLaunchCommandWorkerSandboxOn(t *testing.T) {
 	if perms["defaultMode"] != "acceptEdits" {
 		t.Fatalf("defaultMode = %#v", perms["defaultMode"])
 	}
-	deny := asStringSlice(t, perms["deny"])
-	if len(deny) != 2 || deny[0] != "Edit(//**)" || !strings.HasPrefix(deny[1], "Edit(!") {
-		t.Fatalf("deny = %#v", deny)
+	if _, ok := perms["deny"]; ok {
+		t.Fatalf("Edit deny rules must be absent; acceptEdits scopes cwd: %#v", perms)
+	}
+	allow := asStringSlice(t, perms["allow"])
+	if !containsAll(allow, "Bash(ao)", "Bash(ao *)") {
+		t.Fatalf("allow = %#v; want Bash(ao) and Bash(ao *)", allow)
 	}
 	if countFlag(cmd, "--settings") != 1 {
 		t.Fatalf("expected one --settings; got %#v", cmd)
@@ -92,9 +97,8 @@ func TestGetLaunchCommandWorkerSandboxOn(t *testing.T) {
 	if !containsSubsequence(cmd, []string{"--permission-mode", "acceptEdits"}) {
 		t.Fatalf("missing permission mode: %#v", cmd)
 	}
-	// git-dir should be addable via --add-dir when it resolves under the worktree.
-	if !contains(cmd, "--add-dir") {
-		t.Fatalf("expected --add-dir for git paths; got %#v", cmd)
+	if contains(cmd, "--add-dir") {
+		t.Fatalf("must not --add-dir main .git: %#v", cmd)
 	}
 }
 
@@ -200,7 +204,6 @@ func TestGetRestoreCommandCarriesSandboxSettings(t *testing.T) {
 			Metadata:      map[string]string{ports.MetadataKeyAgentSessionID: "11111111-1111-4111-8111-111111111111"},
 		},
 		Permissions:   ports.PermissionModeAuto,
-		DaemonPort:    9999,
 		WorkerSandbox: domain.WorkerSandboxConfig{Enabled: boolPtr(true)},
 	})
 	if err != nil || !ok {
@@ -236,35 +239,101 @@ func TestGetLaunchCommandSandboxUnavailableRefuses(t *testing.T) {
 	}
 }
 
-func TestWorkerEditDenyRulesAbsolute(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("posix path fixture")
+func TestGetLaunchCommandSandboxClaudeTooOldRefuses(t *testing.T) {
+	t.Cleanup(resetSandboxAvailabilityForTest)
+	forceSandboxAvailable(t)
+	orig := claudeVersionCommand
+	t.Cleanup(func() { claudeVersionCommand = orig })
+	claudeVersionCommand = func(context.Context, string) ([]byte, error) {
+		return []byte("2.1.148 (Claude Code)\n"), nil
 	}
-	got := workerEditDenyRules("/tmp/ao-worktree/sess")
-	want := []string{"Edit(//**)", "Edit(!//tmp/ao-worktree/sess/**)"}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("got %#v want %#v", got, want)
+	p := &Plugin{resolvedBinary: "claude"}
+	_, err := p.GetLaunchCommand(context.Background(), ports.LaunchConfig{
+		Kind:          domain.KindWorker,
+		WorkspacePath: t.TempDir(),
+		Prompt:        "do it",
+	})
+	if !errors.Is(err, ErrSandboxClaudeTooOld) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestClaudeVersionAtLeast(t *testing.T) {
+	if !claudeVersionAtLeast("2.1.149", minWorktreeSandboxVersion) {
+		t.Fatal("2.1.149 should pass")
+	}
+	if !claudeVersionAtLeast("Claude Code v2.1.233", minWorktreeSandboxVersion) {
+		t.Fatal("banner form should pass")
+	}
+	if claudeVersionAtLeast("2.1.148", minWorktreeSandboxVersion) {
+		t.Fatal("2.1.148 should fail")
+	}
+	if claudeVersionAtLeast("not a version", minWorktreeSandboxVersion) {
+		t.Fatal("garbage should fail")
+	}
+}
+
+func TestRefuseChatWorkerSandbox(t *testing.T) {
+	if err := RefuseChatWorkerSandbox(domain.KindWorker, domain.HarnessClaudeCode, domain.WorkerSandboxConfig{}); !errors.Is(err, ErrChatWorkerSandboxUnsupported) {
+		t.Fatalf("default-enabled sandbox: %v", err)
+	}
+	if err := RefuseChatWorkerSandbox(domain.KindWorker, domain.HarnessClaudeCode, domain.WorkerSandboxConfig{Enabled: boolPtr(false)}); err != nil {
+		t.Fatalf("sandbox off: %v", err)
+	}
+	if err := RefuseChatWorkerSandbox(domain.KindOrchestrator, domain.HarnessClaudeCode, domain.WorkerSandboxConfig{}); err != nil {
+		t.Fatalf("orchestrator: %v", err)
+	}
+	if err := RefuseChatWorkerSandbox(domain.KindWorker, domain.HarnessCodex, domain.WorkerSandboxConfig{}); err != nil {
+		t.Fatalf("codex: %v", err)
+	}
+}
+
+func TestSandboxSettingsAllowAOBashRules(t *testing.T) {
+	settings, err := buildWorkerSandboxSettings(agentruntime.PermissionAcceptEdits, domain.WorkerSandboxConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	excluded := asStringSlice(t, settings["sandbox"].(map[string]any)["excludedCommands"])
+	if !containsAll(excluded, "ao", "ao *") {
+		t.Fatalf("excludedCommands=%v", excluded)
+	}
+	allow := asStringSlice(t, settings["permissions"].(map[string]any)["allow"])
+	if !containsAll(allow, "Bash(ao)", "Bash(ao *)") {
+		t.Fatalf("allow=%v", allow)
+	}
+}
+
+func TestOverrideSandboxAvailabilityForTest(t *testing.T) {
+	restore := OverrideSandboxAvailabilityForTest(func() error {
+		return errors.New("forced unavailable")
+	})
+	t.Cleanup(restore)
+	if err := CheckSandboxAvailability(); err == nil || err.Error() != "forced unavailable" {
+		t.Fatalf("got %v", err)
+	}
+	restore()
+	forceSandboxAvailable(t)
+	if err := CheckSandboxAvailability(); err != nil {
+		t.Fatal(err)
 	}
 }
 
 func forceSandboxAvailable(t *testing.T) {
 	t.Helper()
-	resetSandboxAvailabilityForTest()
-	orig := lookPath
+	restoreProbe := OverrideSandboxAvailabilityForTest(func() error { return nil })
+	origLook := lookPath
+	origVersion := claudeVersionCommand
 	t.Cleanup(func() {
-		lookPath = orig
-		resetSandboxAvailabilityForTest()
+		lookPath = origLook
+		claudeVersionCommand = origVersion
+		restoreProbe()
 	})
 	lookPath = func(file string) (string, error) { return "/usr/bin/" + file, nil }
+	claudeVersionCommand = func(context.Context, string) ([]byte, error) {
+		return []byte("2.1.233 (Claude Code)\n"), nil
+	}
 	if err := CheckSandboxAvailability(); err != nil {
-		// On darwin the probe ignores lookPath; on linux it needs the stub.
-		if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
-			t.Skipf("sandbox not testable on %s", runtime.GOOS)
-		}
-		// darwin returns nil without lookPath; linux uses the stub above.
-		if err != nil && runtime.GOOS == "linux" {
-			t.Fatal(err)
-		}
+		t.Fatal(err)
 	}
 }
 

@@ -126,10 +126,10 @@ func (m *Manager) terminalResumesNatively(ctx context.Context, rec domain.Sessio
 		Metadata:      map[string]string{ports.MetadataKeyAgentSessionID: rec.Metadata.AgentSessionID},
 	}
 	agentConfig := restoredAgentConfig(rec, project.Config)
-	workerSandbox, daemonPort := workerSandboxLaunchFields(rec.Kind, project.Config, m.daemonPort())
+	workerSandbox := workerSandboxLaunchFields(rec.Kind, project.Config)
 	_, ok, err = agent.GetRestoreCommand(ctx, ports.RestoreConfig{
 		Session: ref, Kind: rec.Kind, DataDir: m.dataDir, Config: agentConfig, Permissions: agentConfig.Permissions,
-		WorkerSandbox: workerSandbox, DaemonPort: daemonPort,
+		WorkerSandbox: workerSandbox,
 	})
 	if err != nil || !ok {
 		return false
