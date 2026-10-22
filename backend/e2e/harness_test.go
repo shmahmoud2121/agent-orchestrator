@@ -396,9 +396,10 @@ func seedProject(t *testing.T, d *daemon, name string) string {
 	if out.Project.ID == "" {
 		t.Fatalf("project registration returned no id for %s", dir)
 	}
-	// Claude chat ACP is not sandboxed yet; e2e fixtures that spawn Claude chat
-	// workers would otherwise be refused. Terminal sandbox coverage lives in
-	// unit tests. Keep production's default enabled.
+	// CI runners (and many local hosts) lack bubblewrap/socat. Sandboxed Claude
+	// workers set failIfUnavailable, so e2e chat launches would fail closed
+	// here for an environment reason unrelated to the scenarios under test.
+	// Unit tests cover the sandbox settings path; production keeps the default on.
 	d.mustCall("PUT", "/projects/"+out.Project.ID+"/config", http.StatusOK, map[string]any{
 		"config": map[string]any{
 			"workerSandbox": map[string]any{"enabled": false},
