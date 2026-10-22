@@ -158,3 +158,30 @@ func TestIgnoredConfigAndHarmlessSettings(t *testing.T) {
 		t.Fatal("gitignore concealed config")
 	}
 }
+
+func TestConfigurationSymlinksCannotReadOutsideCheckout(t *testing.T) {
+	for _, dir := range []bool{false, true} {
+		t.Run(map[bool]string{false: "file", true: "directory"}[dir], func(t *testing.T) {
+			root := repo(t)
+			outside := t.TempDir()
+			write(t, outside, "private.json", "SECRET_NOT_REPOSITORY_CONFIG")
+			target, link := filepath.Join(outside, "private.json"), filepath.Join(root, ".mcp.json")
+			if dir {
+				target = outside
+				link = filepath.Join(root, ".codex")
+			}
+			if err := os.Symlink(target, link); err != nil {
+				t.Fatal(err)
+			}
+			result, err := repotrust.Detect(ctx, root)
+			if err == nil {
+				t.Fatalf("outside-checkout symlink accepted: %+v", result)
+			}
+			for _, f := range result.Files {
+				if strings.Contains(strings.Join(f.Summary, " "), "SECRET_NOT_REPOSITORY_CONFIG") {
+					t.Fatal("outside file contents disclosed")
+				}
+			}
+		})
+	}
+}

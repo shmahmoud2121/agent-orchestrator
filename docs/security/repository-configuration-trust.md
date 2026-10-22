@@ -77,8 +77,9 @@ The inventory includes:
 
 This is deliberately conservative across harnesses: changing the selected agent
 does not bypass a project's approval requirement. Ignored config is scanned too,
-because provider loaders do not honor Git's ignore rules. Symlinked top-level
-config directories are resolved; nested directory symlinks fail closed rather
+because provider loaders do not honor Git's ignore rules. Reads are confined to the checkout through Go's `os.Root`, including symlink
+resolution. Top-level config directory symlinks must stay within the checkout;
+nested directory symlinks fail closed rather
 than silently concealing configuration. Gitignore files themselves are not
 agent-executable config.
 

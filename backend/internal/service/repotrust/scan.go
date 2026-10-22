@@ -36,6 +36,18 @@ func Detect(ctx context.Context, root string) (Scan, error) {
 	if root == "" {
 		return out, nil
 	}
+	checkout, err := os.OpenRoot(root)
+	if os.IsNotExist(err) {
+		return out, nil
+	}
+	if err != nil {
+		return out, err
+	}
+	defer func() { _ = checkout.Close() }()
+	canonicalRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return out, err
+	}
 	paths := map[string]bool{}
 	// Agent loaders do not honor .gitignore. Inspect ignored config too; only
 	// exact AO-owned content is removed below, never a name or command prefix.
@@ -47,6 +59,10 @@ func Detect(ctx context.Context, root string) (Scan, error) {
 		resolved, err := filepath.EvalSymlinks(walkRoot)
 		if err != nil {
 			return out, err
+		}
+		rel, err := filepath.Rel(canonicalRoot, resolved)
+		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return out, fmt.Errorf("repository configuration directory escapes checkout: %s", dir)
 		}
 		err = filepath.WalkDir(resolved, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
@@ -93,7 +109,7 @@ func Detect(ctx context.Context, root string) (Scan, error) {
 		if err := ctx.Err(); err != nil {
 			return out, err
 		}
-		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(p)))
+		data, err := checkout.ReadFile(filepath.FromSlash(p))
 		if os.IsNotExist(err) {
 			continue
 		}
