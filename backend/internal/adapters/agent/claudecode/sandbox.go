@@ -29,13 +29,6 @@ var ErrSandboxUnavailable = errors.New("claude-code worker sandbox unavailable")
 // would re-open those paths.
 var ErrSandboxClaudeTooOld = errors.New("claude-code worker sandbox requires Claude Code 2.1.149 or newer")
 
-// ErrChatWorkerSandboxUnsupported is returned when a Claude chat-mode worker
-// would start while the project worker sandbox is enabled. Chat launches through
-// claude-agent-acp and does not receive the CLI --settings sandbox block yet.
-var ErrChatWorkerSandboxUnsupported = errors.New(
-	"chat mode is not sandboxed yet; use the terminal view or turn off the worker sandbox for this project",
-)
-
 // sandboxUnavailableMessage is the actionable error shown in the UI and logs.
 const sandboxUnavailableMessage = "Claude Code worker sandbox cannot be enforced on this system " +
 	"(needs macOS Seatbelt, or bubblewrap and socat on Linux/WSL2). " +
@@ -163,15 +156,6 @@ func resetSandboxAvailabilityForTest() {
 	sandboxAvailLogged = sync.Once{}
 }
 
-// RefuseChatWorkerSandbox reports whether a Claude chat-mode worker must be
-// refused because the project sandbox is on and ACP cannot enforce it yet.
-func RefuseChatWorkerSandbox(kind domain.SessionKind, harness domain.AgentHarness, sandbox domain.WorkerSandboxConfig) error {
-	if kind != domain.KindWorker || harness != domain.HarnessClaudeCode || !sandbox.IsEnabled() {
-		return nil
-	}
-	return ErrChatWorkerSandboxUnsupported
-}
-
 // workerLaunchPolicy remaps bypass-permissions to accept-edits when the
 // worker sandbox is on. bypassPermissions skips deny rules and, unless
 // strictAllowlist is set, admits hosts outside the sandbox network allowlist;
@@ -186,6 +170,35 @@ func workerLaunchPolicy(kind domain.SessionKind, sandbox domain.WorkerSandboxCon
 		return agentruntime.PermissionAcceptEdits
 	}
 	return policy
+}
+
+// EffectiveWorkerPermission remaps bypass→acceptEdits for sandboxed workers.
+// Used by both the terminal CLI launch and Claude chat ACP session mode.
+func EffectiveWorkerPermission(kind domain.SessionKind, sandbox domain.WorkerSandboxConfig, permissions ports.PermissionMode) ports.PermissionMode {
+	return ports.PermissionMode(workerLaunchPolicy(kind, sandbox, agentruntime.PermissionPolicy(permissions)))
+}
+
+// WorkerSandboxSettings returns the settings object passed to Claude Code
+// (--settings for TUI, _meta.claudeCode.options.settings for chat ACP) when
+// the worker sandbox is enabled. Nil when sandboxing does not apply.
+func WorkerSandboxSettings(kind domain.SessionKind, permissions ports.PermissionMode, sandbox domain.WorkerSandboxConfig) (map[string]any, error) {
+	if kind != domain.KindWorker || !sandbox.IsEnabled() {
+		return nil, nil
+	}
+	effective := workerLaunchPolicy(kind, sandbox, agentruntime.PermissionPolicy(permissions))
+	return buildWorkerSandboxSettings(effective, sandbox)
+}
+
+// EnsureWorkerSandboxReady refuses a sandboxed worker when the host cannot
+// enforce the OS sandbox or Claude Code is older than the worktree .git fix.
+func EnsureWorkerSandboxReady(ctx context.Context, binary string, kind domain.SessionKind, sandbox domain.WorkerSandboxConfig) error {
+	if kind != domain.KindWorker || !sandbox.IsEnabled() {
+		return nil
+	}
+	if err := CheckSandboxAvailability(); err != nil {
+		return err
+	}
+	return requireMinClaudeSandboxVersion(ctx, binary)
 }
 
 // workerProviderArgs builds the single --settings JSON (sandbox + permissions)

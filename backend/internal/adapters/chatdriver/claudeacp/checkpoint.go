@@ -23,6 +23,19 @@ type checkpointDriver struct {
 	plugin claudePlugin
 }
 
+// Start remaps bypass→acceptEdits for sandboxed workers before the ACP session
+// mode and _meta settings are applied.
+func (d *checkpointDriver) Start(ctx context.Context, cfg ports.ChatStartConfig) (ports.ChatConversation, error) {
+	cfg.Permissions = claudecode.EffectiveWorkerPermission(cfg.Kind, cfg.WorkerSandbox, cfg.Permissions)
+	return d.ChatDriver.Start(ctx, cfg)
+}
+
+// Resume mirrors Start's sandbox permission remap for restored conversations.
+func (d *checkpointDriver) Resume(ctx context.Context, cfg ports.ChatResumeConfig) (ports.ChatConversation, error) {
+	cfg.Permissions = claudecode.EffectiveWorkerPermission(cfg.Kind, cfg.WorkerSandbox, cfg.Permissions)
+	return d.ChatDriver.Resume(ctx, cfg)
+}
+
 // Reconnect forwards to the wrapped driver. Embedding ports.ChatDriver exposes
 // only that interface's methods, so without this the startup health check never
 // finds a reconnector and marks every live Claude chat as exited.
@@ -31,6 +44,7 @@ func (d *checkpointDriver) Reconnect(ctx context.Context, cfg ports.ChatResumeCo
 	if !ok {
 		return nil, ports.ErrChatHostNotRunning
 	}
+	cfg.Permissions = claudecode.EffectiveWorkerPermission(cfg.Kind, cfg.WorkerSandbox, cfg.Permissions)
 	return reconnector.Reconnect(ctx, cfg)
 }
 
@@ -40,6 +54,7 @@ func (d *checkpointDriver) ForkIntoHost(ctx context.Context, sourceID, lastTurnI
 	if !ok {
 		return nil, ports.ErrChatCapabilityUnavailable
 	}
+	cfg.Permissions = claudecode.EffectiveWorkerPermission(cfg.Kind, cfg.WorkerSandbox, cfg.Permissions)
 	return forker.ForkIntoHost(ctx, sourceID, lastTurnID, cfg)
 }
 

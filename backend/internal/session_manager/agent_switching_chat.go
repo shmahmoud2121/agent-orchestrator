@@ -10,7 +10,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 )
@@ -160,9 +159,6 @@ func (m *Manager) executeChatAgentSwitch(
 	recorder.boundary(domain.AgentSwitchFailureTargetPreflight)
 	if m.chat == nil {
 		return result, fmt.Errorf("switch Chat agent %s: %w", id, ports.ErrChatUnsupported)
-	}
-	if err := claudecode.RefuseChatWorkerSandbox(rec.Kind, cfg.TargetHarness, project.Config.WorkerSandbox); err != nil {
-		return result, fmt.Errorf("switch Chat agent %s: %w", id, err)
 	}
 	if err := m.chat.PreflightChat(
 		ctx,
@@ -397,6 +393,7 @@ func (m *Manager) executeChatAgentSwitch(
 		Model:                   agentConfig.Model,
 		Effort:                  agentConfig.Effort,
 		Permissions:             agentConfig.Permissions,
+		WorkerSandbox:           workerSandboxLaunchFields(rec.Kind, project.Config),
 		SystemPrompt:            finalSystemPrompt,
 		AdditionalDirectories:   additionalDirectories,
 		MCPServers:              m.aoMCPServers(cfg.TargetHarness, targetLaunchEnv),

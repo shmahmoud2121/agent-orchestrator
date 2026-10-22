@@ -19,7 +19,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/memcode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/modelcatalog"
 	"github.com/aoagents/agent-orchestrator/backend/internal/agentlaunch"
@@ -1070,16 +1069,6 @@ func (m *Manager) Spawn(ctx context.Context, cfg ports.SpawnConfig) (domain.Sess
 			m.logger.Warn("spawn: default Chat unavailable; falling back to TUI",
 				"harness", cfg.Harness, "error", err)
 			mode = domain.SessionModeTUI
-		}
-		if mode == domain.SessionModeChat {
-			if err := claudecode.RefuseChatWorkerSandbox(cfg.Kind, cfg.Harness, project.Config.WorkerSandbox); err != nil {
-				if modeExplicitlyRequested {
-					return domain.SessionRecord{}, 0, 0, fmt.Errorf("spawn: %w", err)
-				}
-				m.logger.Warn("spawn: default Chat unavailable; falling back to TUI",
-					"harness", cfg.Harness, "error", err)
-				mode = domain.SessionModeTUI
-			}
 		}
 		if mode == domain.SessionModeChat {
 			resolved, err := m.resolveAgentConfig(ctx, cfg, project.Config)

@@ -2,7 +2,6 @@ package sessionmanager
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
@@ -10,30 +9,43 @@ import (
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 )
 
-func TestSpawnRefusesClaudeChatWorkerWhenSandboxEnabled(t *testing.T) {
-	st := newFakeStore()
-	st.projects["mer"] = domain.ProjectRecord{
-		ID: "mer", Path: t.TempDir(),
-		Config: domain.ProjectConfig{
-			Worker: domain.RoleOverride{Harness: domain.HarnessClaudeCode},
-		},
+func TestSpawnClaudeChatWorkerPassesWorkerSandbox(t *testing.T) {
+	launcher := &recordingLauncher{}
+	m, st, _ := newChatManager(launcher)
+	wsPath := t.TempDir()
+	m.workspace = &fakeWorkspace{path: wsPath}
+	m.agents = singleAgent{agent: claudecode.New()}
+	project := st.projects[string(chatTestProject)]
+	project.Path = t.TempDir()
+	project.Config.Worker = domain.RoleOverride{Harness: domain.HarnessClaudeCode}
+	project.Config.WorkerSandbox = domain.WorkerSandboxConfig{
+		AllowedDomains: []string{"registry.npmjs.org"},
 	}
-	chat := &transitionChat{supportsChat: true}
-	m := New(Deps{
-		Runtime: &fakeRuntime{}, Agents: singleAgent{agent: claudecode.New()},
-		Workspace: &fakeWorkspace{}, Store: st, Messenger: &fakeMessenger{}, Chat: chat,
-		Lifecycle: &fakeLCM{store: st}, LookPath: func(string) (string, error) { return "/bin/true", nil },
-	})
+	st.projects[string(chatTestProject)] = project
+
 	_, _, _, err := m.Spawn(context.Background(), ports.SpawnConfig{
-		ProjectID: "mer", Kind: domain.KindWorker, Harness: domain.HarnessClaudeCode,
+		ProjectID: chatTestProject, Kind: domain.KindWorker, Harness: domain.HarnessClaudeCode,
 		RequestedMode: domain.SessionModeChat, Prompt: "do it",
 	})
-	if !errors.Is(err, claudecode.ErrChatWorkerSandboxUnsupported) {
-		t.Fatalf("err = %v", err)
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+	if len(launcher.started) != 1 {
+		t.Fatalf("StartChat calls = %d, want 1", len(launcher.started))
+	}
+	got := launcher.started[0].WorkerSandbox
+	if !got.IsEnabled() {
+		t.Fatal("WorkerSandbox should be enabled by default")
+	}
+	if len(got.AllowedDomains) != 1 || got.AllowedDomains[0] != "registry.npmjs.org" {
+		t.Fatalf("AllowedDomains = %v", got.AllowedDomains)
+	}
+	if launcher.started[0].Kind != domain.KindWorker {
+		t.Fatalf("Kind = %q", launcher.started[0].Kind)
 	}
 }
 
-func TestInterfaceTransitionStatusHidesChatWhenWorkerSandboxOn(t *testing.T) {
+func TestInterfaceTransitionStatusAllowsChatWhenWorkerSandboxOn(t *testing.T) {
 	manager, store, _, _, _ := newTransitionManager(t, domain.SessionModeTUI)
 	// Re-enable sandbox (newTransitionManager disables it for unrelated fixtures).
 	store.projects["proj"] = domain.ProjectRecord{ID: "proj", Path: "/repo"}
@@ -41,13 +53,7 @@ func TestInterfaceTransitionStatusHidesChatWhenWorkerSandboxOn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if status.Supported {
-		t.Fatal("expected Chat switch unsupported while worker sandbox is on")
-	}
-	if status.ReasonCode != "CHAT_WORKER_SANDBOX_UNSUPPORTED" {
-		t.Fatalf("reasonCode = %q reason=%q", status.ReasonCode, status.Reason)
-	}
-	if status.Reason != claudecode.ErrChatWorkerSandboxUnsupported.Error() {
-		t.Fatalf("reason = %q", status.Reason)
+	if !status.Supported {
+		t.Fatalf("expected Chat switch supported with sandbox on; reason=%q code=%q", status.Reason, status.ReasonCode)
 	}
 }

@@ -475,7 +475,12 @@ func (s *Service) CreateIndependentSideChat(ctx context.Context, id domain.Sessi
 			cfg.MCPServers[i].Env["AO_SIDE_CONVERSATION_ID"] = idNew
 		}
 	}
-	frozenConfig, err := json.Marshal(frozenSideConfig{DataDir: cfg.DataDir, WorkspacePath: cfg.WorkspacePath, Env: cfg.Env, Permissions: cfg.Permissions, ReadOnly: cfg.ReadOnly, SystemPrompt: sideIdentityPrompt(cfg.SystemPrompt), AdditionalDirectories: cfg.AdditionalDirectories, MCPServers: cfg.MCPServers})
+	frozenConfig, err := json.Marshal(frozenSideConfig{
+		DataDir: cfg.DataDir, WorkspacePath: cfg.WorkspacePath, Env: cfg.Env,
+		Permissions: cfg.Permissions, Kind: cfg.Kind, WorkerSandbox: cfg.WorkerSandbox,
+		ReadOnly: cfg.ReadOnly, SystemPrompt: sideIdentityPrompt(cfg.SystemPrompt),
+		AdditionalDirectories: cfg.AdditionalDirectories, MCPServers: cfg.MCPServers,
+	})
 	if err != nil {
 		return domain.SideConversation{}, err
 	}
@@ -704,7 +709,8 @@ func (m *sideManager) open(side domain.SideConversation, cfg StartConfig, driver
 			forkConfig := ports.ChatStartConfig{
 				SessionID: domain.SessionID(side.ProviderHostID), DataDir: cfg.DataDir,
 				WorkspacePath: cfg.WorkspacePath, Env: cfg.Env, Model: side.Model, Effort: side.Effort,
-				Permissions: cfg.Permissions, ReadOnly: cfg.ReadOnly, SystemPrompt: sideIdentityPrompt(cfg.SystemPrompt),
+				Permissions: cfg.Permissions, Kind: cfg.Kind, WorkerSandbox: cfg.WorkerSandbox,
+				ReadOnly: cfg.ReadOnly, SystemPrompt: sideIdentityPrompt(cfg.SystemPrompt),
 				ProviderScopeID: side.ID, ProviderIDsScoped: true, RecordFork: recordFork,
 				AdditionalDirectories: cfg.AdditionalDirectories, MCPServers: cfg.MCPServers,
 			}
@@ -748,6 +754,7 @@ func (m *sideManager) open(side domain.SideConversation, cfg StartConfig, driver
 			SessionID: domain.SessionID(side.ProviderHostID), ProviderConversationID: providerID,
 			DataDir: cfg.DataDir, WorkspacePath: cfg.WorkspacePath, Env: cfg.Env,
 			Model: side.Model, Effort: side.Effort, Permissions: cfg.Permissions,
+			Kind: cfg.Kind, WorkerSandbox: cfg.WorkerSandbox,
 			ReadOnly: cfg.ReadOnly, SystemPrompt: sideIdentityPrompt(cfg.SystemPrompt),
 			AdditionalDirectories: cfg.AdditionalDirectories, MCPServers: cfg.MCPServers,
 			ProviderScopeID: side.ID, ProviderIDsScoped: true,
@@ -756,7 +763,8 @@ func (m *sideManager) open(side domain.SideConversation, cfg StartConfig, driver
 		conv, err = driver.Start(ctx, ports.ChatStartConfig{
 			SessionID: domain.SessionID(side.ProviderHostID), DataDir: cfg.DataDir,
 			WorkspacePath: cfg.WorkspacePath, Env: cfg.Env, Model: side.Model, Effort: side.Effort,
-			Permissions: cfg.Permissions, ReadOnly: cfg.ReadOnly,
+			Permissions: cfg.Permissions, Kind: cfg.Kind, WorkerSandbox: cfg.WorkerSandbox,
+			ReadOnly: cfg.ReadOnly,
 			SystemPrompt: sideIdentityPrompt(cfg.SystemPrompt), ProviderScopeID: side.ID, ProviderIDsScoped: true,
 			AdditionalDirectories: cfg.AdditionalDirectories, MCPServers: cfg.MCPServers,
 		})
@@ -878,6 +886,7 @@ func (m *sideManager) restore(ctx context.Context, side domain.SideConversation)
 		SessionID: domain.SessionID(side.ProviderHostID), ProviderConversationID: side.ProviderForkID,
 		DataDir: cfg.DataDir, WorkspacePath: cfg.WorkspacePath, Env: cfg.Env,
 		Model: side.Model, Effort: side.Effort, Permissions: cfg.Permissions,
+		Kind: cfg.Kind, WorkerSandbox: cfg.WorkerSandbox,
 		ReadOnly: cfg.ReadOnly, SystemPrompt: sideIdentityPrompt(cfg.SystemPrompt),
 		AdditionalDirectories: cfg.AdditionalDirectories, MCPServers: cfg.MCPServers,
 		ProviderScopeID: side.ID, ProviderIDsScoped: true,
@@ -1976,6 +1985,8 @@ type frozenSideConfig struct {
 	WorkspacePath         string
 	Env                   map[string]string
 	Permissions           domain.PermissionMode
+	Kind                  domain.SessionKind
+	WorkerSandbox         domain.WorkerSandboxConfig
 	ReadOnly              bool
 	SystemPrompt          string
 	AdditionalDirectories []string
@@ -1988,7 +1999,13 @@ func (s *Service) sideLaunchConfig(side domain.SideConversation) (StartConfig, p
 		return StartConfig{}, nil, fmt.Errorf("read frozen side configuration: %w", err)
 	}
 	driver, err := s.drivers.Driver(side.Harness)
-	return StartConfig{Harness: side.Harness, DataDir: frozen.DataDir, WorkspacePath: frozen.WorkspacePath, Env: frozen.Env, Permissions: frozen.Permissions, ReadOnly: frozen.ReadOnly, SystemPrompt: sideIdentityPrompt(frozen.SystemPrompt), AdditionalDirectories: frozen.AdditionalDirectories, MCPServers: frozen.MCPServers}, driver, err
+	return StartConfig{
+		Harness: side.Harness, DataDir: frozen.DataDir, WorkspacePath: frozen.WorkspacePath,
+		Env: frozen.Env, Permissions: frozen.Permissions, Kind: frozen.Kind,
+		WorkerSandbox: frozen.WorkerSandbox, ReadOnly: frozen.ReadOnly,
+		SystemPrompt:          sideIdentityPrompt(frozen.SystemPrompt),
+		AdditionalDirectories: frozen.AdditionalDirectories, MCPServers: frozen.MCPServers,
+	}, driver, err
 }
 
 // RenameSideChat updates a user-owned title without changing its context.

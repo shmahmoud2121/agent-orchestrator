@@ -46,6 +46,10 @@ type LaunchConfig struct {
 	Permissions     ports.PermissionMode
 	SystemPrompt    string
 	ProviderScopeID string
+	// Kind and WorkerSandbox let Claude's SessionMeta inject the same OS-sandbox
+	// settings block the TUI path passes via --settings.
+	Kind          domain.SessionKind
+	WorkerSandbox domain.WorkerSandboxConfig
 }
 
 // Config binds one harness to an ACP agent implementation.
@@ -249,6 +253,8 @@ func (d *Driver) Start(ctx context.Context, cfg ports.ChatStartConfig) (ports.Ch
 		Env:   cfg.Env,
 		Model: cfg.Model, Permissions: cfg.Permissions, SystemPrompt: cfg.SystemPrompt,
 		ProviderScopeID: cfg.ProviderScopeID,
+		Kind:            cfg.Kind,
+		WorkerSandbox:   cfg.WorkerSandbox,
 	}
 	connectStarted := time.Now()
 	conv, init, live, err := d.connect(ctx, launchCfg, cfg.PrepareEnv)
@@ -414,6 +420,8 @@ func (d *Driver) Resume(ctx context.Context, cfg ports.ChatResumeConfig) (ports.
 		Model: cfg.Model, Permissions: cfg.Permissions, SystemPrompt: cfg.SystemPrompt,
 		ProviderScopeID: cfg.ProviderScopeID,
 		ReconnectOnly:   cfg.ReconnectOnly,
+		Kind:            cfg.Kind,
+		WorkerSandbox:   cfg.WorkerSandbox,
 	}
 	conv, init, live, err := d.connect(ctx, launchCfg, cfg.PrepareEnv)
 	if err != nil {

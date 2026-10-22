@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 )
@@ -877,9 +876,6 @@ func (m *Manager) preflightInterfaceTarget(
 		}
 		project, err := m.loadProject(ctx, rec.ProjectID)
 		if err != nil {
-			return err
-		}
-		if err := claudecode.RefuseChatWorkerSandbox(rec.Kind, rec.Harness, project.Config.WorkerSandbox); err != nil {
 			return err
 		}
 		permissions := effectiveAgentConfig(rec.Harness, rec.Kind, project.Config).Permissions
@@ -1858,8 +1854,6 @@ func interfaceTransitionErrorCode(err error) string {
 	switch {
 	case errors.Is(err, ports.ErrChatUnsupported), errors.Is(err, ErrInterfaceHandoffUnsupported):
 		return "INTERFACE_HANDOFF_UNSUPPORTED"
-	case errors.Is(err, claudecode.ErrChatWorkerSandboxUnsupported):
-		return "CHAT_WORKER_SANDBOX_UNSUPPORTED"
 	case errors.Is(err, ports.ErrChatDriverUnavailable), errors.Is(err, ports.ErrAgentBinaryNotFound):
 		return "TARGET_UNAVAILABLE"
 	case errors.Is(err, ports.ErrChatDriverIncompatible):

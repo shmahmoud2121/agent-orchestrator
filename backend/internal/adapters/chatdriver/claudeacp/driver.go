@@ -129,6 +129,9 @@ func New(plugin claudePlugin, log *slog.Logger, onAuthRejected func()) ports.Cha
 			if err := validateClaudeACPExecutable(claudeBinary, runtime.GOOS); err != nil {
 				return acpdriver.Launch{}, fmt.Errorf("%w: %w", ports.ErrChatDriverUnavailable, err)
 			}
+			if err := claudecode.EnsureWorkerSandboxReady(ctx, claudeBinary, cfg.Kind, cfg.WorkerSandbox); err != nil {
+				return acpdriver.Launch{}, err
+			}
 			if err := validateClaudeLaunchAuth(ctx, plugin, cfg.WorkspacePath, cfg.Env, log); err != nil {
 				return acpdriver.Launch{}, err
 			}
@@ -370,16 +373,66 @@ func claudeSessionMeta(cfg acpdriver.LaunchConfig) map[string]any {
 		}
 		standing += claudePlanGuidance
 	}
-	if standing == "" {
+	meta := map[string]any{}
+	if standing != "" {
+		// Append AO's standing instructions to Claude Code's own prompt. Replacing
+		// the preset would discard Claude's native coding/tool instructions.
+		// Top-level _meta.systemPrompt is what claude-agent-acp 0.70 reads.
+		meta["systemPrompt"] = map[string]any{
+			"type": "preset", "preset": "claude_code", "append": standing,
+		}
+	}
+	settings, err := claudecode.WorkerSandboxSettings(cfg.Kind, cfg.Permissions, cfg.WorkerSandbox)
+	if err != nil {
+		// SessionMeta cannot return an error; Launch already refused an unenforceable
+		// sandbox. A settings encode failure here would leave the session unsandboxed,
+		// so surface it as empty meta only when sandboxing does not apply.
+		settings = nil
+	}
+	if settings != nil {
+		// claude-agent-acp skips CLAUDE_MODEL_CONFIG when _meta supplies settings;
+		// merge model picker fields so the ACP availableModels list still works.
+		settings = mergeClaudeModelConfigIntoSettings(settings, cfg.Env)
+		meta["claudeCode"] = map[string]any{
+			"options": map[string]any{
+				"settings": settings,
+			},
+		}
+	}
+	if len(meta) == 0 {
 		return nil
 	}
-	// Append AO's standing instructions to Claude Code's own prompt. Replacing
-	// the preset would discard Claude's native coding/tool instructions.
-	return map[string]any{
-		"systemPrompt": map[string]any{
-			"type": "preset", "preset": "claude_code", "append": standing,
-		},
+	return meta
+}
+
+// mergeClaudeModelConfigIntoSettings copies availableModels / modelOverrides from
+// CLAUDE_MODEL_CONFIG into programmatic settings. claude-agent-acp 0.70 ignores
+// that env var when the caller already provides options.settings.
+func mergeClaudeModelConfigIntoSettings(settings map[string]any, env map[string]string) map[string]any {
+	if settings == nil {
+		return nil
 	}
+	raw := strings.TrimSpace(env["CLAUDE_MODEL_CONFIG"])
+	if raw == "" {
+		raw = strings.TrimSpace(os.Getenv("CLAUDE_MODEL_CONFIG"))
+	}
+	if raw == "" {
+		return settings
+	}
+	var modelConfig map[string]any
+	if err := json.Unmarshal([]byte(raw), &modelConfig); err != nil || modelConfig == nil {
+		return settings
+	}
+	merged := make(map[string]any, len(settings)+2)
+	for key, value := range settings {
+		merged[key] = value
+	}
+	for _, key := range []string{"availableModels", "modelOverrides"} {
+		if value, ok := modelConfig[key]; ok {
+			merged[key] = value
+		}
+	}
+	return merged
 }
 
 func claudeSessionMode(permission ports.PermissionMode) string {

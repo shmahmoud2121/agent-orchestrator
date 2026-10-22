@@ -37,6 +37,10 @@ type ChatControllerStart struct {
 	Model         string
 	Effort        string
 	Permissions   PermissionMode
+	// WorkerSandbox is the project's Claude Code worker OS-sandbox policy.
+	// Chat drivers that can enforce it (claude-agent-acp) receive the same
+	// settings block as the TUI --settings path.
+	WorkerSandbox domain.WorkerSandboxConfig
 	// ReadOnly forces the provider's native sandbox to reject workspace writes.
 	// Reviewer-owned conversations set this independently of approval behavior.
 	ReadOnly              bool

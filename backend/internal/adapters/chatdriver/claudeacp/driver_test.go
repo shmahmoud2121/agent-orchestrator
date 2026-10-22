@@ -12,6 +12,7 @@ import (
 	acpsdk "github.com/coder/acp-go-sdk"
 
 	acpdriver "github.com/aoagents/agent-orchestrator/backend/internal/adapters/chatdriver/acp"
+	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 )
 
@@ -289,6 +290,78 @@ func TestClaudeSessionMetaNeverIncludesReplayContext(t *testing.T) {
 	prompt := meta["systemPrompt"].(map[string]any)
 	if strings.Contains(prompt["append"].(string), "replayed-conversation") {
 		t.Fatal("replay context entered the system prompt")
+	}
+}
+
+func TestClaudeSessionMetaIncludesWorkerSandboxSettings(t *testing.T) {
+	t.Setenv("CLAUDE_CODE_ENABLE_TODO_TOOLS", "0")
+	t.Setenv("CLAUDE_MODEL_CONFIG", "")
+	enabled := true
+	meta := claudeSessionMeta(acpdriver.LaunchConfig{
+		Kind:        domain.KindWorker,
+		Permissions: ports.PermissionModeBypassPermissions,
+		WorkerSandbox: domain.WorkerSandboxConfig{
+			Enabled:        &enabled,
+			AllowedDomains: []string{"registry.npmjs.org"},
+		},
+		Env: map[string]string{
+			"CLAUDE_MODEL_CONFIG": `{"availableModels":["claude-sonnet-4-6"]}`,
+		},
+		SystemPrompt: "AO standing instructions",
+	})
+	prompt, ok := meta["systemPrompt"].(map[string]any)
+	if !ok || prompt["append"] != "AO standing instructions" {
+		t.Fatalf("systemPrompt = %#v", meta["systemPrompt"])
+	}
+	claudeCode, ok := meta["claudeCode"].(map[string]any)
+	if !ok {
+		t.Fatalf("meta missing claudeCode: %#v", meta)
+	}
+	options, ok := claudeCode["options"].(map[string]any)
+	if !ok {
+		t.Fatalf("options = %#v", claudeCode["options"])
+	}
+	settings, ok := options["settings"].(map[string]any)
+	if !ok {
+		t.Fatalf("settings = %#v", options["settings"])
+	}
+	sandbox, ok := settings["sandbox"].(map[string]any)
+	if !ok || sandbox["enabled"] != true || sandbox["failIfUnavailable"] != true {
+		t.Fatalf("sandbox = %#v", settings["sandbox"])
+	}
+	network, ok := sandbox["network"].(map[string]any)
+	if !ok {
+		t.Fatalf("network = %#v", sandbox["network"])
+	}
+	domains, _ := network["allowedDomains"].([]string)
+	if len(domains) != 1 || domains[0] != "registry.npmjs.org" {
+		t.Fatalf("allowedDomains = %#v", network["allowedDomains"])
+	}
+	models, _ := settings["availableModels"].([]any)
+	if len(models) != 1 || models[0] != "claude-sonnet-4-6" {
+		t.Fatalf("availableModels = %#v (CLAUDE_MODEL_CONFIG must merge into settings)", settings["availableModels"])
+	}
+	perms, ok := settings["permissions"].(map[string]any)
+	if !ok {
+		t.Fatalf("permissions = %#v", settings["permissions"])
+	}
+	// SessionMeta receives already-remapped permissions from checkpointDriver;
+	// when tests pass bypass directly, WorkerSandboxSettings remaps for defaultMode.
+	if perms["defaultMode"] != "acceptEdits" {
+		t.Fatalf("defaultMode = %#v, want acceptEdits", perms["defaultMode"])
+	}
+}
+
+func TestClaudeSessionMetaOmitsSandboxForNonWorkers(t *testing.T) {
+	t.Setenv("CLAUDE_CODE_ENABLE_TODO_TOOLS", "0")
+	meta := claudeSessionMeta(acpdriver.LaunchConfig{
+		Kind:          domain.KindOrchestrator,
+		Permissions:   ports.PermissionModeAcceptEdits,
+		WorkerSandbox: domain.WorkerSandboxConfig{},
+		SystemPrompt:  "orch",
+	})
+	if _, ok := meta["claudeCode"]; ok {
+		t.Fatalf("orchestrator should not get sandbox settings: %#v", meta)
 	}
 }
 

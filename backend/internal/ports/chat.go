@@ -310,6 +310,11 @@ type ChatStartConfig struct {
 	// Permissions is AO's existing per-session approval policy. Drivers map it
 	// onto their provider's native approval and sandbox settings.
 	Permissions PermissionMode
+	// Kind is the AO session kind. Claude chat workers use it with WorkerSandbox
+	// to apply the same OS-sandbox settings as the TUI launch path.
+	Kind domain.SessionKind
+	// WorkerSandbox is the project's Claude Code worker OS-sandbox policy.
+	WorkerSandbox domain.WorkerSandboxConfig
 	// ReadOnly requires a provider-enforced sandbox that cannot modify the
 	// workspace. It is used for review-owned conversations.
 	ReadOnly bool
@@ -358,7 +363,11 @@ type ChatResumeConfig struct {
 	// Effort is optional; empty keeps the provider conversation's current effort.
 	Effort      string
 	Permissions PermissionMode
-	ReadOnly    bool
+	// Kind and WorkerSandbox mirror ChatStartConfig so a resumed Claude chat
+	// worker keeps the same OS-sandbox settings as the original launch.
+	Kind          domain.SessionKind
+	WorkerSandbox domain.WorkerSandboxConfig
+	ReadOnly      bool
 	// SystemPrompt is recomputed by the session manager on restore and reapplied
 	// to the provider process. It is not persisted in the conversation transcript.
 	SystemPrompt string

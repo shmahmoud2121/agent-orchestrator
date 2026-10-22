@@ -273,18 +273,15 @@ func TestClaudeVersionAtLeast(t *testing.T) {
 	}
 }
 
-func TestRefuseChatWorkerSandbox(t *testing.T) {
-	if err := RefuseChatWorkerSandbox(domain.KindWorker, domain.HarnessClaudeCode, domain.WorkerSandboxConfig{}); !errors.Is(err, ErrChatWorkerSandboxUnsupported) {
-		t.Fatalf("default-enabled sandbox: %v", err)
+func TestEffectiveWorkerPermissionRemapsBypass(t *testing.T) {
+	if got := EffectiveWorkerPermission(domain.KindWorker, domain.WorkerSandboxConfig{}, ports.PermissionModeBypassPermissions); got != ports.PermissionModeAcceptEdits {
+		t.Fatalf("sandboxed worker bypass = %q, want acceptEdits", got)
 	}
-	if err := RefuseChatWorkerSandbox(domain.KindWorker, domain.HarnessClaudeCode, domain.WorkerSandboxConfig{Enabled: boolPtr(false)}); err != nil {
-		t.Fatalf("sandbox off: %v", err)
+	if got := EffectiveWorkerPermission(domain.KindWorker, domain.WorkerSandboxConfig{Enabled: boolPtr(false)}, ports.PermissionModeBypassPermissions); got != ports.PermissionModeBypassPermissions {
+		t.Fatalf("sandbox off = %q", got)
 	}
-	if err := RefuseChatWorkerSandbox(domain.KindOrchestrator, domain.HarnessClaudeCode, domain.WorkerSandboxConfig{}); err != nil {
-		t.Fatalf("orchestrator: %v", err)
-	}
-	if err := RefuseChatWorkerSandbox(domain.KindWorker, domain.HarnessCodex, domain.WorkerSandboxConfig{}); err != nil {
-		t.Fatalf("codex: %v", err)
+	if got := EffectiveWorkerPermission(domain.KindOrchestrator, domain.WorkerSandboxConfig{}, ports.PermissionModeBypassPermissions); got != ports.PermissionModeBypassPermissions {
+		t.Fatalf("orchestrator = %q", got)
 	}
 }
 
