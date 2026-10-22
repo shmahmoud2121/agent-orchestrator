@@ -17840,6 +17840,8 @@ components:
           type: integer
         worker:
           $ref: '#/components/schemas/RoleOverride'
+        workerSandbox:
+          $ref: '#/components/schemas/WorkerSandboxConfig'
         workersRequestReview:
           type: boolean
       type: object
@@ -20997,6 +20999,17 @@ components:
           type: string
       required:
       - status
+      type: object
+    WorkerSandboxConfig:
+      properties:
+        allowedDomains:
+          items:
+            type: string
+          type: array
+        enabled:
+          type:
+          - "null"
+          - boolean
       type: object
     WorkspaceCommitSummary:
       properties:

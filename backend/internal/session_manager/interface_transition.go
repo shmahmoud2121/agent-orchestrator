@@ -932,10 +932,11 @@ func (m *Manager) preflightTerminalLaunch(
 		return err
 	}
 	config := restoredAgentConfig(rec, project.Config)
+	workerSandbox, daemonPort := workerSandboxLaunchFields(rec.Kind, project.Config, m.daemonPort())
 	var cmd []string
 	if nativeConversationID == "" {
 		cmd, _, _, err = freshLaunchArgv(ctx, agent, rec.ID, rec.Metadata.WorkspacePath,
-			rec.Metadata, systemPrompt, "", config, rec.Kind, m.dataDir, true)
+			rec.Metadata, systemPrompt, "", config, rec.Kind, m.dataDir, true, workerSandbox, daemonPort)
 	} else {
 		var resumable bool
 		cmd, resumable, err = agent.GetRestoreCommand(ctx, ports.RestoreConfig{
@@ -945,6 +946,7 @@ func (m *Manager) preflightTerminalLaunch(
 			},
 			Kind: rec.Kind, DataDir: m.dataDir, SystemPrompt: systemPrompt,
 			Config: config, Permissions: config.Permissions,
+			WorkerSandbox: workerSandbox, DaemonPort: daemonPort,
 		})
 		if err == nil && !resumable {
 			return ErrNativeConversationMissing

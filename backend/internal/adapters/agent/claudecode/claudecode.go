@@ -189,6 +189,12 @@ func (p *Plugin) GetLaunchCommand(ctx context.Context, cfg ports.LaunchConfig) (
 	if err != nil {
 		return nil, err
 	}
+	policy, providerArgs, err := applyWorkerSandboxToLaunch(
+		cfg.Kind, permissions, cfg.WorkerSandbox, cfg.WorkspacePath, cfg.DaemonPort,
+	)
+	if err != nil {
+		return nil, err
+	}
 	return agentruntime.BuildLaunchCommand(agentruntime.LaunchConfig{
 		Harness:          agentruntime.HarnessClaudeCode,
 		Binary:           binary,
@@ -199,10 +205,10 @@ func (p *Plugin) GetLaunchCommand(ctx context.Context, cfg ports.LaunchConfig) (
 		Prompt:           cfg.Prompt,
 		SystemPrompt:     cfg.SystemPrompt,
 		SystemPromptFile: cfg.SystemPromptFile,
-		Permission:       agentruntime.PermissionPolicy(permissions),
+		Permission:       policy,
 		AllowedTools:     cfg.AllowedTools,
 		DisallowedTools:  workerDisallowedTools(cfg.Kind, cfg.DisallowedTools),
-		ProviderArgs:     autoDefaultNudgeGuardArgs(agentruntime.PermissionPolicy(permissions)),
+		ProviderArgs:     providerArgs,
 	})
 }
 
@@ -402,6 +408,13 @@ func (p *Plugin) GetRestoreCommand(ctx context.Context, cfg ports.RestoreConfig)
 	if err != nil {
 		return nil, false, err
 	}
+	workspace := cfg.Session.WorkspacePath
+	policy, providerArgs, err := applyWorkerSandboxToLaunch(
+		cfg.Kind, cfg.Permissions, cfg.WorkerSandbox, workspace, cfg.DaemonPort,
+	)
+	if err != nil {
+		return nil, false, err
+	}
 	return agentruntime.BuildRestoreCommand(agentruntime.RestoreConfig{
 		Harness:          agentruntime.HarnessClaudeCode,
 		Binary:           binary,
@@ -412,10 +425,10 @@ func (p *Plugin) GetRestoreCommand(ctx context.Context, cfg ports.RestoreConfig)
 		Prompt:           cfg.Prompt,
 		SystemPrompt:     cfg.SystemPrompt,
 		SystemPromptFile: cfg.SystemPromptFile,
-		Permission:       agentruntime.PermissionPolicy(cfg.Permissions),
+		Permission:       policy,
 		AllowedTools:     cfg.AllowedTools,
 		DisallowedTools:  workerDisallowedTools(cfg.Kind, cfg.DisallowedTools),
-		ProviderArgs:     autoDefaultNudgeGuardArgs(agentruntime.PermissionPolicy(cfg.Permissions)),
+		ProviderArgs:     providerArgs,
 	})
 }
 

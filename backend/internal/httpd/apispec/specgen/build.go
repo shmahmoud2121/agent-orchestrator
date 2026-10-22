@@ -320,6 +320,7 @@ var schemaNames = map[string]string{ //nolint:gosec // Public OpenAPI type names
 	"ControllersMergeSessionResponse": "MergeSessionResponse",
 	"ControllersMergeOverlap":         "MergeOverlap",
 	"DomainContainerReapConfig":       "ContainerReapConfig",
+	"DomainWorkerSandboxConfig":       "WorkerSandboxConfig",
 	"DomainAgentConfig":               "AgentConfig",
 	"DomainRoleOverride":              "RoleOverride",
 	// httpd/controllers (wire envelopes)

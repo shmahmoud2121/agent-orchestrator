@@ -171,6 +171,8 @@ function SettingsBody({ project, projectId, hostId, hostConnected, onSaved, sect
 		intakeEnabled: intake.enabled ?? false,
 		intakeRepo: intake.repo ?? "",
 		intakeAssignee: intake.assignee ?? "",
+		workerSandboxEnabled: config.workerSandbox?.enabled !== false,
+		workerSandboxAllowedDomains: (config.workerSandbox?.allowedDomains ?? []).join("\n"),
 		...(verifiable && {
 			verifyCommand: formatVerifyCommand(config.verifyCommand),
 			verifyTimeoutSeconds: config.verifyTimeoutSeconds ? String(config.verifyTimeoutSeconds) : "",
@@ -263,6 +265,7 @@ function SettingsBody({ project, projectId, hostId, hostConnected, onSaved, sect
 					),
 					autoReview: values.autoReview,
 					workersRequestReview: values.workersRequestReview || undefined,
+					...workerSandboxConfig(values),
 					...(verifiable && verifyConfig(values)),
 					...(verifiable && { pushAfterMerge: values.pushAfterMerge || undefined }),
 				};
@@ -414,4 +417,22 @@ function buildRoleAgentConfig(
 	if (permissions) next.permissions = permissions as components["schemas"]["AgentConfig"]["permissions"];
 	else delete next.permissions;
 	return Object.keys(next).length > 0 ? next : undefined;
+}
+
+function parseSandboxDomains(raw: string | undefined): string[] {
+	if (!raw?.trim()) return [];
+	return [...new Set(raw.split(/[\n,]+/).map((entry) => entry.trim()).filter(Boolean))];
+}
+
+/** Persist only when the policy differs from the default (enabled, no domains). */
+function workerSandboxConfig(values: ProjectSettingsDraft): { workerSandbox?: { enabled: boolean; allowedDomains?: string[] } } {
+	const enabled = values.workerSandboxEnabled !== false;
+	const allowedDomains = parseSandboxDomains(values.workerSandboxAllowedDomains);
+	if (enabled && allowedDomains.length === 0) return {};
+	return {
+		workerSandbox: {
+			enabled,
+			...(allowedDomains.length > 0 ? { allowedDomains } : {}),
+		},
+	};
 }

@@ -6219,6 +6219,7 @@ export interface components {
             verifyCommand?: string[];
             verifyTimeoutSeconds?: number;
             worker?: components["schemas"]["RoleOverride"];
+            workerSandbox?: components["schemas"]["WorkerSandboxConfig"];
             workersRequestReview?: boolean;
         };
         ProjectGetResponse: {
@@ -7464,6 +7465,10 @@ export interface components {
             account?: components["schemas"]["AgentAccountResponse"];
             /** @enum {string} */
             status: "waiting" | "complete" | "duplicate" | "mismatch";
+        };
+        WorkerSandboxConfig: {
+            allowedDomains?: string[];
+            enabled?: null | boolean;
         };
         WorkspaceCommitSummary: {
             author: string;
