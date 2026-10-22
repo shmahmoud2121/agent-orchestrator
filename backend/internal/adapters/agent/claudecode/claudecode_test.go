@@ -1114,8 +1114,13 @@ func TestGetLaunchCommandOmitsToolFlagsWhenUnset(t *testing.T) {
 
 func TestGetLaunchCommandDeniesPublishingToWorkersOnly(t *testing.T) {
 	p := &Plugin{resolvedBinary: "claude"}
+	// Disable the OS sandbox so this test stays focused on publish deny rules.
+	sandboxOff := false
 
-	worker, err := p.GetLaunchCommand(context.Background(), ports.LaunchConfig{Kind: domain.KindWorker, Prompt: "do it"})
+	worker, err := p.GetLaunchCommand(context.Background(), ports.LaunchConfig{
+		Kind: domain.KindWorker, Prompt: "do it",
+		WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &sandboxOff},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -46,6 +46,10 @@ type LaunchConfig struct {
 	Permissions     ports.PermissionMode
 	SystemPrompt    string
 	ProviderScopeID string
+	// Kind and WorkerSandbox let Claude's SessionMeta inject the same OS-sandbox
+	// settings block the TUI path passes via --settings.
+	Kind          domain.SessionKind
+	WorkerSandbox domain.WorkerSandboxConfig
 }
 
 // Config binds one harness to an ACP agent implementation.
@@ -217,6 +221,14 @@ func (d *Driver) discoverConfigOptions(ctx context.Context, workingDir string) (
 	return normalizeConfigOptions(resp.ConfigOptions), nil
 }
 
+// sandboxBlocksBypass reports whether this launch must refuse bypassPermissions.
+// Claude's OS sandbox only covers Bash; bypass auto-approves Edit/Write anywhere.
+// The worker sandbox is Claude-only, so other ACP harnesses are unaffected.
+func (d *Driver) sandboxBlocksBypass(cfg LaunchConfig) bool {
+	return d.cfg.Harness == domain.HarnessClaudeCode &&
+		cfg.Kind == domain.KindWorker && cfg.WorkerSandbox.IsEnabled()
+}
+
 // Harness identifies the AO harness this ACP transport adapts.
 func (d *Driver) Harness() domain.AgentHarness { return d.cfg.Harness }
 
@@ -249,6 +261,8 @@ func (d *Driver) Start(ctx context.Context, cfg ports.ChatStartConfig) (ports.Ch
 		Env:   cfg.Env,
 		Model: cfg.Model, Permissions: cfg.Permissions, SystemPrompt: cfg.SystemPrompt,
 		ProviderScopeID: cfg.ProviderScopeID,
+		Kind:            cfg.Kind,
+		WorkerSandbox:   cfg.WorkerSandbox,
 	}
 	connectStarted := time.Now()
 	conv, init, live, err := d.connect(ctx, launchCfg, cfg.PrepareEnv)
@@ -323,6 +337,7 @@ func (d *Driver) openNewSession(
 		d.cfg.SessionMode, d.cfg.SessionOptions, d.cfg.PermissionPolicy,
 		settings.Approval, d.cfg.ValidateTurnSettings, resp.ConfigOptions,
 		conv.legacyWire.modelState(), resp.Modes,
+		d.sandboxBlocksBypass(launchCfg),
 	)
 	if d.cfg.EncodeProviderConversationID != nil {
 		conv.setReportedProviderConversationID(d.cfg.EncodeProviderConversationID(string(resp.SessionId)))
@@ -414,6 +429,8 @@ func (d *Driver) Resume(ctx context.Context, cfg ports.ChatResumeConfig) (ports.
 		Model: cfg.Model, Permissions: cfg.Permissions, SystemPrompt: cfg.SystemPrompt,
 		ProviderScopeID: cfg.ProviderScopeID,
 		ReconnectOnly:   cfg.ReconnectOnly,
+		Kind:            cfg.Kind,
+		WorkerSandbox:   cfg.WorkerSandbox,
 	}
 	conv, init, live, err := d.connect(ctx, launchCfg, cfg.PrepareEnv)
 	if err != nil {
@@ -453,6 +470,7 @@ func (d *Driver) Resume(ctx context.Context, cfg ports.ChatResumeConfig) (ports.
 			d.cfg.SessionMode, d.cfg.SessionOptions, d.cfg.PermissionPolicy,
 			cfg.Permissions, d.cfg.ValidateTurnSettings, setup.ConfigOptions,
 			setup.Models, setup.Modes,
+			d.sandboxBlocksBypass(launchCfg),
 		)
 		conv.setReportedProviderConversationID(reportedProviderConversationID)
 		conv.initialPermission = ports.PermissionMode(live.InitialPermissions)
@@ -546,6 +564,7 @@ func (d *Driver) resumeSession(
 		d.cfg.SessionMode, d.cfg.SessionOptions, d.cfg.PermissionPolicy,
 		cfg.Permissions, d.cfg.ValidateTurnSettings, configOptions,
 		conv.legacyWire.modelState(), modes,
+		d.sandboxBlocksBypass(launchCfg),
 	)
 	conv.setReportedProviderConversationID(reportedProviderConversationID)
 	// Standing context is process input, not transcript history, so a resumed

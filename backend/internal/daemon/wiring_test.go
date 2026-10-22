@@ -411,14 +411,16 @@ func TestWiring_StartSessionSpawnsScratchWithoutGitRepo(t *testing.T) {
 	if err := os.MkdirAll(scratchPath, 0o750); err != nil {
 		t.Fatal(err)
 	}
+	sandboxOff := false
 	if err := store.UpsertProject(ctx, domain.ProjectRecord{
 		ID:           "scratch",
 		Path:         scratchPath,
 		Kind:         domain.ProjectKindScratch,
 		RegisteredAt: time.Now(),
 		Config: domain.ProjectConfig{
-			Worker:       domain.RoleOverride{Harness: domain.HarnessClaudeCode},
-			Orchestrator: domain.RoleOverride{Harness: domain.HarnessClaudeCode},
+			Worker:        domain.RoleOverride{Harness: domain.HarnessClaudeCode},
+			Orchestrator:  domain.RoleOverride{Harness: domain.HarnessClaudeCode},
+			WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &sandboxOff},
 		},
 	}); err != nil {
 		t.Fatalf("UpsertProject: %v", err)

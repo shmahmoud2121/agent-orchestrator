@@ -13,6 +13,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 	reportsvc "github.com/aoagents/agent-orchestrator/backend/internal/service/report"
@@ -729,6 +730,9 @@ func (s *Service) Start(ctx context.Context, cfg StartConfig) (*Controller, erro
 	if cfg.ProviderConversationID != "" && conversation.Settings.ApprovalMode != "" {
 		cfg.Permissions = conversation.Settings.ApprovalMode
 	}
+	// Remap before recording and before the driver launches so the durable
+	// approval mode matches session/set_mode (bypass→acceptEdits when sandboxed).
+	cfg.Permissions = effectiveChatPermission(cfg)
 	if cfg.ProviderConversationID == "" {
 		if err := capabilityAdmissionError(cfg.Harness, caps, cfg.Permissions); err != nil {
 			return nil, err
@@ -738,6 +742,13 @@ func (s *Service) Start(ctx context.Context, cfg StartConfig) (*Controller, erro
 		conversation.Settings.ApprovalMode = cfg.Permissions
 		if err := s.store.SetConversationSettings(ctx, conversation.ID, conversation.Settings, s.now()); err != nil {
 			return nil, fmt.Errorf("record initial conversation settings: %w", err)
+		}
+	} else if conversation.Settings.ApprovalMode != cfg.Permissions {
+		// A resumed sandboxed worker may still have a pre-remap bypass row;
+		// persist the effective mode so the picker and later turns agree.
+		conversation.Settings.ApprovalMode = cfg.Permissions
+		if err := s.store.SetConversationSettings(ctx, conversation.ID, conversation.Settings, s.now()); err != nil {
+			return nil, fmt.Errorf("record remapped conversation settings: %w", err)
 		}
 	}
 
@@ -767,6 +778,8 @@ func (s *Service) Start(ctx context.Context, cfg StartConfig) (*Controller, erro
 			Model:                  cfg.Model,
 			Effort:                 cfg.Effort,
 			Permissions:            cfg.Permissions,
+			Kind:                   cfg.Kind,
+			WorkerSandbox:          cfg.WorkerSandbox,
 			ReadOnly:               cfg.ReadOnly,
 			SystemPrompt:           cfg.SystemPrompt,
 			ProviderScopeID:        providerScopeID,
@@ -785,6 +798,8 @@ func (s *Service) Start(ctx context.Context, cfg StartConfig) (*Controller, erro
 			Model:                 cfg.Model,
 			Effort:                cfg.Effort,
 			Permissions:           cfg.Permissions,
+			Kind:                  cfg.Kind,
+			WorkerSandbox:         cfg.WorkerSandbox,
 			ReadOnly:              cfg.ReadOnly,
 			SystemPrompt:          cfg.SystemPrompt,
 			ProviderScopeID:       providerScopeID,
@@ -2317,6 +2332,9 @@ func (s *Service) SetConfigOption(
 			return nil, err
 		}
 	}
+	if err := s.refuseSandboxedBypassConfig(domain.SessionConversationOwner(id), configID, value); err != nil {
+		return nil, err
+	}
 	controller.configMu.Lock()
 	defer controller.configMu.Unlock()
 	previous := controller.Settings()
@@ -2522,6 +2540,11 @@ func (s *Service) setTurnSettings(ctx context.Context, controller *Controller, o
 	if owner.Kind == domain.ConversationOwnerReview && settings.ApprovalMode != previous.ApprovalMode {
 		return domain.ConversationSettings{}, ErrReviewerPermissionsFixed
 	}
+	if ports.NormalizePermissionMode(settings.ApprovalMode) == ports.PermissionModeBypassPermissions &&
+		s.sandboxedClaudeWorker(owner) {
+		return domain.ConversationSettings{}, fmt.Errorf("%w: %w",
+			ports.ErrChatPermissionModeUnsupported, ports.ErrChatSandboxBypassDisabled)
+	}
 	settings.OpenCodeMode = previous.OpenCodeMode
 	if err := controller.SetSettings(ctx, settings); err != nil {
 		return domain.ConversationSettings{}, err
@@ -2605,6 +2628,40 @@ func (s *Service) RelaySessionChatTurn(ctx context.Context, id domain.SessionID,
 // StopChat releases a session's controller.
 func (s *Service) StopChat(ctx context.Context, id domain.SessionID) error {
 	return s.Stop(ctx, id)
+}
+
+// effectiveChatPermission remaps bypass→acceptEdits for sandboxed Claude Code
+// workers. The worker sandbox is Claude-only, so other harnesses keep the
+// requested mode.
+func effectiveChatPermission(cfg StartConfig) ports.PermissionMode {
+	if cfg.Harness != domain.HarnessClaudeCode {
+		return cfg.Permissions
+	}
+	return claudecode.EffectiveWorkerPermission(cfg.Kind, cfg.WorkerSandbox, cfg.Permissions)
+}
+
+// sandboxedClaudeWorker reports whether the live controller was started as a
+// Claude Code worker with the project OS sandbox enabled.
+func (s *Service) sandboxedClaudeWorker(owner domain.ConversationOwner) bool {
+	s.mu.Lock()
+	cfg, ok := s.startConfigs[owner]
+	s.mu.Unlock()
+	return ok && cfg.Harness == domain.HarnessClaudeCode &&
+		cfg.Kind == domain.KindWorker && cfg.WorkerSandbox.IsEnabled()
+}
+
+func (s *Service) refuseSandboxedBypassConfig(
+	owner domain.ConversationOwner,
+	configID string,
+	value ports.ChatConfigOptionValue,
+) error {
+	if configID != "mode" || value.Select != "bypassPermissions" {
+		return nil
+	}
+	if !s.sandboxedClaudeWorker(owner) {
+		return nil
+	}
+	return fmt.Errorf("%w: %w", ports.ErrChatPermissionModeUnsupported, ports.ErrChatSandboxBypassDisabled)
 }
 
 // permissionConfigOptions annotates only provider controls whose semantics are

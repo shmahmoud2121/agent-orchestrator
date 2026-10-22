@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/apitoken"
 	"github.com/aoagents/agent-orchestrator/backend/internal/config"
 	"github.com/aoagents/agent-orchestrator/backend/internal/runfile"
@@ -133,6 +134,10 @@ func (s *Server) run(ctx context.Context, onReady func()) error {
 			s.log.Warn("failed to remove run-file", "path", s.cfg.RunFilePath, "err", err)
 		}
 	}()
+
+	// Log Claude Code worker-sandbox platform support once at start so operators
+	// see a missing bubblewrap/socat (or native Windows) before the first spawn.
+	claudecode.LogSandboxAvailabilityOnce(s.log)
 
 	serveErr := make(chan error, 1)
 	go func() {

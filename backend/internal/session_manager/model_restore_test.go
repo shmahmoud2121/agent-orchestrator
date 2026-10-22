@@ -51,6 +51,7 @@ func TestClaudeSessionModelSurvivesRestore(t *testing.T) {
 							}
 						}
 					})
+					sandboxOff := false
 					project := domain.ProjectRecord{
 						ID: "mer", Path: t.TempDir(), RegisteredAt: time.Now().UTC(),
 						Config: domain.ProjectConfig{
@@ -61,6 +62,7 @@ func TestClaudeSessionModelSurvivesRestore(t *testing.T) {
 							Orchestrator: domain.RoleOverride{
 								Harness: domain.HarnessClaudeCode, AgentConfig: domain.AgentConfig{Model: selection.roleModel, Effort: selection.roleEffort},
 							},
+							WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &sandboxOff},
 						},
 					}
 					if err := store.UpsertProject(ctx, project); err != nil {

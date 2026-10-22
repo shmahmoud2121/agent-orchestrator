@@ -1662,9 +1662,14 @@ func newManager() (*Manager, *fakeStore, *fakeRuntime, *fakeWorkspace) {
 	return m, st, rt, ws
 }
 func testRoleAgents() domain.ProjectConfig {
+	// Generic fixtures keep the project sandbox off so they are not coupled to
+	// sandbox availability. Dedicated tests cover Claude chat ACP sandbox
+	// settings; production defaults remain enabled.
+	sandboxOff := false
 	return domain.ProjectConfig{
-		Worker:       domain.RoleOverride{Harness: domain.HarnessClaudeCode},
-		Orchestrator: domain.RoleOverride{Harness: domain.HarnessClaudeCode},
+		Worker:        domain.RoleOverride{Harness: domain.HarnessClaudeCode},
+		Orchestrator:  domain.RoleOverride{Harness: domain.HarnessClaudeCode},
+		WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &sandboxOff},
 	}
 }
 

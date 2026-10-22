@@ -768,6 +768,10 @@ type LaunchConfig struct {
 	// for PreLaunch, so an adapter prepares the provider config the launched
 	// process will actually read (for example a project CLAUDE_CONFIG_DIR).
 	Env map[string]string
+	// WorkerSandbox is the project's worker OS-sandbox policy. Claude Code
+	// workers honor it; other adapters ignore it. A zero value means enabled
+	// with no extra domains (see domain.WorkerSandboxConfig.IsEnabled).
+	WorkerSandbox domain.WorkerSandboxConfig
 }
 
 // WorkspaceHookConfig carries inputs needed to install workspace-local agent hooks.
@@ -801,6 +805,9 @@ type RestoreConfig struct {
 	// system-prompt flag should re-apply this in their resume command.
 	SystemPrompt     string
 	SystemPromptFile string
+	// WorkerSandbox mirrors LaunchConfig so a resumed worker keeps the same
+	// OS sandbox (a restore without it would escape the sandbox).
+	WorkerSandbox domain.WorkerSandboxConfig
 }
 
 // SessionRef identifies an AO session whose agent-owned metadata may be read.

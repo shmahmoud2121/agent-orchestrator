@@ -104,6 +104,12 @@ type ProjectConfig struct {
 	// default: integration stays on this machine. A failed push never undoes
 	// the local merge. Workers never push.
 	PushAfterMerge bool `json:"pushAfterMerge,omitempty"`
+
+	// WorkerSandbox confines Claude Code worker sessions with Claude's OS
+	// sandbox (Seatbelt / bubblewrap). Default when unset is enabled with an
+	// empty domain allowlist (no outbound network). Other worker harnesses
+	// ignore it. Orchestrator and reviewer sessions are unchanged.
+	WorkerSandbox WorkerSandboxConfig `json:"workerSandbox,omitempty"`
 }
 
 // DefaultVerifyTimeoutSeconds bounds a project VerifyCommand without its own
@@ -309,6 +315,9 @@ func (c ProjectConfig) Validate() error {
 		}
 	}
 	if err := c.TrackerIntake.Validate(); err != nil {
+		return err
+	}
+	if err := c.WorkerSandbox.Validate(); err != nil {
 		return err
 	}
 	return nil

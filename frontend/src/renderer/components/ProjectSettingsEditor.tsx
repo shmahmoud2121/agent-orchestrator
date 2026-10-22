@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import type { ProjectSettingsSaveState, ProjectSettingsSection as SettingsSection } from "./ProjectSettingsForm";
 import { deriveRepoHost, deriveRepoPath, IntakeFields, intakeNeedsRule } from "./IntakeFields";
 import { ProductExternalLink } from "./ProductExternalLink";
-import { AgentModelField, ProjectAutoReviewToggle, ProjectPushAfterMergeToggle, ProjectWorkersRequestReviewToggle } from "./settings/ProjectAgentRoleControls";
+import { AgentModelField, ProjectAutoReviewToggle, ProjectPushAfterMergeToggle, ProjectWorkerSandboxToggle, ProjectWorkersRequestReviewToggle } from "./settings/ProjectAgentRoleControls";
 import { SettingsOptionMenu } from "./settings/SettingsOptionMenu";
 import { SettingsRow } from "./settings/SettingsRow";
 import { Button } from "./ui/button";
@@ -44,6 +44,10 @@ export type ProjectSettingsDraft = {
 	verifyTimeoutSeconds?: string;
 	/** Local-only: `ao merge` pushes the base branch to origin after it lands. */
 	pushAfterMerge?: boolean;
+	/** Local-only: Claude Code worker OS sandbox (default on). */
+	workerSandboxEnabled?: boolean;
+	/** Local-only: sandbox network allowlist; one hostname or *.example.com per line. */
+	workerSandboxAllowedDomains?: string;
 };
 
 const roles = ["worker", "orchestrator", "reviewer"] as const;
@@ -244,6 +248,14 @@ export function ProjectSettingsEditor({ initialValues, section, capabilities, de
 							{capabilities.runtimeDefaults && agent === "cursor" && <SettingsOptionMenu aria-label={t(`settings.models.${role}Mode`)} value={draft[fields.mode]} triggerClassName="w-fit" options={[{ value: "", label: t("settings.cloudProject.agentMode") }, { value: "plan", label: t("settings.cloudProject.plan") }, { value: "ask", label: t("settings.cloudProject.ask") }]} onChange={(value) => updateConfig(fields.mode, value)} />}
 						</div></div></ProjectSettingsRow>
 						<ProjectSettingsRow label={t("settings.project.approval")}><div className="min-w-0"><ProjectRolePermissions role={role} agent={agent} value={draft[fields.permissions]} runtimeDefaults={capabilities.runtimeDefaults} onChange={updatePermissions} /></div></ProjectSettingsRow>
+						{role === "worker" && !capabilities.runtimeDefaults ? <WorkerSandboxSettings
+							agent={agent}
+							enabled={draft.workerSandboxEnabled !== false}
+							domains={draft.workerSandboxAllowedDomains ?? ""}
+							bypassSelected={(draft.workerPermissions || "auto") === "bypass-permissions"}
+							onEnabledChange={(workerSandboxEnabled) => patch({ workerSandboxEnabled })}
+							onDomainsChange={(workerSandboxAllowedDomains) => patch({ workerSandboxAllowedDomains })}
+						/> : null}
 					</ProjectSettingsSection>;
 				})}
 				{capabilities.requiredAgents && (!draft.workerAgent || !draft.orchestratorAgent) && <p className="px-(--settings-row-inset) text-xs text-error" role="alert">{t("settings.project.agentsRequired")}</p>}
@@ -261,4 +273,38 @@ function ProjectRolePermissions({ role, agent, value, runtimeDefaults, onChange 
 	const values = runtimeDefaults ? ["", "default", "auto", ...(agent === "opencode" ? [] : ["accept-edits"]), "bypass-permissions"] : [...(agent === "codex" ? [] : ["default"]), "auto", "accept-edits", "bypass-permissions"];
 	const options = values.map((permission) => ({ value: permission, label: permission === "" ? t("settings.cloudProject.sessionPolicy") : permission === "default" ? t(agent === "claude-code" ? "settings.project.permissionUseClaude" : "settings.project.permissionUseAgent") : t(permission === "accept-edits" ? "settings.project.permissionAcceptEdits" : permission === "auto" ? "settings.project.permissionAuto" : "settings.project.permissionBypass") }));
 	return <SettingsOptionMenu aria-label={label} value={runtimeDefaults ? value : value === "default" && agent === "codex" ? "bypass-permissions" : value || "auto"} options={options} disabled={runtimeDefaults && !agent} placeholder={t("settings.project.permissionNotReported")} triggerClassName="w-fit" onChange={onChange} />;
+}
+
+function WorkerSandboxSettings({ agent, enabled, domains, bypassSelected, onEnabledChange, onDomainsChange }: {
+	agent: string;
+	enabled: boolean;
+	domains: string;
+	bypassSelected: boolean;
+	onEnabledChange: (enabled: boolean) => void;
+	onDomainsChange: (domains: string) => void;
+}) {
+	const { t } = useTranslation();
+	if (agent && agent !== "claude-code") {
+		return <SettingsRow label={t("settings.project.workerSandboxToggle")} description={t("settings.project.workerSandboxNotSupported")}>
+			<span className="text-sm text-settings-muted">{t("settings.project.workerSandboxNotSandboxed")}</span>
+		</SettingsRow>;
+	}
+	return <>
+		<ProjectWorkerSandboxToggle checked={enabled} onCheckedChange={onEnabledChange} unsafe={!enabled} />
+		{enabled ? <>
+			<SettingsRow label={t("settings.project.workerSandboxDomains")} description={t("settings.project.workerSandboxDomainsDescription")}>
+				<textarea
+					id="project-worker-sandbox-domains"
+					aria-label={t("settings.project.workerSandboxDomains")}
+					className="min-h-20 w-80 max-w-full rounded-md border border-transparent bg-input/50 px-3 py-2 font-mono text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:outline-none"
+					autoComplete="off"
+					spellCheck={false}
+					value={domains}
+					placeholder={"registry.npmjs.org\n*.githubusercontent.com"}
+					onChange={(event) => onDomainsChange(event.target.value)}
+				/>
+			</SettingsRow>
+			{bypassSelected ? <p className="px-(--settings-row-inset) text-xs text-settings-muted" role="note">{t("settings.project.workerSandboxBypassNote")}</p> : null}
+		</> : null}
+	</>;
 }

@@ -566,6 +566,61 @@ describe("ProjectSettingsForm", () => {
 		expect(config.orchestrator.agentConfig.permissions).toBe("default");
 	});
 
+	it("shows the worker sandbox toggle and domain list for Claude Code", async () => {
+		mockProject({
+			id: "proj-1", name: "Project One", kind: "single_repo", path: "/repo/project-one",
+			repo: "", defaultBranch: "main", config: {
+				worker: { agent: "claude-code" },
+				orchestrator: { agent: "claude-code" },
+				workerSandbox: { enabled: true, allowedDomains: ["registry.npmjs.org"] },
+			},
+		});
+		renderSettings("proj-1", undefined, "agents");
+		const toggle = await screen.findByRole("switch", { name: "Worker OS sandbox" });
+		expect(toggle).toBeChecked();
+		const domains = screen.getByRole("textbox", { name: "Allowed domains" });
+		expect(domains).toHaveValue("registry.npmjs.org");
+		await userEvent.clear(domains);
+		await userEvent.type(domains, "github.com\n*.npmjs.org");
+		submitSettings();
+		await waitFor(() => expect(putMock).toHaveBeenCalledTimes(1));
+		expect(putMock.mock.calls[0][1].body.config.workerSandbox).toEqual({
+			enabled: true,
+			allowedDomains: ["github.com", "*.npmjs.org"],
+		});
+	});
+
+	it("shows not sandboxed for non-Claude Code workers", async () => {
+		mockProject({
+			id: "proj-1", name: "Project One", kind: "single_repo", path: "/repo/project-one",
+			repo: "", defaultBranch: "main", config: {
+				worker: { agent: "codex" },
+				orchestrator: { agent: "claude-code" },
+			},
+		});
+		renderSettings("proj-1", undefined, "agents");
+		expect(await screen.findByText("Not sandboxed")).toBeInTheDocument();
+		expect(screen.queryByRole("switch", { name: "Worker OS sandbox" })).not.toBeInTheDocument();
+	});
+
+	it("persists turning the worker sandbox off as unsafe", async () => {
+		mockProject({
+			id: "proj-1", name: "Project One", kind: "single_repo", path: "/repo/project-one",
+			repo: "", defaultBranch: "main", config: {
+				worker: { agent: "claude-code" },
+				orchestrator: { agent: "claude-code" },
+			},
+		});
+		renderSettings("proj-1", undefined, "agents");
+		const toggle = await screen.findByRole("switch", { name: "Worker OS sandbox" });
+		expect(toggle).toBeChecked();
+		await userEvent.click(toggle);
+		expect(toggle).not.toBeChecked();
+		submitSettings();
+		await waitFor(() => expect(putMock).toHaveBeenCalledTimes(1));
+		expect(putMock.mock.calls[0][1].body.config.workerSandbox).toEqual({ enabled: false });
+	});
+
 	it("can switch back to Claude's own permission setting", async () => {
 		mockProject({
 			id: "proj-1", name: "Project One", kind: "single_repo", path: "/repo/project-one",

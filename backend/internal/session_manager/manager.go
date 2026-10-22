@@ -1461,6 +1461,7 @@ func (m *Manager) Spawn(ctx context.Context, cfg ports.SpawnConfig) (domain.Sess
 		m.rollbackSeedSpawnWorkspace(ctx, rec, ws, workspaceProject, false, false)
 		return domain.SessionRecord{}, 0, 0, wrapSpawnStage(id, ErrSpawnPrepare, err)
 	}
+	workerSandbox := workerSandboxLaunchFields(cfg.Kind, project.Config)
 	launchCfg := ports.LaunchConfig{
 		DataDir:          m.dataDir,
 		SessionID:        string(id),
@@ -1472,6 +1473,7 @@ func (m *Manager) Spawn(ctx context.Context, cfg ports.SpawnConfig) (domain.Sess
 		IssueID:          string(cfg.IssueID),
 		Config:           adapterConfig,
 		Permissions:      adapterConfig.Permissions,
+		WorkerSandbox:    workerSandbox,
 	}
 	delivery, err := agent.GetPromptDeliveryStrategy(ctx, launchCfg)
 	if err != nil {
@@ -3559,6 +3561,7 @@ func (m *Manager) relaunchSessionWithPolicyAndGeneration(ctx context.Context, op
 			}
 		}
 	}
+	workerSandbox := workerSandboxLaunchFields(rec.Kind, project.Config)
 	var argv []string
 	var initialization ports.NativeRestoreInitialization
 	var delivery ports.PromptDeliveryStrategy
@@ -3569,9 +3572,9 @@ func (m *Manager) relaunchSessionWithPolicyAndGeneration(ctx context.Context, op
 			err = ErrNotResumable
 		} else if identityUnverified {
 			argv, delivery, mode, err = freshLaunchArgv(ctx, agent, rec.ID, ws.Path, rec.Metadata,
-				systemPrompt, systemPromptFile, agentConfig, rec.Kind, m.dataDir, true)
+				systemPrompt, systemPromptFile, agentConfig, rec.Kind, m.dataDir, true, workerSandbox)
 		} else {
-			initialization, err = restorer.PrepareNativeRestore(ctx, ports.RestoreConfig{Session: ports.SessionRef{ID: string(rec.ID), WorkspacePath: ws.Path, Metadata: map[string]string{ports.MetadataKeyAgentSessionID: rec.Metadata.AgentSessionID}}, DataDir: m.dataDir, Kind: rec.Kind, Config: agentConfig, Permissions: agentConfig.Permissions, SystemPrompt: systemPrompt, SystemPromptFile: systemPromptFile})
+			initialization, err = restorer.PrepareNativeRestore(ctx, ports.RestoreConfig{Session: ports.SessionRef{ID: string(rec.ID), WorkspacePath: ws.Path, Metadata: map[string]string{ports.MetadataKeyAgentSessionID: rec.Metadata.AgentSessionID}}, DataDir: m.dataDir, Kind: rec.Kind, Config: agentConfig, Permissions: agentConfig.Permissions, SystemPrompt: systemPrompt, SystemPromptFile: systemPromptFile, WorkerSandbox: workerSandbox})
 			if err == nil {
 				argv = initialization.Argv()
 				for key, value := range initialization.LaunchEnv() {
@@ -3580,15 +3583,15 @@ func (m *Manager) relaunchSessionWithPolicyAndGeneration(ctx context.Context, op
 				delivery, mode = ports.PromptDeliveryInCommand, RestoreModeNative
 			} else if errors.Is(err, ports.ErrNativeHistoryUnavailable) && !requireNativeHistory {
 				argv, delivery, mode, err = freshLaunchArgv(ctx, agent, rec.ID, ws.Path, rec.Metadata,
-					systemPrompt, systemPromptFile, agentConfig, rec.Kind, m.dataDir, true)
+					systemPrompt, systemPromptFile, agentConfig, rec.Kind, m.dataDir, true, workerSandbox)
 			}
 		}
 	} else if forceFresh {
 		argv, delivery, mode, err = freshLaunchArgv(ctx, agent, rec.ID, ws.Path, rec.Metadata,
-			systemPrompt, systemPromptFile, agentConfig, rec.Kind, m.dataDir, true)
+			systemPrompt, systemPromptFile, agentConfig, rec.Kind, m.dataDir, true, workerSandbox)
 	} else {
 		argv, delivery, mode, err = restoreArgv(ctx, agent, rec.ID, ws.Path, rec.Metadata,
-			systemPrompt, systemPromptFile, agentConfig, rec.Kind, rec.Harness, m.dataDir, env)
+			systemPrompt, systemPromptFile, agentConfig, rec.Kind, rec.Harness, m.dataDir, env, workerSandbox)
 	}
 	if err != nil {
 		m.cleanupSystemPromptDir(rec.ID)
@@ -3608,6 +3611,7 @@ func (m *Manager) relaunchSessionWithPolicyAndGeneration(ctx context.Context, op
 		SystemPromptFile: systemPromptFile,
 		Config:           agentConfig,
 		Permissions:      agentConfig.Permissions,
+		WorkerSandbox:    workerSandbox,
 	}
 	afterStartPrompt := rec.Metadata.Prompt
 	if delivery == ports.PromptDeliveryAfterStart && mode != RestoreModeNative {
@@ -6821,7 +6825,7 @@ func sleepContext(ctx context.Context, d time.Duration) error {
 // signals via ok=false (e.g. no native session id captured yet). Returns
 // ErrNotResumable when transcript-preserving restore is required but unavailable,
 // or when a promptless, unresumable worker has nothing to restore from.
-func restoreArgv(ctx context.Context, agent ports.Agent, id domain.SessionID, workspacePath string, meta domain.SessionMetadata, systemPrompt, systemPromptFile string, agentConfig ports.AgentConfig, kind domain.SessionKind, _ domain.AgentHarness, dataDir string, env map[string]string) ([]string, ports.PromptDeliveryStrategy, RestoreMode, error) {
+func restoreArgv(ctx context.Context, agent ports.Agent, id domain.SessionID, workspacePath string, meta domain.SessionMetadata, systemPrompt, systemPromptFile string, agentConfig ports.AgentConfig, kind domain.SessionKind, _ domain.AgentHarness, dataDir string, env map[string]string, workerSandbox domain.WorkerSandboxConfig) ([]string, ports.PromptDeliveryStrategy, RestoreMode, error) {
 	ref := ports.SessionRef{
 		ID:            string(id),
 		WorkspacePath: workspacePath,
@@ -6830,7 +6834,10 @@ func restoreArgv(ctx context.Context, agent ports.Agent, id domain.SessionID, wo
 			ports.MetadataKeySessionMode:    string(domain.SessionModeTUI),
 		},
 	}
-	cmd, ok, err := agent.GetRestoreCommand(ctx, ports.RestoreConfig{Session: ref, Kind: kind, DataDir: dataDir, SystemPrompt: systemPrompt, SystemPromptFile: systemPromptFile, Config: agentConfig, Permissions: agentConfig.Permissions})
+	cmd, ok, err := agent.GetRestoreCommand(ctx, ports.RestoreConfig{
+		Session: ref, Kind: kind, DataDir: dataDir, SystemPrompt: systemPrompt, SystemPromptFile: systemPromptFile,
+		Config: agentConfig, Permissions: agentConfig.Permissions, WorkerSandbox: workerSandbox,
+	})
 	if err != nil {
 		return nil, "", "", fmt.Errorf("restore command: %w", err)
 	}
@@ -6848,7 +6855,7 @@ func restoreArgv(ctx context.Context, agent ports.Agent, id domain.SessionID, wo
 	// a saved prompt, rather than stranding the work behind ErrNotResumable. A
 	// worker that never got that far (no id, no prompt) still stays unresumable.
 	return freshLaunchArgv(ctx, agent, id, workspacePath, meta, systemPrompt,
-		systemPromptFile, agentConfig, kind, dataDir, conversationLost)
+		systemPromptFile, agentConfig, kind, dataDir, conversationLost, workerSandbox)
 }
 
 // nativeConversationMissing reports whether the agent can see a persisted
@@ -6883,7 +6890,7 @@ func nativeConversationMissing(ctx context.Context, agent ports.Agent, ref ports
 // freshLaunchArgv builds the non-resume half of restoreArgv. Interface
 // transitions also use it when an adapter proves its reserved id has no
 // persisted history, both for preflight and for the actual target launch.
-func freshLaunchArgv(ctx context.Context, agent ports.Agent, id domain.SessionID, workspacePath string, meta domain.SessionMetadata, systemPrompt, systemPromptFile string, agentConfig ports.AgentConfig, kind domain.SessionKind, dataDir string, allowPromptless bool) ([]string, ports.PromptDeliveryStrategy, RestoreMode, error) {
+func freshLaunchArgv(ctx context.Context, agent ports.Agent, id domain.SessionID, workspacePath string, meta domain.SessionMetadata, systemPrompt, systemPromptFile string, agentConfig ports.AgentConfig, kind domain.SessionKind, dataDir string, allowPromptless bool, workerSandbox domain.WorkerSandboxConfig) ([]string, ports.PromptDeliveryStrategy, RestoreMode, error) {
 	// A saved prompt is replayed fresh. An orchestrator is promptless by design
 	// and relaunches with the system prompt only. A promptless WORKER has no task
 	// and no session id to restore from: do not blank-relaunch it.
@@ -6903,6 +6910,7 @@ func freshLaunchArgv(ctx context.Context, agent ports.Agent, id domain.SessionID
 		SystemPromptFile: systemPromptFile,
 		Config:           agentConfig,
 		Permissions:      agentConfig.Permissions,
+		WorkerSandbox:    workerSandbox,
 	}
 	delivery, err := agent.GetPromptDeliveryStrategy(ctx, launchCfg)
 	if err != nil {
@@ -7081,4 +7089,13 @@ func firstNonEmptyString(values ...string) string {
 		}
 	}
 	return ""
+}
+
+// workerSandboxLaunchFields returns the project sandbox policy for worker
+// launches. Non-workers get a zero policy so adapters leave them unsandboxed.
+func workerSandboxLaunchFields(kind domain.SessionKind, cfg domain.ProjectConfig) domain.WorkerSandboxConfig {
+	if kind != domain.KindWorker {
+		return domain.WorkerSandboxConfig{}
+	}
+	return cfg.WorkerSandbox
 }
