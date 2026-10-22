@@ -44,6 +44,7 @@ import { listFeatureBuilds, getActiveFeatureBuild } from "./main/feature-builds"
 import { initMainSentry, sanitizeRendererCapture } from "./main/sentry-main";
 import { TelemetryPolicyAuthority, resolveDesktopDataDir } from "./main/telemetry-policy-file";
 import { DaemonTelemetryPolicyClient } from "./main/daemon-telemetry-policy-client";
+import { installDaemonAPIAuthentication, isDaemonAuthenticatedRequest } from "./main/daemon-api-auth";
 import { DesktopTelemetryController } from "./main/desktop-telemetry-controller";
 import { AgentSwitchVisibilityController } from "./main/agent-switch-observability";
 import { readUpdateSettings, updateUpdateSettings, type UpdateSettings, type UpdateStatus } from "./main/update-settings";
@@ -342,9 +343,29 @@ let daemonRestartAfterExitProcess: ChildProcess | null = null;
 let daemonStartPromise: Promise<DaemonStatus> | null = null;
 let daemonStartEpoch = 0;
 let daemonStatus: DaemonStatus = { state: "stopped" };
+let cachedDaemonAPIToken: string | null = null;
+
+function readDaemonAPIToken(): string | null {
+	if (cachedDaemonAPIToken) return cachedDaemonAPIToken;
+	try {
+		const token = readFileSync(path.join(resolvedDaemonDataDir(), "api-token"), "utf8").trim();
+		if (token) cachedDaemonAPIToken = token;
+	} catch {
+		return null;
+	}
+	return cachedDaemonAPIToken;
+}
+
+function daemonFetch(url: string, init: RequestInit = {}, expectedPort = daemonStatus.port): Promise<Response> {
+	const token = isDaemonAuthenticatedRequest(url, expectedPort) ? readDaemonAPIToken() : null;
+	if (!token) return net.fetch(url, init);
+	const headers = new Headers(init.headers);
+	headers.set("Authorization", `Bearer ${token}`);
+	return net.fetch(url, { ...init, headers });
+}
 const awakeDownloads = createAwakeDownloadBridge({
  baseURL: () => daemonStatus.state === "ready" && daemonStatus.port ? `http://127.0.0.1:${daemonStatus.port}` : null,
- request: (url, init) => net.fetch(url, init),
+ request: daemonFetch,
 });
 app.once("will-quit", () => awakeDownloads.dispose());
 
@@ -464,10 +485,7 @@ function syncNativeWindowBackground(): void {
 }
 
 function resolvedDaemonDataDir(): string {
-	const override = process.env.AO_DATA_DIR?.trim();
-	if (override) return override;
-	if (isDev) return path.join(os.homedir(), ".ao", DEV_STATE_SUBDIR, "data");
-	return path.join(os.homedir(), ".ao", "data");
+	return desktopDataDir;
 }
 
 // Cursor Agent reads TERM_THEME at process start. The daemon applies it from
@@ -653,14 +671,14 @@ function setDaemonStatus(nextStatus: DaemonStatus): void {
 	if (nextStatus.state === "ready" && nextStatus.port && daemonIdentity && sideClaimedDaemonPID !== daemonIdentity) {
 		sideClaimedDaemonPID = daemonIdentity;
 		const sideBase = `http://127.0.0.1:${nextStatus.port}/api/v1/side-chats/launch`;
-		void fetch(`${sideBase}/claim`, {
+		void daemonFetch(`${sideBase}/claim`, {
 			method: "POST",
 			headers: { "content-type": "application/json" },
 			body: JSON.stringify({ appRunId }),
 		}).then(async (response) => {
 			if (!response.ok) throw new Error(`side launch claim failed: ${response.status}`);
 			if (sideLaunchState?.appRunId === appRunId && (sideLaunchState.sides.length > 0 || Object.keys(sideLaunchState.numbers ?? {}).length > 0)) {
-				const restored = await fetch(`${sideBase}/state`, {
+				const restored = await daemonFetch(`${sideBase}/state`, {
 					method: "POST", headers: { "content-type": "application/json" },
 					body: JSON.stringify(sideLaunchState),
 				});
@@ -671,7 +689,7 @@ function setDaemonStatus(nextStatus: DaemonStatus): void {
 				sideStatePolling = true;
 				const request = ++sideStateRequest;
 				try {
-					const result = await fetch(`${sideBase}/state?appRunId=${encodeURIComponent(appRunId)}`);
+					const result = await daemonFetch(`${sideBase}/state?appRunId=${encodeURIComponent(appRunId)}`);
 					if (result.ok) {
 						const state = await result.json() as { appRunId: string; sides: unknown[]; numbers?: Record<string, number> };
 						if (sideClaimedDaemonPID === daemonIdentity && state.appRunId === appRunId && request > sideStateApplied) { sideStateApplied = request; rememberSideLaunchState(state); }
@@ -841,6 +859,11 @@ async function createWindowInternal(): Promise<void> {
 	syncNativeWindowBackground();
 	const shellWebContents = getShellWebContents();
 	if (!shellWebContents) throw new Error("AO shell WebContents was not created");
+	installDaemonAPIAuthentication({
+		session: shellWebContents.session,
+		port: () => daemonStatus.port,
+		readToken: readDaemonAPIToken,
+	});
 	trustedShellWebContents.set(shellWebContents.id, shellWebContents);
 	agentSwitchVisibilityController?.registerWindow(shellWebContents.id);
 	shellWebContents.once("destroyed", () => {
@@ -1207,7 +1230,7 @@ async function fetchDesktopSessionPath(
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), DAEMON_PROBE_TIMEOUT_MS);
 	try {
-		const response = await net.fetch(
+		const response = await daemonFetch(
 			`http://127.0.0.1:${daemonStatus.port}/api/v1/desktop/sessions/${encodeURIComponent(sessionId)}/${route}`,
 			{ signal: controller.signal },
 		).catch((error: unknown) => {
@@ -1523,7 +1546,7 @@ async function readDaemonProbe(port: number, endpoint: "healthz" | "readyz"): Pr
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), DAEMON_PROBE_TIMEOUT_MS);
 	try {
-		const response = await net.fetch(`http://127.0.0.1:${port}/${endpoint}`, { signal: controller.signal });
+		const response = await daemonFetch(`http://127.0.0.1:${port}/${endpoint}`, { signal: controller.signal }, port);
 		if (!response.ok) return null;
 		return parseDaemonProbe(endpoint, await response.json());
 	} catch {
@@ -1764,7 +1787,7 @@ async function inspectExistingDaemon(
 
 async function gracefullyReplaceDaemonForBrowser(status: DaemonStatus): Promise<void> {
 	if (!status.port) throw new Error("the running daemon did not report a port");
-	const response = await fetch(`http://127.0.0.1:${status.port}/shutdown`, { method: "POST" });
+	const response = await daemonFetch(`http://127.0.0.1:${status.port}/shutdown`, { method: "POST" }, status.port);
 	if (!response.ok) throw new Error(`daemon shutdown returned HTTP ${response.status}`);
 
 	const deadline = Date.now() + 8_000;
@@ -2467,7 +2490,7 @@ async function captureSideChatState(closedSideId?: string, cancelClose = false):
 	if (daemonStatus.state !== "ready" || !daemonStatus.port) return;
 	const daemonIdentity = sideClaimedDaemonPID;
 	const request = ++sideStateRequest;
-	const result = await fetch(
+	const result = await daemonFetch(
 		`http://127.0.0.1:${daemonStatus.port}/api/v1/side-chats/launch/state?appRunId=${encodeURIComponent(appRunId)}`,
 		{ signal: AbortSignal.timeout(5000) },
 	);
@@ -3394,7 +3417,7 @@ app.whenReady().then(async () => {
 	agentSwitchVisibilityController = new AgentSwitchVisibilityController({ send: async () => undefined, killSwitched: visibilityKillSwitched, diagnostic: (code) => console.warn("agent switch visibility diagnostic:", code) });
 	for (const shellContents of trustedShellWebContents.values()) agentSwitchVisibilityController.registerWindow(shellContents.id);
 	const authority = new TelemetryPolicyAuthority({ dataDir: desktopDataDir, packagedDefault: app.isPackaged, platform: process.platform });
-	const daemonPolicy = new DaemonTelemetryPolicyClient(() => daemonStatus.state === "ready" && daemonStatus.port ? `http://127.0.0.1:${daemonStatus.port}` : null, (url, init) => net.fetch(url, init));
+	const daemonPolicy = new DaemonTelemetryPolicyClient(() => daemonStatus.state === "ready" && daemonStatus.port ? `http://127.0.0.1:${daemonStatus.port}` : null, daemonFetch);
 	const policyController = new DesktopTelemetryController({
 		authority,
 		daemon: daemonPolicy,
@@ -3598,7 +3621,7 @@ app.on("before-quit", (event) => {
 			const retireSides = async () => {
 				if (daemonStatus.state !== "ready" || !daemonStatus.port) return;
 				try {
-					const response = await fetch(`http://127.0.0.1:${daemonStatus.port}/api/v1/side-chats/launch/retire`, {
+					const response = await daemonFetch(`http://127.0.0.1:${daemonStatus.port}/api/v1/side-chats/launch/retire`, {
 						method: "POST", headers: { "content-type": "application/json" },
 						body: JSON.stringify({ appRunId }), signal: AbortSignal.timeout(3000),
 					});

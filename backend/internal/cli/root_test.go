@@ -19,6 +19,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/aoagents/agent-orchestrator/backend/internal/apitoken"
 	"github.com/aoagents/agent-orchestrator/backend/internal/daemonmeta"
 	"github.com/aoagents/agent-orchestrator/backend/internal/runfile"
 	"github.com/aoagents/agent-orchestrator/backend/internal/telemetrymeta"
@@ -452,6 +453,9 @@ func setConfigEnv(t *testing.T) testConfig {
 	// Code must not leak it into exact hook-body assertions.
 	t.Setenv("CLAUDE_CODE_ENTRYPOINT", "")
 	t.Setenv("CLAUDE_PID", "")
+	if _, err := apitoken.LoadOrCreate(cfg.dataDir); err != nil {
+		t.Fatalf("create test API token: %v", err)
+	}
 	return cfg
 }
 

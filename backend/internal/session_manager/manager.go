@@ -22,6 +22,7 @@ import (
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/memcode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/modelcatalog"
 	"github.com/aoagents/agent-orchestrator/backend/internal/agentlaunch"
+	"github.com/aoagents/agent-orchestrator/backend/internal/apitoken"
 	"github.com/aoagents/agent-orchestrator/backend/internal/attachmentstore"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
@@ -231,6 +232,9 @@ const (
 	// session. AO_DATA_DIR is durable storage, not daemon discovery; custom and
 	// isolated daemons therefore need this coordinate explicitly.
 	EnvRunFile = "AO_RUN_FILE"
+	// EnvAPIToken authenticates AO-launched processes that must call the daemon
+	// directly. It is inherited through the environment, never a command line.
+	EnvAPIToken = "AO_API_TOKEN" //nolint:gosec // Environment variable name, not a credential.
 	// EnvBrowserCapability proves ownership of the session's browser target.
 	EnvBrowserCapability = "AO_BROWSER_CAPABILITY"
 	// EnvBrowserRuntimeToken must never be inherited by a worker. It authenticates
@@ -6095,6 +6099,10 @@ func (m *Manager) runtimeEnvChecked(id domain.SessionID, project domain.ProjectI
 	deleteProtectedEnv(env, EnvRunFile, caseInsensitive)
 	if runFilePath != "" {
 		env[EnvRunFile] = runFilePath
+	}
+	deleteProtectedEnv(env, EnvAPIToken, caseInsensitive)
+	if token, err := apitoken.Load(apitoken.Path(m.dataDir)); err == nil {
+		env[EnvAPIToken] = token
 	}
 	setProtectedEnv(env, EnvBrowserCapability, "", caseInsensitive)
 	setProtectedEnv(env, EnvBrowserRuntimeToken, "", caseInsensitive)

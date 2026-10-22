@@ -29,6 +29,7 @@ const (
 	legacyManagedConfigEnv   = "DEEPSEEK_MANAGED_CONFIG_PATH"
 	codewhaleHomeEnv         = "CODEWHALE_HOME"
 	codewhaleRuntimeDirEnv   = "CODEWHALE_RUNTIME_DIR"
+	aoAPITokenEnv            = "AO_API_TOKEN" //nolint:gosec // Environment variable name, not a credential.
 	nativeSessionLocatorName = "native-session.json"
 	minLifecycleVersion      = "0.10.0"
 	commandTimeout           = 10 * time.Second
@@ -122,6 +123,10 @@ func (p *Plugin) PrepareRuntimeLaunch(ctx context.Context, cfg ports.WorkspaceHo
 	if dataDir == "" || sessionID == "" || launchID == "" || runFilePath == "" {
 		return errors.New("codewhale.PrepareRuntimeLaunch: data dir, session id, launch id, and run file are required")
 	}
+	apiToken := strings.TrimSpace(cfg.Env[aoAPITokenEnv])
+	if apiToken == "" {
+		return errors.New("codewhale.PrepareRuntimeLaunch: AO API token is required")
+	}
 	if filepath.Base(sessionID) != sessionID || sessionID == "." || sessionID == ".." {
 		return fmt.Errorf("codewhale.PrepareRuntimeLaunch: unsafe session id %q", sessionID)
 	}
@@ -173,7 +178,8 @@ func (p *Plugin) PrepareRuntimeLaunch(ctx context.Context, cfg ports.WorkspaceHo
 	config := "# managed by agent-orchestrator; Codewhale user config and hooks remain authoritative\n" +
 		"[lifecycle_outbox]\n" +
 		"path = " + strconv.Quote(outbox) + "\n" +
-		"webhook_url = " + strconv.Quote(webhook.String()) + "\n"
+		"webhook_url = " + strconv.Quote(webhook.String()) + "\n" +
+		"webhook_token = " + strconv.Quote(apiToken) + "\n"
 	configPath := filepath.Join(dir, "managed-config.toml")
 	if err := hookutil.AtomicWriteFile(configPath, []byte(config), 0o600); err != nil {
 		return fmt.Errorf("codewhale.PrepareRuntimeLaunch: write managed config: %w", err)

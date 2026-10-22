@@ -18,9 +18,9 @@ import (
 )
 
 const (
-	// LoopbackHost is the only host the daemon ever binds. There is deliberately
-	// no AO_HOST env var: the daemon has no auth/CORS/TLS and a stray
-	// AO_HOST=0.0.0.0 would turn it into a public no-auth service. If a
+	// LoopbackHost is the only host the primary daemon listener ever binds. There
+	// is deliberately no AO_HOST env var: the per-install token protects local
+	// access but is not a network-exposure or TLS mechanism. If a
 	// non-default loopback (e.g. ::1, 127.0.0.2) is ever needed, add it back with
 	// an IsLoopback() validator — not a raw env read.
 	LoopbackHost = "127.0.0.1"
@@ -113,8 +113,8 @@ type GitLabConfig struct {
 // DefaultAllowedOrigins are the browser origins the daemon's CORS boundary
 // trusts. Other loopback origins are refused, apart from a workspace preview
 // loading its own read-only files; credential and Connect Mobile routes accept
-// only this exact list (plus native callers without an Origin header). The daemon has no auth, so every default
-// entry must be an origin ordinary web content cannot present:
+// only this exact list (plus native callers without an Origin header). Every
+// default entry must be an origin ordinary web content cannot present:
 // app://renderer is the packaged Electron renderer, served from a custom
 // scheme only the desktop app registers — no website can bear it. The opaque
 // "null" origin (file:// pages, sandboxed iframes on any website) must never
@@ -329,7 +329,7 @@ func Load() (Config, error) {
 	if raw, ok := os.LookupEnv("AO_ALLOWED_ORIGINS"); ok && raw != "" {
 		// Explicit override replaces the defaults entirely so a deployment can
 		// also narrow the list. The "null" origin is rejected, never silently
-		// dropped: an operator allowing it would open the no-auth daemon to
+		// dropped: an operator allowing it would expose the daemon surface to
 		// every sandboxed iframe on the web.
 		origins := make([]string, 0, 4)
 		for _, origin := range strings.Split(raw, ",") {

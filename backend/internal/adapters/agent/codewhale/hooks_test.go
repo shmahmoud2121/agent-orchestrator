@@ -103,7 +103,7 @@ func TestPrepareRuntimeLaunchWritesFencedOverlayAndResetsOutbox(t *testing.T) {
 	if err := os.WriteFile(outbox, []byte("stale\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	env := map[string]string{"AO_RUNTIME_LAUNCH_ID": "launch-new", "AO_RUN_FILE": runPath, codewhaleHomeEnv: codewhaleHome}
+	env := map[string]string{"AO_RUNTIME_LAUNCH_ID": "launch-new", "AO_RUN_FILE": runPath, aoAPITokenEnv: "test-token", codewhaleHomeEnv: codewhaleHome}
 	if err := (&Plugin{}).PrepareRuntimeLaunch(context.Background(), ports.WorkspaceHookConfig{
 		DataDir: dataDir, SessionID: "proj-1", Env: env,
 	}); err != nil {
@@ -122,6 +122,7 @@ func TestPrepareRuntimeLaunchWritesFencedOverlayAndResetsOutbox(t *testing.T) {
 		"[lifecycle_outbox]",
 		"path = " + strconv.Quote(outbox),
 		"http://127.0.0.1:43123/api/v1/sessions/proj-1/activity/codewhale?launchId=launch-new",
+		`webhook_token = "test-token"`,
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("managed config missing %q:\n%s", want, text)
@@ -157,6 +158,7 @@ func TestLifecycleSavedSessionIDFlowsToExactRestoreCommand(t *testing.T) {
 	}
 	env := map[string]string{
 		"AO_RUNTIME_LAUNCH_ID": "launch-7",
+		aoAPITokenEnv:          "test-token",
 		"AO_RUN_FILE":          runPath,
 		codewhaleHomeEnv:       codewhaleHome,
 	}
