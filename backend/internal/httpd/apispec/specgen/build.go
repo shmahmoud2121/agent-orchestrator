@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
+	"github.com/aoagents/agent-orchestrator/backend/internal/service/repotrust"
 
 	jsonschema "github.com/swaggest/jsonschema-go"
 	openapi "github.com/swaggest/openapi-go"
@@ -157,6 +158,11 @@ func schemaName(_ reflect.Type, defaultName string) string {
 // by projectOperations(). Add an entry when a new contract type is introduced;
 // the drift test fails until the spec is regenerated, which flags the gap.
 var schemaNames = map[string]string{ //nolint:gosec // Public OpenAPI type names include reset-credit contracts; no credential value is stored here.
+	"ControllersRepoTrustCallerHeader":                     "RepoTrustCallerHeader",
+	"ControllersRepoTrustQuery":                            "RepoTrustQuery",
+	"ControllersRepoTrustRequest":                          "RepoTrustRequest",
+	"RepotrustScan":                                        "RepoTrustScan",
+	"RepotrustFile":                                        "RepoTrustFile",
 	"ControllersAgentAccountIDParam":                       "AgentAccountIDParam",
 	"ControllersAgentAccountLoginIDParam":                  "AgentAccountLoginIDParam",
 	"ControllersAgentAccountSessionIDParam":                "AgentAccountSessionIDParam",
@@ -2622,6 +2628,22 @@ func projectOperations() []operation {
 				{http.StatusNotFound, envelope.APIError{}},
 				{http.StatusInternalServerError, envelope.APIError{}},
 			},
+		},
+		{method: http.MethodGet, path: "/api/v1/projects/{id}/repo-trust", id: "getRepoTrust", tag: "projects",
+			summary:    "Inspect or change explicit repository configuration trust",
+			pathParams: []any{controllers.ProjectIDParam{}, controllers.RepoTrustQuery{}},
+			resps:      []respUnit{{http.StatusOK, repotrust.Scan{}}, {http.StatusBadRequest, envelope.APIError{}}, {http.StatusForbidden, envelope.APIError{}}, {http.StatusNotFound, envelope.APIError{}}, {http.StatusConflict, envelope.APIError{}}, {http.StatusInternalServerError, envelope.APIError{}}},
+		},
+		{method: http.MethodPost, path: "/api/v1/projects/{id}/repo-trust", id: "approveRepoTrust", tag: "projects",
+			summary:    "Inspect or change explicit repository configuration trust",
+			pathParams: []any{controllers.ProjectIDParam{}, controllers.RepoTrustCallerHeader{}},
+			reqBody:    controllers.RepoTrustRequest{},
+			resps:      []respUnit{{http.StatusOK, repotrust.Scan{}}, {http.StatusBadRequest, envelope.APIError{}}, {http.StatusForbidden, envelope.APIError{}}, {http.StatusNotFound, envelope.APIError{}}, {http.StatusConflict, envelope.APIError{}}, {http.StatusInternalServerError, envelope.APIError{}}},
+		},
+		{method: http.MethodDelete, path: "/api/v1/projects/{id}/repo-trust", id: "revokeRepoTrust", tag: "projects",
+			summary:    "Inspect or change explicit repository configuration trust",
+			pathParams: []any{controllers.ProjectIDParam{}, controllers.RepoTrustCallerHeader{}},
+			resps:      []respUnit{{http.StatusOK, repotrust.Scan{}}, {http.StatusBadRequest, envelope.APIError{}}, {http.StatusForbidden, envelope.APIError{}}, {http.StatusNotFound, envelope.APIError{}}, {http.StatusConflict, envelope.APIError{}}, {http.StatusInternalServerError, envelope.APIError{}}},
 		},
 		{
 			method: http.MethodPut, path: "/api/v1/projects/{id}/config", id: "setProjectConfig", tag: "projects",

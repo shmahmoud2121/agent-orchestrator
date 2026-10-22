@@ -260,8 +260,8 @@ func (p *Plugin) freshLaunchNativeSessionID(ctx context.Context, cfg ports.Launc
 // directory. Every AO worktree is a fresh path, so without this the
 // agent would hang at that prompt with no one to answer it.
 //
-// An AO worktree is derived from the repo the user is already running
-// AO in, so it is inherently trusted. PreLaunch records that trust in the
+// The session manager checks the per-project repository configuration trust
+// gate before invoking this capability. PreLaunch records that trust in the
 // global config the launched Claude reads (~/.claude.json by default, see
 // claudeLaunchConfigPaths) before launch, additively and atomically, so it
 // cannot clobber a concurrently-running Claude instance's config. For a launch

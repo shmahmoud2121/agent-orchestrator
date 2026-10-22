@@ -108,21 +108,22 @@ type containerReapConfig struct {
 // client. The CLI sets common fields via flags and the whole object via
 // --config-json.
 type projectConfig struct {
-	ContainerReap     *containerReapConfig `json:"containerReap,omitempty"`
-	CanonicalRepoURL  string               `json:"canonicalRepoURL,omitempty"`
-	DefaultBranch     string               `json:"defaultBranch,omitempty"`
-	SessionPrefix     string               `json:"sessionPrefix,omitempty"`
-	Env               map[string]string    `json:"env,omitempty"`
-	Symlinks          []string             `json:"symlinks,omitempty"`
-	PostCreate        []string             `json:"postCreate,omitempty"`
-	AgentRules        string               `json:"agentRules,omitempty"`
-	AgentRulesFile    string               `json:"agentRulesFile,omitempty"`
-	OrchestratorRules string               `json:"orchestratorRules,omitempty"`
-	AgentConfig       agentConfig          `json:"agentConfig,omitempty"`
-	Worker            roleOverride         `json:"worker,omitempty"`
-	Orchestrator      roleOverride         `json:"orchestrator,omitempty"`
-	TrackerIntake     trackerIntakeConfig  `json:"trackerIntake,omitempty"`
-	AutoReview        bool                 `json:"autoReview,omitempty"`
+	TrustedRepoConfigFingerprint string               `json:"trustedRepoConfigFingerprint,omitempty"`
+	ContainerReap                *containerReapConfig `json:"containerReap,omitempty"`
+	CanonicalRepoURL             string               `json:"canonicalRepoURL,omitempty"`
+	DefaultBranch                string               `json:"defaultBranch,omitempty"`
+	SessionPrefix                string               `json:"sessionPrefix,omitempty"`
+	Env                          map[string]string    `json:"env,omitempty"`
+	Symlinks                     []string             `json:"symlinks,omitempty"`
+	PostCreate                   []string             `json:"postCreate,omitempty"`
+	AgentRules                   string               `json:"agentRules,omitempty"`
+	AgentRulesFile               string               `json:"agentRulesFile,omitempty"`
+	OrchestratorRules            string               `json:"orchestratorRules,omitempty"`
+	AgentConfig                  agentConfig          `json:"agentConfig,omitempty"`
+	Worker                       roleOverride         `json:"worker,omitempty"`
+	Orchestrator                 roleOverride         `json:"orchestrator,omitempty"`
+	TrackerIntake                trackerIntakeConfig  `json:"trackerIntake,omitempty"`
+	AutoReview                   bool                 `json:"autoReview,omitempty"`
 	// WorkersRequestReview must round-trip through set-config so a CLI edit
 	// of another field never silently turns it off.
 	WorkersRequestReview bool             `json:"workersRequestReview,omitempty"`
@@ -188,6 +189,7 @@ func newProjectCommand(ctx *commandContext) *cobra.Command {
 		Use:   "project",
 		Short: "Manage projects",
 	}
+	cmd.AddCommand(newProjectTrustCommand(ctx))
 	cmd.AddCommand(newProjectListCommand(ctx))
 	cmd.AddCommand(newProjectGetCommand(ctx))
 	cmd.AddCommand(newProjectAddCommand(ctx))

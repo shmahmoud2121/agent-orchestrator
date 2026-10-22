@@ -203,6 +203,9 @@ func (c *commandContext) doJSONPathWithHeadersAndTimeout(
 	for name, value := range headers {
 		req.Header.Set(name, value)
 	}
+	if sessionID := os.Getenv("AO_SESSION_ID"); sessionID != "" {
+		req.Header.Set("X-AO-Session-ID", sessionID)
+	}
 	if sideID := os.Getenv("AO_SIDE_CONVERSATION_ID"); sideID != "" {
 		req.Header.Set("X-AO-Side-Conversation", sideID)
 	}

@@ -284,6 +284,7 @@ func (m *Service) Add(ctx context.Context, in AddInput) (Project, error) {
 			return Project{}, apierr.Invalid("INVALID_PROJECT_CONFIG", err.Error(), nil)
 		}
 		projectConfig = *in.Config
+		projectConfig.TrustedRepoConfigFingerprint = ""
 	}
 
 	registeredAt := time.Now()
@@ -702,6 +703,8 @@ func remoteHost(remote string) string {
 // UpdateSettings atomically replaces the project's stored display name and
 // config. Both values are validated before a single database update.
 func (m *Service) UpdateSettings(ctx context.Context, id domain.ProjectID, in UpdateSettingsInput) (Project, error) {
+	m.addMu.Lock()
+	defer m.addMu.Unlock()
 	if err := validateProjectID(id); err != nil {
 		return Project{}, err
 	}
@@ -730,6 +733,7 @@ func (m *Service) UpdateSettings(ctx context.Context, id domain.ProjectID, in Up
 	if err := in.Config.ValidateCanonicalRepository(row.RepoOriginURL); err != nil {
 		return Project{}, apierr.Invalid("INVALID_PROJECT_CONFIG", err.Error(), nil)
 	}
+	in.Config.TrustedRepoConfigFingerprint = row.Config.TrustedRepoConfigFingerprint
 	updated, err := m.store.UpdateProjectSettings(ctx, string(id), inDisplayName, in.Config)
 	if err != nil {
 		return Project{}, apierr.Internal("PROJECT_SETTINGS_UPDATE_FAILED", "Failed to update project settings")
@@ -752,6 +756,8 @@ func (m *Service) modelScopeChanged(projectID string) {
 // SetConfig replaces the project's stored config. The typed config is validated
 // here so a bad value is rejected when set rather than surfacing at spawn.
 func (m *Service) SetConfig(ctx context.Context, id domain.ProjectID, in SetConfigInput) (Project, error) {
+	m.addMu.Lock()
+	defer m.addMu.Unlock()
 	if err := validateProjectID(id); err != nil {
 		return Project{}, err
 	}
@@ -773,6 +779,7 @@ func (m *Service) SetConfig(ctx context.Context, id domain.ProjectID, in SetConf
 	if err := in.Config.ValidateCanonicalRepository(row.RepoOriginURL); err != nil {
 		return Project{}, apierr.Invalid("INVALID_PROJECT_CONFIG", err.Error(), nil)
 	}
+	in.Config.TrustedRepoConfigFingerprint = row.Config.TrustedRepoConfigFingerprint
 	row.Config = in.Config
 	if err := m.store.UpsertProject(ctx, row); err != nil {
 		return Project{}, apierr.Internal("PROJECT_CONFIG_UPDATE_FAILED", "Failed to update project config")

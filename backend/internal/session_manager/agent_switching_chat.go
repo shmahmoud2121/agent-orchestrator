@@ -342,7 +342,7 @@ func (m *Manager) executeChatAgentSwitch(
 	}
 	recorder.boundary(domain.AgentSwitchFailureTargetWorkspacePrepare)
 	if err := m.prepareWorkspace(
-		ctx, targetAgent, rec.ID, rec.Metadata.WorkspacePath,
+		ctx, targetAgent, rec.ID, rec.ProjectID, rec.Metadata.WorkspacePath,
 		finalSystemPrompt, systemPromptFile, agentConfig, targetSetupEnv,
 	); err != nil {
 		return result, fmt.Errorf("switch Chat agent %s: prepare target workspace: %w", id, err)
@@ -630,7 +630,7 @@ func (m *Manager) rollbackStoppedChatAgentSwitchSource(
 	env := m.runtimeEnv(rec.ID, rec.ProjectID, rec.IssueID, project.Config.Env)
 	m.augmentAgentRuntimeEnv(sourceAgent, env)
 	if err := m.prepareWorkspace(
-		ctx, sourceAgent, rec.ID, rec.Metadata.WorkspacePath,
+		ctx, sourceAgent, rec.ID, rec.ProjectID, rec.Metadata.WorkspacePath,
 		systemPrompt, systemPromptFile, agentConfig, env,
 	); err != nil {
 		return err
