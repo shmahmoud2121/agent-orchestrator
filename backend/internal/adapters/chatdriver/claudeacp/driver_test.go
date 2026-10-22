@@ -350,6 +350,9 @@ func TestClaudeSessionMetaIncludesWorkerSandboxSettings(t *testing.T) {
 	if perms["defaultMode"] != "acceptEdits" {
 		t.Fatalf("defaultMode = %#v, want acceptEdits", perms["defaultMode"])
 	}
+	if perms["disableBypassPermissionsMode"] != "disable" {
+		t.Fatalf("disableBypassPermissionsMode = %#v, want disable", perms["disableBypassPermissionsMode"])
+	}
 }
 
 func TestClaudeSessionMetaOmitsSandboxForNonWorkers(t *testing.T) {

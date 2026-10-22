@@ -263,8 +263,13 @@ func buildWorkerSandboxSettings(
 	// reads a ! pattern relative to the current directory even when /, ~/, or
 	// // follows the !, so the negation cannot reach an absolute-anchored deny
 	// (https://code.claude.com/docs/en/permissions).
+	//
+	// disableBypassPermissionsMode keeps Claude itself from entering bypass
+	// even if AO's session/set_mode path regresses; the OS sandbox only covers
+	// Bash, so bypass would otherwise auto-approve Edit/Write anywhere.
 	permissions := map[string]any{
-		"allow": []string{"Bash(ao)", "Bash(ao *)"},
+		"allow":                        []string{"Bash(ao)", "Bash(ao *)"},
+		"disableBypassPermissionsMode": "disable",
 	}
 	if flag := agentruntime.ClaudePermissionArgs(policy); len(flag) == 2 {
 		permissions["defaultMode"] = flag[1]

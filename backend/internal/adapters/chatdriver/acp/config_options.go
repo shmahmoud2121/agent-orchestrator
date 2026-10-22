@@ -23,7 +23,33 @@ func (c *conversation) ListConfigOptions(ctx context.Context) ([]ports.ChatConfi
 	if c.closed {
 		return nil, errConversationClosed
 	}
-	return cloneConfigOptions(c.configOptions), nil
+	options := cloneConfigOptions(c.configOptions)
+	if c.sandboxBlocksBypass {
+		options = hideBypassPermissionsChoice(options)
+	}
+	return options, nil
+}
+
+// hideBypassPermissionsChoice removes the bypassPermissions mode option so the
+// chat picker cannot offer an escape from a sandboxed Claude worker.
+func hideBypassPermissionsChoice(options []ports.ChatConfigOption) []ports.ChatConfigOption {
+	out := make([]ports.ChatConfigOption, 0, len(options))
+	for _, option := range options {
+		if option.ID != "mode" {
+			out = append(out, option)
+			continue
+		}
+		choices := make([]ports.ChatConfigOptionChoice, 0, len(option.Choices))
+		for _, choice := range option.Choices {
+			if choice.Value == "bypassPermissions" {
+				continue
+			}
+			choices = append(choices, choice)
+		}
+		option.Choices = choices
+		out = append(out, option)
+	}
+	return out
 }
 
 // SetConfigOption applies exactly the type the provider advertised and replaces
@@ -43,6 +69,7 @@ func (c *conversation) SetConfigOption(
 	closed := c.closed
 	legacyModel := c.legacyModel
 	legacyMode := c.legacyMode
+	blocksBypass := c.sandboxBlocksBypass
 	var option *ports.ChatConfigOption
 	for i := range c.configOptions {
 		if c.configOptions[i].ID == id {
@@ -61,6 +88,9 @@ func (c *conversation) SetConfigOption(
 	}
 	if option == nil {
 		return nil, fmt.Errorf("%w: unknown ACP session config option %q", ports.ErrChatConfigOptionInvalid, id)
+	}
+	if id == "mode" && blocksBypass && value.Select == "bypassPermissions" {
+		return nil, fmt.Errorf("%w: %w", ports.ErrChatPermissionModeUnsupported, ports.ErrChatSandboxBypassDisabled)
 	}
 	if id == "model" && legacyModel {
 		if value.Boolean != nil || !choiceOffered(option.Choices, value.Select) {

@@ -146,6 +146,7 @@ func (d *Driver) ForkIntoHost(ctx context.Context, sourceID, lastTurnID string, 
 		SessionID: cfg.SessionID, ProviderConversationID: childID,
 		DataDir: cfg.DataDir, WorkspacePath: cfg.WorkspacePath, Env: cfg.Env,
 		Model: cfg.Model, Effort: cfg.Effort, Permissions: cfg.Permissions,
+		Kind: cfg.Kind, WorkerSandbox: cfg.WorkerSandbox,
 		SystemPrompt: cfg.SystemPrompt, AdditionalDirectories: cfg.AdditionalDirectories,
 		MCPServers: cfg.MCPServers, ProviderScopeID: cfg.ProviderScopeID,
 	}, reportedID)

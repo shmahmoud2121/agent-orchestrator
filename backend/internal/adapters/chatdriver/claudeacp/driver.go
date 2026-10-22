@@ -132,6 +132,11 @@ func New(plugin claudePlugin, log *slog.Logger, onAuthRejected func()) ports.Cha
 			if err := claudecode.EnsureWorkerSandboxReady(ctx, claudeBinary, cfg.Kind, cfg.WorkerSandbox); err != nil {
 				return acpdriver.Launch{}, err
 			}
+			// Fail closed: refuse launch when sandbox settings cannot be built so
+			// SessionMeta never starts an unsandboxed sandboxed worker.
+			if _, err := claudecode.WorkerSandboxSettings(cfg.Kind, cfg.Permissions, cfg.WorkerSandbox); err != nil {
+				return acpdriver.Launch{}, err
+			}
 			if err := validateClaudeLaunchAuth(ctx, plugin, cfg.WorkspacePath, cfg.Env, log); err != nil {
 				return acpdriver.Launch{}, err
 			}
@@ -384,10 +389,21 @@ func claudeSessionMeta(cfg acpdriver.LaunchConfig) map[string]any {
 	}
 	settings, err := claudecode.WorkerSandboxSettings(cfg.Kind, cfg.Permissions, cfg.WorkerSandbox)
 	if err != nil {
-		// SessionMeta cannot return an error; Launch already refused an unenforceable
-		// sandbox. A settings encode failure here would leave the session unsandboxed,
-		// so surface it as empty meta only when sandboxing does not apply.
-		settings = nil
+		// SessionMeta cannot return an error. Launch already refused when settings
+		// cannot be built; if we still reach here for a sandboxed worker, attach a
+		// fail-closed sandbox block rather than starting unsandboxed.
+		if cfg.Kind == domain.KindWorker && cfg.WorkerSandbox.IsEnabled() {
+			settings = map[string]any{
+				"sandbox": map[string]any{
+					"enabled":           true,
+					"failIfUnavailable": true,
+				},
+				"permissions": map[string]any{
+					"disableBypassPermissionsMode": "disable",
+					"defaultMode":                  "acceptEdits",
+				},
+			}
+		}
 	}
 	if settings != nil {
 		// claude-agent-acp skips CLAUDE_MODEL_CONFIG when _meta supplies settings;

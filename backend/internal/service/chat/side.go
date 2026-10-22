@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 )
@@ -477,7 +478,8 @@ func (s *Service) CreateIndependentSideChat(ctx context.Context, id domain.Sessi
 	}
 	frozenConfig, err := json.Marshal(frozenSideConfig{
 		DataDir: cfg.DataDir, WorkspacePath: cfg.WorkspacePath, Env: cfg.Env,
-		Permissions: cfg.Permissions, Kind: cfg.Kind, WorkerSandbox: cfg.WorkerSandbox,
+		Permissions: claudecode.EffectiveWorkerPermission(cfg.Kind, cfg.WorkerSandbox, cfg.Permissions),
+		Kind:        cfg.Kind, WorkerSandbox: cfg.WorkerSandbox,
 		ReadOnly: cfg.ReadOnly, SystemPrompt: sideIdentityPrompt(cfg.SystemPrompt),
 		AdditionalDirectories: cfg.AdditionalDirectories, MCPServers: cfg.MCPServers,
 	})
@@ -764,7 +766,7 @@ func (m *sideManager) open(side domain.SideConversation, cfg StartConfig, driver
 			SessionID: domain.SessionID(side.ProviderHostID), DataDir: cfg.DataDir,
 			WorkspacePath: cfg.WorkspacePath, Env: cfg.Env, Model: side.Model, Effort: side.Effort,
 			Permissions: cfg.Permissions, Kind: cfg.Kind, WorkerSandbox: cfg.WorkerSandbox,
-			ReadOnly: cfg.ReadOnly,
+			ReadOnly:     cfg.ReadOnly,
 			SystemPrompt: sideIdentityPrompt(cfg.SystemPrompt), ProviderScopeID: side.ID, ProviderIDsScoped: true,
 			AdditionalDirectories: cfg.AdditionalDirectories, MCPServers: cfg.MCPServers,
 		})

@@ -294,9 +294,16 @@ func TestSandboxSettingsAllowAOBashRules(t *testing.T) {
 	if !containsAll(excluded, "ao", "ao *") {
 		t.Fatalf("excludedCommands=%v", excluded)
 	}
-	allow := asStringSlice(t, settings["permissions"].(map[string]any)["allow"])
+	perms := settings["permissions"].(map[string]any)
+	allow := asStringSlice(t, perms["allow"])
 	if !containsAll(allow, "Bash(ao)", "Bash(ao *)") {
 		t.Fatalf("allow=%v", allow)
+	}
+	if perms["disableBypassPermissionsMode"] != "disable" {
+		t.Fatalf("disableBypassPermissionsMode = %#v, want disable", perms["disableBypassPermissionsMode"])
+	}
+	if perms["defaultMode"] != "acceptEdits" {
+		t.Fatalf("defaultMode = %#v, want acceptEdits", perms["defaultMode"])
 	}
 }
 

@@ -29,7 +29,6 @@ const (
 var (
 	errConversationClosed = errors.New("ACP conversation closed")
 	errClientCapability   = errors.New("ACP client capability not advertised")
-
 	// ErrACPSetterUnsupported is returned by applyTurnSettings when the agent
 	// does not implement session/set_mode or session/set_config_option
 	// (JSON-RPC -32601). Start() and Resume() tolerate it because the initial
@@ -118,20 +117,24 @@ type conversation struct {
 	optionsFor        func(ports.ChatTurnSettings) []SessionOption
 	// requireAdvertised refuses a config option the session did not advertise
 	// instead of sending it. See Config.RequireAdvertisedOptions.
-	requireAdvertised  bool
-	permissionMode     ports.PermissionMode
-	permissionFor      PermissionPolicy
-	initialPermission  ports.PermissionMode
-	validateSettings   TurnSettingsValidator
-	extensionFor       ClientExtensionHandler
-	extensionMethods   map[string]string
-	legacyModel        bool
-	legacyMode         bool
-	liveState          *persistenthost.ACPState
-	hasDurableTurns    bool
-	detaching          bool
-	terminalEventID    string
-	ignorePromptResult bool
+	requireAdvertised bool
+	permissionMode    ports.PermissionMode
+	permissionFor     PermissionPolicy
+	initialPermission ports.PermissionMode
+	validateSettings  TurnSettingsValidator
+	// sandboxBlocksBypass is set for Claude workers whose project OS sandbox is
+	// on. bypassPermissions auto-approves Edit/Write outside the worktree and
+	// would escape the Bash-only sandbox.
+	sandboxBlocksBypass bool
+	extensionFor        ClientExtensionHandler
+	extensionMethods    map[string]string
+	legacyModel         bool
+	legacyMode          bool
+	liveState           *persistenthost.ACPState
+	hasDurableTurns     bool
+	detaching           bool
+	terminalEventID     string
+	ignorePromptResult  bool
 	// onAuthRejected corrects cached auth state when the provider rejects the
 	// credential mid-turn. Nil when the binding does not supply one.
 	onAuthRejected        func()
@@ -296,6 +299,7 @@ func (c *conversation) start(
 	configOptions []acpsdk.SessionConfigOption,
 	models *legacySessionModelState,
 	modes *acpsdk.SessionModeState,
+	sandboxBlocksBypass bool,
 ) {
 	c.mu.Lock()
 	c.sessionID = sessionID
@@ -321,6 +325,7 @@ func (c *conversation) start(
 	c.initialPermission = ports.NormalizePermissionMode(initialPermission)
 	c.permissionMode = c.initialPermission
 	c.validateSettings = validateSettings
+	c.sandboxBlocksBypass = sandboxBlocksBypass
 	c.legacyModel = models != nil
 	c.legacyMode = modes != nil
 	c.mu.Unlock()
@@ -497,6 +502,12 @@ func (c *conversation) applyTurnSettings(ctx context.Context, settings ports.Cha
 		if err := validateSettings(initialPermission, settings); err != nil {
 			return err
 		}
+	}
+	c.mu.Lock()
+	blocksBypass := c.sandboxBlocksBypass
+	c.mu.Unlock()
+	if blocksBypass && ports.NormalizePermissionMode(settings.Approval) == ports.PermissionModeBypassPermissions {
+		return fmt.Errorf("%w: %w", ports.ErrChatPermissionModeUnsupported, ports.ErrChatSandboxBypassDisabled)
 	}
 	if legacyModel && settings.Model != "" {
 		model := settings.Model

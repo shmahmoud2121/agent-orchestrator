@@ -70,6 +70,12 @@ var (
 	// no enforced mapping in this provider. Drivers must return it instead of
 	// silently running with a different permission policy.
 	ErrChatPermissionModeUnsupported = errors.New("chat permission mode is unsupported")
+	// ErrChatSandboxBypassDisabled means bypassPermissions was requested for a
+	// Claude worker whose project OS sandbox is enabled. Bypass auto-approves
+	// Edit/Write outside the worktree and would escape the Bash-only sandbox.
+	ErrChatSandboxBypassDisabled = errors.New(
+		"bypassPermissions is not available while the Claude worker sandbox is enabled",
+	)
 	// ErrChatHistoryUnsettled means the native conversation history is not safe
 	// to project as complete. Only a ChatHistoryRefresher promises that another
 	// provider observation may make progress; rereading a snapshot need not.

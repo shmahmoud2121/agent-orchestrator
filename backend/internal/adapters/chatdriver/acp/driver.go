@@ -52,6 +52,12 @@ type LaunchConfig struct {
 	WorkerSandbox domain.WorkerSandboxConfig
 }
 
+// sandboxBlocksBypass reports whether this launch must refuse bypassPermissions.
+// Claude's OS sandbox only covers Bash; bypass auto-approves Edit/Write anywhere.
+func sandboxBlocksBypass(cfg LaunchConfig) bool {
+	return cfg.Kind == domain.KindWorker && cfg.WorkerSandbox.IsEnabled()
+}
+
 // Config binds one harness to an ACP agent implementation.
 type Config struct {
 	Harness      domain.AgentHarness
@@ -329,6 +335,7 @@ func (d *Driver) openNewSession(
 		d.cfg.SessionMode, d.cfg.SessionOptions, d.cfg.PermissionPolicy,
 		settings.Approval, d.cfg.ValidateTurnSettings, resp.ConfigOptions,
 		conv.legacyWire.modelState(), resp.Modes,
+		sandboxBlocksBypass(launchCfg),
 	)
 	if d.cfg.EncodeProviderConversationID != nil {
 		conv.setReportedProviderConversationID(d.cfg.EncodeProviderConversationID(string(resp.SessionId)))
@@ -461,6 +468,7 @@ func (d *Driver) Resume(ctx context.Context, cfg ports.ChatResumeConfig) (ports.
 			d.cfg.SessionMode, d.cfg.SessionOptions, d.cfg.PermissionPolicy,
 			cfg.Permissions, d.cfg.ValidateTurnSettings, setup.ConfigOptions,
 			setup.Models, setup.Modes,
+			sandboxBlocksBypass(launchCfg),
 		)
 		conv.setReportedProviderConversationID(reportedProviderConversationID)
 		conv.initialPermission = ports.PermissionMode(live.InitialPermissions)
@@ -554,6 +562,7 @@ func (d *Driver) resumeSession(
 		d.cfg.SessionMode, d.cfg.SessionOptions, d.cfg.PermissionPolicy,
 		cfg.Permissions, d.cfg.ValidateTurnSettings, configOptions,
 		conv.legacyWire.modelState(), modes,
+		sandboxBlocksBypass(launchCfg),
 	)
 	conv.setReportedProviderConversationID(reportedProviderConversationID)
 	// Standing context is process input, not transcript history, so a resumed
