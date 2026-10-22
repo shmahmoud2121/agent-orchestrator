@@ -52,14 +52,6 @@ type LaunchConfig struct {
 	WorkerSandbox domain.WorkerSandboxConfig
 }
 
-// sandboxBlocksBypass reports whether this launch must refuse bypassPermissions.
-// Claude's OS sandbox only covers Bash; bypass auto-approves Edit/Write anywhere.
-// The worker sandbox is Claude-only, so other ACP harnesses are unaffected.
-func (d *Driver) sandboxBlocksBypass(cfg LaunchConfig) bool {
-	return d.cfg.Harness == domain.HarnessClaudeCode &&
-		cfg.Kind == domain.KindWorker && cfg.WorkerSandbox.IsEnabled()
-}
-
 // Config binds one harness to an ACP agent implementation.
 type Config struct {
 	Harness      domain.AgentHarness
@@ -227,6 +219,14 @@ func (d *Driver) discoverConfigOptions(ctx context.Context, workingDir string) (
 		return nil, normalizeACPError("ACP session/new", err)
 	}
 	return normalizeConfigOptions(resp.ConfigOptions), nil
+}
+
+// sandboxBlocksBypass reports whether this launch must refuse bypassPermissions.
+// Claude's OS sandbox only covers Bash; bypass auto-approves Edit/Write anywhere.
+// The worker sandbox is Claude-only, so other ACP harnesses are unaffected.
+func (d *Driver) sandboxBlocksBypass(cfg LaunchConfig) bool {
+	return d.cfg.Harness == domain.HarnessClaudeCode &&
+		cfg.Kind == domain.KindWorker && cfg.WorkerSandbox.IsEnabled()
 }
 
 // Harness identifies the AO harness this ACP transport adapts.

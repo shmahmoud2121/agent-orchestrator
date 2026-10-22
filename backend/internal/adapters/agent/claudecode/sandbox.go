@@ -15,6 +15,7 @@ import (
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
+	aoprocess "github.com/aoagents/agent-orchestrator/backend/internal/process"
 	"github.com/aoagents/agent-orchestrator/backend/pkg/agentruntime"
 )
 
@@ -60,7 +61,7 @@ func defaultSandboxAvailabilityProbe() error {
 
 // claudeVersionCommand runs `claude --version`; swapped in tests.
 var claudeVersionCommand = func(ctx context.Context, binary string) ([]byte, error) {
-	return exec.CommandContext(ctx, binary, "--version").Output() //nolint:gosec // binary is adapter-resolved
+	return aoprocess.CommandContext(ctx, binary, "--version").Output() //nolint:gosec // binary is adapter-resolved
 }
 
 var claudeVersionPattern = regexp.MustCompile(`(\d+)\.(\d+)\.(\d+)`)
@@ -294,7 +295,7 @@ func requireMinClaudeSandboxVersion(ctx context.Context, binary string) error {
 	defer cancel()
 	out, err := claudeVersionCommand(ctx, binary)
 	if err != nil {
-		return fmt.Errorf("%w: probe claude --version: %v", ErrSandboxClaudeTooOld, err)
+		return fmt.Errorf("%w: probe claude --version: %w", ErrSandboxClaudeTooOld, err)
 	}
 	if !claudeVersionAtLeast(string(out), minWorktreeSandboxVersion) {
 		return fmt.Errorf("%w (got %q)", ErrSandboxClaudeTooOld, strings.TrimSpace(string(out)))
@@ -302,12 +303,12 @@ func requireMinClaudeSandboxVersion(ctx context.Context, binary string) error {
 	return nil
 }
 
-func claudeVersionAtLeast(output string, min [3]int) bool {
+func claudeVersionAtLeast(output string, minVersion [3]int) bool {
 	match := claudeVersionPattern.FindStringSubmatch(output)
 	if match == nil {
 		return false
 	}
-	for i, want := range min {
+	for i, want := range minVersion {
 		got, err := strconv.Atoi(match[i+1])
 		if err != nil {
 			return false
