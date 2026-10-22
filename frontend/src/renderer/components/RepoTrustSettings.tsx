@@ -44,10 +44,10 @@ export function RepoTrustSettings({ projectId, hostId }: { projectId: string; ho
     <p className="break-all font-mono text-xs text-settings-muted">{query.data.fingerprint}</p>
     <p className="text-sm">{query.data.approved ? "Approved" : "Approval required"}</p>
     <div className="flex gap-2">
-     <Button type="button" variant="outline" disabled={mutation.isPending || query.isFetching || query.data.approved} onClick={() => mutation.mutate(false)}>Approve repository configuration</Button>
+     <Button type="button" disabled={mutation.isPending || query.isFetching || query.data.approved} onClick={() => mutation.mutate(false)}>Approve repository configuration</Button>
     </div>
    </> : null}
-   {query.data ? <div><Button type="button" variant="outline" disabled={mutation.isPending || query.isFetching} onClick={() => mutation.mutate(true)}>Revoke trust</Button></div> : null}
+   {query.data ? <div><Button type="button" variant="ghost" disabled={mutation.isPending || query.isFetching} onClick={() => mutation.mutate(true)}>Revoke trust</Button></div> : null}
    {query.error || mutation.error ? <p role="alert" className="text-sm text-error">{(mutation.error ?? query.error)?.message}</p> : null}
   </div>
  </ProjectSettingsSection>;
