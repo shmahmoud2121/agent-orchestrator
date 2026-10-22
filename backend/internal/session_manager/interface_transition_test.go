@@ -839,8 +839,8 @@ func newTransitionManager(t *testing.T, mode domain.SessionMode) (*Manager, *tra
 	t.Helper()
 	store := newTransitionStore()
 	// Interface-transition fixtures are not about the worker OS sandbox. Keep
-	// it off so Claude Chat↔TUI round-trips remain valid (chat ACP is not
-	// sandboxed yet and is refused when the project sandbox is on).
+	// it off so Chat↔TUI round-trips stay focused on handoff behavior; dedicated
+	// sandbox tests cover Claude chat ACP settings separately.
 	sandboxOff := false
 	store.projects["proj"] = domain.ProjectRecord{ID: "proj", Path: "/repo", Config: domain.ProjectConfig{
 		WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &sandboxOff},
