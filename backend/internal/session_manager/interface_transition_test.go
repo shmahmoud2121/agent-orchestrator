@@ -1522,8 +1522,10 @@ func TestInterfaceTransitionProviderHistoryRecoverySurvivesDaemonRestart(t *test
 	if err != nil {
 		t.Fatalf("open pre-restart store: %v", err)
 	}
+	sandboxOff := false
 	if err := beforeRestart.UpsertProject(ctx, domain.ProjectRecord{
 		ID: "proj", Path: "/repo", RegisteredAt: now,
+		Config: domain.ProjectConfig{WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &sandboxOff}},
 	}); err != nil {
 		t.Fatalf("seed project: %v", err)
 	}
@@ -3171,8 +3173,10 @@ func TestRecoverInterruptedClaudeTUIToChatPreservesPoisonedCheckpointThroughResu
 			t.Errorf("close store: %v", err)
 		}
 	})
+	sandboxOff := false
 	if err := st.UpsertProject(ctx, domain.ProjectRecord{
 		ID: "proj", Path: "/repo", RegisteredAt: now,
+		Config: domain.ProjectConfig{WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &sandboxOff}},
 	}); err != nil {
 		t.Fatalf("seed project: %v", err)
 	}

@@ -34,6 +34,10 @@ func Command(ctx context.Context, agent ports.Agent, inv ports.ReviewInvocation,
 	if agentSessionID != "" {
 		metadata[ports.MetadataKeyAgentSessionID] = agentSessionID
 	}
+	// Reviewer launches stay unsandboxed (orchestrator/reviewer policy). Kind
+	// is still KindWorker for the wrapped adapter's tool deny list, so disable
+	// WorkerSandbox explicitly — a zero value would default to enabled.
+	sandboxOff := false
 	argv, ok, err := agent.GetRestoreCommand(ctx, ports.RestoreConfig{
 		Config: inv.Config,
 		Session: ports.SessionRef{
@@ -49,6 +53,7 @@ func Command(ctx context.Context, agent ports.Agent, inv ports.ReviewInvocation,
 		Prompt:           prompt,
 		SystemPrompt:     inv.SystemPrompt,
 		SystemPromptFile: inv.SystemPromptFile,
+		WorkerSandbox:    domain.WorkerSandboxConfig{Enabled: &sandboxOff},
 	})
 	if err != nil || !ok {
 		return ports.ReviewCommandSpec{}, ok, err

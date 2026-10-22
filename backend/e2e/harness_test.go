@@ -396,6 +396,14 @@ func seedProject(t *testing.T, d *daemon, name string) string {
 	if out.Project.ID == "" {
 		t.Fatalf("project registration returned no id for %s", dir)
 	}
+	// Claude chat ACP is not sandboxed yet; e2e fixtures that spawn Claude chat
+	// workers would otherwise be refused. Terminal sandbox coverage lives in
+	// unit tests. Keep production's default enabled.
+	d.mustCall("PUT", "/projects/"+out.Project.ID+"/config", http.StatusOK, map[string]any{
+		"config": map[string]any{
+			"workerSandbox": map[string]any{"enabled": false},
+		},
+	}, nil)
 	return out.Project.ID
 }
 

@@ -1662,9 +1662,13 @@ func newManager() (*Manager, *fakeStore, *fakeRuntime, *fakeWorkspace) {
 	return m, st, rt, ws
 }
 func testRoleAgents() domain.ProjectConfig {
+	// Chat ACP is not sandboxed yet; fixtures that exercise Claude chat workers
+	// keep the project sandbox off. Production defaults remain enabled.
+	sandboxOff := false
 	return domain.ProjectConfig{
-		Worker:       domain.RoleOverride{Harness: domain.HarnessClaudeCode},
-		Orchestrator: domain.RoleOverride{Harness: domain.HarnessClaudeCode},
+		Worker:        domain.RoleOverride{Harness: domain.HarnessClaudeCode},
+		Orchestrator:  domain.RoleOverride{Harness: domain.HarnessClaudeCode},
+		WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &sandboxOff},
 	}
 }
 
