@@ -16,6 +16,7 @@ import (
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/hookutil"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/chatdriver/processenv"
+	"github.com/aoagents/agent-orchestrator/backend/internal/apitoken"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 	aoprocess "github.com/aoagents/agent-orchestrator/backend/internal/process"
 	"github.com/aoagents/agent-orchestrator/backend/internal/runfile"
@@ -29,7 +30,6 @@ const (
 	legacyManagedConfigEnv   = "DEEPSEEK_MANAGED_CONFIG_PATH"
 	codewhaleHomeEnv         = "CODEWHALE_HOME"
 	codewhaleRuntimeDirEnv   = "CODEWHALE_RUNTIME_DIR"
-	aoAPITokenEnv            = "AO_API_TOKEN" //nolint:gosec // Environment variable name, not a credential.
 	nativeSessionLocatorName = "native-session.json"
 	minLifecycleVersion      = "0.10.0"
 	commandTimeout           = 10 * time.Second
@@ -123,9 +123,11 @@ func (p *Plugin) PrepareRuntimeLaunch(ctx context.Context, cfg ports.WorkspaceHo
 	if dataDir == "" || sessionID == "" || launchID == "" || runFilePath == "" {
 		return errors.New("codewhale.PrepareRuntimeLaunch: data dir, session id, launch id, and run file are required")
 	}
-	apiToken := strings.TrimSpace(cfg.Env[aoAPITokenEnv])
-	if apiToken == "" {
-		return errors.New("codewhale.PrepareRuntimeLaunch: AO API token is required")
+	// The token is read from the protected data dir, never passed through the
+	// launch environment: tmux exports env on the shell command line.
+	apiToken, err := apitoken.Load(apitoken.Path(dataDir))
+	if err != nil {
+		return fmt.Errorf("codewhale.PrepareRuntimeLaunch: load AO API token: %w", err)
 	}
 	if filepath.Base(sessionID) != sessionID || sessionID == "." || sessionID == ".." {
 		return fmt.Errorf("codewhale.PrepareRuntimeLaunch: unsafe session id %q", sessionID)

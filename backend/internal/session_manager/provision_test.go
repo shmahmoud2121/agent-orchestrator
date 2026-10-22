@@ -113,10 +113,9 @@ func TestRuntimeEnvClearsDaemonBrowserRuntimeSecrets(t *testing.T) {
 	}
 }
 
-func TestRuntimeEnvInjectsProtectedDaemonAPIToken(t *testing.T) {
+func TestRuntimeEnvNeverCarriesDaemonAPIToken(t *testing.T) {
 	dataDir := filepath.Join(t.TempDir(), "data")
-	want, err := apitoken.LoadOrCreate(dataDir)
-	if err != nil {
+	if _, err := apitoken.LoadOrCreate(dataDir); err != nil {
 		t.Fatal(err)
 	}
 	manager := &Manager{
@@ -125,8 +124,10 @@ func TestRuntimeEnvInjectsProtectedDaemonAPIToken(t *testing.T) {
 		logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 	env := manager.runtimeEnv("mer-1", "mer", "", map[string]string{EnvAPIToken: "project-spoof"})
-	if got := env[EnvAPIToken]; got != want {
-		t.Fatalf("%s was not loaded from the protected token file", EnvAPIToken)
+	// The tmux runtime exports env on the shell command line, visible to other
+	// OS users; clients read the token file from AO_DATA_DIR instead.
+	if _, ok := env[EnvAPIToken]; ok {
+		t.Fatalf("%s leaked into the session launch environment", EnvAPIToken)
 	}
 }
 

@@ -22,7 +22,6 @@ import (
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/memcode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/modelcatalog"
 	"github.com/aoagents/agent-orchestrator/backend/internal/agentlaunch"
-	"github.com/aoagents/agent-orchestrator/backend/internal/apitoken"
 	"github.com/aoagents/agent-orchestrator/backend/internal/attachmentstore"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
@@ -232,8 +231,9 @@ const (
 	// session. AO_DATA_DIR is durable storage, not daemon discovery; custom and
 	// isolated daemons therefore need this coordinate explicitly.
 	EnvRunFile = "AO_RUN_FILE"
-	// EnvAPIToken authenticates AO-launched processes that must call the daemon
-	// directly. It is inherited through the environment, never a command line.
+	// EnvAPIToken is stripped from session env and never injected: the tmux
+	// runtime exports env on the shell command line, where other OS users can
+	// read it. AO-launched clients read the token file from AO_DATA_DIR instead.
 	EnvAPIToken = "AO_API_TOKEN" //nolint:gosec // Environment variable name, not a credential.
 	// EnvBrowserCapability proves ownership of the session's browser target.
 	EnvBrowserCapability = "AO_BROWSER_CAPABILITY"
@@ -6101,9 +6101,6 @@ func (m *Manager) runtimeEnvChecked(id domain.SessionID, project domain.ProjectI
 		env[EnvRunFile] = runFilePath
 	}
 	deleteProtectedEnv(env, EnvAPIToken, caseInsensitive)
-	if token, err := apitoken.Load(apitoken.Path(m.dataDir)); err == nil {
-		env[EnvAPIToken] = token
-	}
 	setProtectedEnv(env, EnvBrowserCapability, "", caseInsensitive)
 	setProtectedEnv(env, EnvBrowserRuntimeToken, "", caseInsensitive)
 	setProtectedEnv(env, EnvBrowserRuntimeTokenStdin, "", caseInsensitive)

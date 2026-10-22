@@ -118,7 +118,6 @@ func (c *commandContext) inspectDaemon(ctx context.Context) (daemonStatus, error
 		return st, nil
 	}
 	st.owned = true
-	st.ExecutablePath = health.ExecutablePath
 	st.Health = health.Status
 	if health.Status != "ok" {
 		st.State = stateUnhealthy
@@ -137,6 +136,8 @@ func (c *commandContext) inspectDaemon(ctx context.Context) (daemonStatus, error
 		st.Error = err.Error()
 		return st, nil
 	}
+	// /healthz is unauthenticated and minimal; the executable comes from /readyz.
+	st.ExecutablePath = ready.ExecutablePath
 	st.Ready = ready.Status
 	if ready.Status == string(stateReady) {
 		st.State = stateReady
