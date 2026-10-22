@@ -91,7 +91,12 @@ func TestE2E_DaemonClosedOutputPipeShutdownRemovesRunFile(t *testing.T) {
 		t.Fatalf("GET /healthz = %d, want 200", resp.StatusCode)
 	}
 
-	resp, err = client.Post("http://127.0.0.1:"+strconv.Itoa(e.port)+"/shutdown", "application/json", nil)
+	req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:"+strconv.Itoa(e.port)+"/shutdown", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer "+daemonToken(t, e))
+	resp, err = client.Do(req)
 	if err != nil {
 		t.Fatalf("POST /shutdown after output reader closed: %v", err)
 	}
