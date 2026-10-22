@@ -153,13 +153,14 @@ type reviewerRuntime interface {
 // runtime. The reviewer reuses the worker's worktree (a fresh session worktree
 // would branch off the default branch and so would not contain the PR changes).
 type agentLauncher struct {
-	reviewers  ports.ReviewerResolver
-	runtime    reviewerRuntime
-	dataDir    string
-	runFile    string
-	auth       agentAuthResolver
-	executable func() (string, error)
-	chat       ReviewerChatController
+	repoTrustCheck func(context.Context, domain.ProjectID, string) error
+	reviewers      ports.ReviewerResolver
+	runtime        reviewerRuntime
+	dataDir        string
+	runFile        string
+	auth           agentAuthResolver
+	executable     func() (string, error)
+	chat           ReviewerChatController
 }
 
 type preLaunchReviewer interface {
@@ -176,6 +177,12 @@ type agentAuthResolver interface {
 
 // LauncherOption configures reviewer launcher behavior.
 type LauncherOption func(*agentLauncher)
+
+// WithRepoTrustCheck applies the session manager's repository gate before any
+// reviewer preparation, provider pre-trust, or Chat/terminal process launch.
+func WithRepoTrustCheck(check func(context.Context, domain.ProjectID, string) error) LauncherOption {
+	return func(l *agentLauncher) { l.repoTrustCheck = check }
+}
 
 // WithReviewerChat enables typed reviewer conversations for supporting
 // adapters. A nil controller intentionally keeps every reviewer on TUI.
@@ -454,6 +461,11 @@ func truncateReviewHistoryBody(body string) string {
 }
 
 func (l *agentLauncher) Spawn(ctx context.Context, spec LaunchSpec) (LaunchResult, error) {
+	if l.repoTrustCheck != nil {
+		if err := l.repoTrustCheck(ctx, spec.ProjectID, spec.WorkspacePath); err != nil {
+			return LaunchResult{}, err
+		}
+	}
 	inv, err := l.prepareInvocation(ctx, spec)
 	if err != nil {
 		return LaunchResult{}, err
@@ -471,6 +483,11 @@ func (l *agentLauncher) Spawn(ctx context.Context, spec LaunchSpec) (LaunchResul
 }
 
 func (l *agentLauncher) RestoreTerminal(ctx context.Context, spec LaunchSpec) (LaunchResult, error) {
+	if l.repoTrustCheck != nil {
+		if err := l.repoTrustCheck(ctx, spec.ProjectID, spec.WorkspacePath); err != nil {
+			return LaunchResult{}, err
+		}
+	}
 	inv, err := l.prepareIdleInvocation(spec)
 	if err != nil {
 		return LaunchResult{}, err

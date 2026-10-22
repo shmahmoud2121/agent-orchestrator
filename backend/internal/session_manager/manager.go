@@ -6506,11 +6506,7 @@ func (m *Manager) augmentAgentRuntimeEnv(agent ports.Agent, env map[string]strin
 // startup hooks can update the already-created session row), then any optional
 // PreLaunch step. Shared by Spawn and Restore.
 func (m *Manager) prepareWorkspace(ctx context.Context, agent ports.Agent, id domain.SessionID, projectID domain.ProjectID, workspacePath, systemPrompt, systemPromptFile string, agentConfig ports.AgentConfig, env map[string]string) error {
-	project, err := m.loadProject(ctx, projectID)
-	if err != nil {
-		return err
-	}
-	if err := m.checkWorkspaceRepoTrust(ctx, project, workspacePath); err != nil {
+	if err := m.CheckRepoTrust(ctx, projectID, workspacePath); err != nil {
 		return err
 	}
 	if err := agent.GetAgentHooks(ctx, ports.WorkspaceHookConfig{

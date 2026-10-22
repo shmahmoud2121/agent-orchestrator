@@ -71,3 +71,13 @@ func (m *Manager) checkWorkspaceRepoTrust(ctx context.Context, p domain.ProjectR
 	}
 	return repotrust.Required(p.ID, scan)
 }
+
+// CheckRepoTrust guards unattended launchers that reuse an existing project
+// checkout, including reviewer panes. It reloads current approval at launch.
+func (m *Manager) CheckRepoTrust(ctx context.Context, id domain.ProjectID, workspace string) error {
+	project, err := m.loadProject(ctx, id)
+	if err != nil {
+		return err
+	}
+	return m.checkWorkspaceRepoTrust(ctx, project, workspace)
+}

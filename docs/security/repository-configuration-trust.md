@@ -5,7 +5,9 @@ human approval of repository configuration that can start commands or servers.
 The session manager checks the project checkout before admitting a spawn and
 checks both the project and materialized worker checkout before installing hooks
 or invoking provider pre-launch preparation. The latter boundary is shared by
-TUI/Chat spawn, restore, and agent handoffs. Workspace projects include their
+TUI/Chat spawn, restore, and agent handoffs. The independent reviewer launcher
+also calls this same gate before preparing or restoring a reviewer; its
+production callback is wired by the daemon. Workspace projects include their
 registered child repositories. Rejected workspaces never reach Claude's global
 trust-file write or Cursor's trust marker installation.
 

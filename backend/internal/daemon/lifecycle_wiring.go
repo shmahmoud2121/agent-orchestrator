@@ -378,6 +378,7 @@ func startSession(ctx context.Context, cfg config.Config, runtime runtimeselect.
 		PRs:        store,
 		Projects:   store,
 		Launcher: reviewcore.NewLauncher(reviewers, runtime, cfg.DataDir,
+			reviewcore.WithRepoTrustCheck(mgr.CheckRepoTrust),
 			reviewcore.WithRunFilePath(cfg.RunFilePath),
 			reviewcore.WithAgentAuth(reviewerAgentAuth{readiness: agentReadiness}),
 			reviewcore.WithReviewerChat(reviewerChat)),
