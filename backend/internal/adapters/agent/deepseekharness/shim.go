@@ -1,3 +1,5 @@
+//go:build retired
+
 // Windows npm shim resolution: AO resolves the dsh binary to the `.cmd` batch
 // shim npm installs into its global bin directory. Windows cannot start a batch
 // file directly — CreateProcess hands it to cmd.exe, whose `/c` input line is

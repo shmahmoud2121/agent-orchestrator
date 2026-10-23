@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package droidacp binds the user's own Factory Droid installation to AO's
 // reusable ACP Chat transport.
 package droidacp

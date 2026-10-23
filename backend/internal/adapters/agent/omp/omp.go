@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package omp implements AO's OMP agent adapter. OMP is a terminal-first
 // coding harness, so AO launches it interactively inside the session terminal
 // pane and keeps protocol-level RPC/ACP integration out of this adapter.

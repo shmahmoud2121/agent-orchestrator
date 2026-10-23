@@ -13,7 +13,6 @@ import (
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/activitydispatch"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/fx/herdr"
 	agentregistry "github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/registry"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/container/dockerreap"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer"
@@ -62,7 +61,7 @@ type lifecycleStack struct {
 	autoReviewDone   <-chan struct{}
 	scmDone          <-chan struct{}
 	trackerDone      <-chan struct{}
-	herdr            *herdr.Server
+	herdr            herdrStopper
 	automationDone   <-chan struct{}
 }
 
@@ -83,7 +82,7 @@ func startLifecycle(ctx context.Context, dataDir string, store *sqlite.Store, ru
 	rp := reaper.New(lcm, store, runtime, reaper.Config{Logger: logger})
 	activityPoller := activityobserver.New(store, lcm, runtime, agents, activityobserver.Config{Logger: logger})
 	turnFailurePoller := activityobserver.NewTurnFailureObserver(store, lcm, agents, activityobserver.TurnFailureConfig{Logger: logger})
-	herdrServer, err := herdr.Start(ctx, dataDir, lcm, logger)
+	herdrServer, err := startRetiredHerdr(ctx, dataDir, lcm, logger)
 	if err != nil {
 		// fx treats reporting as best effort; an occupied or unavailable socket
 		// must not prevent the daemon or ordinary agent sessions from starting.

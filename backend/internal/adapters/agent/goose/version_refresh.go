@@ -1,3 +1,5 @@
+//go:build retired
+
 package goose
 
 // SupportsTerminalVersionRefresh declares unattended exact-conversation resume.

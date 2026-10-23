@@ -1,3 +1,5 @@
+//go:build retired
+
 package kiro
 
 // SupportsTerminalVersionRefresh declares unattended exact-conversation resume.

@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package agy implements the Agy (Antigravity) agent adapter: launching new sessions,
 // resuming sessions by native ID, installing workspace-local hooks, and reading
 // hook-derived session info.

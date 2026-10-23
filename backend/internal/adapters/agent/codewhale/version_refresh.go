@@ -1,3 +1,5 @@
+//go:build retired
+
 package codewhale
 
 // SupportsTerminalVersionRefresh declares unattended exact-conversation resume.

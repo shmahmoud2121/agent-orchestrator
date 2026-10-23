@@ -1,3 +1,5 @@
+//go:build retired
+
 package continueagent
 
 // SupportsTerminalVersionRefresh declares unattended exact-conversation resume.

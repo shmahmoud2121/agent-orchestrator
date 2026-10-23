@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package cursor implements the Cursor CLI agent adapter: launching new
 // sessions, resuming hook-tracked sessions, installing workspace-local hooks,
 // and reading hook-derived session info.

@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package agyacp binds Google Antigravity to AO's reusable ACP Chat transport.
 //
 // The agy CLI has no ACP mode. Google publishes a separate ACP server,

@@ -13,7 +13,6 @@ import {
 	isReadyAgent,
 	type AgentInfo,
 	type RankedAgentOption,
-	unknownAgentReadiness,
 } from "../lib/agent-select-options";
 import { KNOWN_REVIEWER_HARNESS_IDS } from "../lib/reviewer-harnesses";
 import { cn } from "../lib/utils";
@@ -30,7 +29,7 @@ import {
 	OptionMenuTrigger,
 } from "./ui/option-menu";
 
-const REVIEWER_AGENT_PRIORITY = ["claude-code", "codex", "cursor", "opencode", "opencode-v2", "muse", "aider"] as const;
+const REVIEWER_AGENT_PRIORITY = ["claude-code", "codex", "opencode"] as const;
 const REVIEWER_AGENT_PRIORITY_RANK = new Map<string, number>(
 	REVIEWER_AGENT_PRIORITY.map((agent, index) => [agent, index]),
 );
@@ -87,14 +86,9 @@ export function ReviewerSelect({
 	const reviewerAriaLabel = ariaLabel ?? t("settings.project.defaultReviewer");
 	const queryClient = useQueryClient();
 	const [menuOpen, setMenuOpen] = useState(false);
-	// Until the daemon's catalog arrives these entries carry the whole menu, so
-	// label them the way the catalog would rather than printing bare ids: without
-	// this the same row reads "claude-code" now and "Claude Code" a moment later.
-	const fallbackAgents: AgentInfo[] = [...KNOWN_REVIEWER_HARNESS_IDS].map(
-		(id) => unknownAgentReadiness(id, agentLabel(id)),
-	);
-	const filteredSupported = (agents ?? fallbackAgents).filter((a) => KNOWN_REVIEWER_HARNESS_IDS.has(a.id));
-	const supportedAgents = filteredSupported.length > 0 ? filteredSupported : fallbackAgents;
+	// Only the daemon can say which reviewers are registered in this build.
+	const fallbackAgents: AgentInfo[] = [];
+	const supportedAgents = (agents ?? []).filter((a) => KNOWN_REVIEWER_HARNESS_IDS.has(a.id));
 	const options = buildRankedAgentOptions({
 		agents: supportedAgents,
 		priorityRank: REVIEWER_AGENT_PRIORITY_RANK,
@@ -107,6 +101,7 @@ export function ReviewerSelect({
 		if (agent.id === defaultHarness) return false;
 		return true;
 	});
+	const defaultHarnessRegistered = options.some((agent) => agent.id === defaultHarness);
 	const catalogDefaultLabel = options.find((agent) => agent.id === defaultHarness)?.label;
 	const defaultHarnessLabel = catalogDefaultLabel && catalogDefaultLabel !== defaultHarness ? catalogDefaultLabel : agentLabel(defaultHarness);
 	const effectiveHarness = value || defaultHarness;
@@ -152,7 +147,7 @@ export function ReviewerSelect({
 				</span>
 			</OptionMenuTrigger>
 			<OptionMenuContent onCloseAutoFocus={management.onCloseAutoFocus} align={contentAlign === "end" ? "end" : "start"} className="reviews-agent-menu-surface w-[18rem]">
-				<ReviewerHarnessOption
+				{defaultHarnessRegistered && <ReviewerHarnessOption
 					agent={{ id: "__default__", label: defaultHarnessLabel, disabled: false, status: "", statusTone: "success" }}
 					currentHarness={value}
 					currentModel={model}
@@ -168,7 +163,7 @@ export function ReviewerSelect({
 					resolvedHarness={defaultHarness}
 					persistHarness=""
 					closeMenu={() => setMenuOpen(false)}
-				/>
+				/>}
 				{selectableOptions.map((agent) => (
 					<ReviewerHarnessOption
 						key={agent.id}

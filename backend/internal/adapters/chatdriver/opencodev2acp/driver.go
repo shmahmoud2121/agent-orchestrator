@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package opencodev2acp binds the user's OpenCode 2 installation to AO's
 // reusable ACP Chat transport.
 package opencodev2acp

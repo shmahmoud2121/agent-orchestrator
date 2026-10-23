@@ -1,3 +1,5 @@
+//go:build retired
+
 package devin
 
 // SupportsTerminalVersionRefresh declares unattended exact-conversation resume.

@@ -1,3 +1,5 @@
+//go:build retired
+
 package vibe
 
 // SupportsTerminalVersionRefresh declares unattended exact-conversation resume.

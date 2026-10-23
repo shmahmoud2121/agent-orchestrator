@@ -1,3 +1,5 @@
+//go:build retired
+
 package commandcode
 
 import "github.com/aoagents/agent-orchestrator/backend/internal/domain"

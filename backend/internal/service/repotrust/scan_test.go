@@ -10,13 +10,6 @@ import (
 	"testing"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/commandcode"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/copilot"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/cursor"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/devin"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/gemini"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/mimocode"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/vibe"
 	"github.com/aoagents/agent-orchestrator/backend/internal/httpd/apierr"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 	"github.com/aoagents/agent-orchestrator/backend/internal/service/repotrust"
@@ -78,7 +71,9 @@ func TestDetectRepositoryConfigTypes(t *testing.T) {
 	}
 }
 func TestOwnHooksIgnoredExactly(t *testing.T) {
-	for name, agent := range map[string]ports.Agent{"claude": claudecode.New(), "gemini": gemini.New(), "cursor": cursor.New(), "copilot": copilot.New(), "vibe": vibe.New(), "mimo": mimocode.New(), "command": commandcode.New(), "devin": devin.New()} {
+	agents := map[string]ports.Agent{"claude": claudecode.New()}
+	for name, agent := range retiredRepoTrustAgents() { agents[name] = agent }
+	for name, agent := range agents {
 		t.Run(name, func(t *testing.T) {
 			root := repo(t)
 			if err := agent.GetAgentHooks(ctx, ports.WorkspaceHookConfig{SessionID: "p-1", WorkspacePath: root, DataDir: t.TempDir()}); err != nil {

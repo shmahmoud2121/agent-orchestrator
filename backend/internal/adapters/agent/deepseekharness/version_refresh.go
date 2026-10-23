@@ -1,3 +1,5 @@
+//go:build retired
+
 package deepseekharness
 
 // SupportsTerminalVersionRefresh declares unattended exact-conversation resume.

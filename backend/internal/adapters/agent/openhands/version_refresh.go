@@ -1,3 +1,5 @@
+//go:build retired
+
 package openhands
 
 // SupportsTerminalVersionRefresh declares unattended exact-conversation resume.

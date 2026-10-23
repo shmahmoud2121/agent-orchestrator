@@ -1,3 +1,5 @@
+//go:build retired
+
 package opencodev2_test
 
 import (

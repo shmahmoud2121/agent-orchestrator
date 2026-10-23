@@ -20,10 +20,12 @@ import (
 func TestShippedChatDrivers(t *testing.T) {
 	r := Build(nil, nil)
 
-	for _, harness := range []domain.AgentHarness{
+	shipped := []domain.AgentHarness{
 		domain.HarnessCodex,
 		domain.HarnessClaudeCode,
 		domain.HarnessOpenCode,
+	}
+	if retiredBuildEnabled { shipped = append(shipped,
 		domain.HarnessOpenCodeV2,
 		domain.HarnessDroid,
 		domain.HarnessKimi,
@@ -35,7 +37,8 @@ func TestShippedChatDrivers(t *testing.T) {
 		domain.HarnessUnreal,
 		domain.HarnessCopilot,
 		domain.HarnessAgy,
-	} {
+	) }
+	for _, harness := range shipped {
 		if !r.SupportsChat(harness) {
 			t.Errorf("%s has no chat driver", harness)
 		}
@@ -48,8 +51,10 @@ func TestShippedChatDrivers(t *testing.T) {
 	// typed answer rather than quietly producing a terminal session.
 	for _, harness := range []domain.AgentHarness{
 		domain.HarnessAider,
+		domain.HarnessCursor,
 		"definitely-not-an-agent",
 	} {
+		if retiredBuildEnabled && harness == domain.HarnessCursor { continue }
 		if _, err := r.Driver(harness); err == nil {
 			t.Errorf("%s resolved a chat driver", harness)
 		} else if !errors.Is(err, ports.ErrChatUnsupported) {

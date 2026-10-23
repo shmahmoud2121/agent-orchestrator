@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package primeagent implements the Prime Agent terminal adapter.
 package primeagent
 

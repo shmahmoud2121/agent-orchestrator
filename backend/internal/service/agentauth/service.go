@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/opencodev2"
+	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/opencode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/httpd/apierr"
 	"github.com/aoagents/agent-orchestrator/backend/internal/service/shellterm"
 )
@@ -211,7 +211,7 @@ func (s *Service) start(ctx context.Context, plan Plan) (StartResult, error) {
 		SendInitialInputOnReadyTimeout: plan.sendInitialInputOnReadyTimeout,
 	}
 	if plan.AgentID == "opencode-v2" {
-		dataHome, err := opencodev2.DataHome(ctx)
+		dataHome, err := opencode.PrepareV2DataHome(ctx)
 		if err != nil {
 			return StartResult{}, apierr.Internal("AGENT_AUTH_DATA_HOME_UNAVAILABLE", err.Error())
 		}

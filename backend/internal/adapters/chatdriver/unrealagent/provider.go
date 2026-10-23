@@ -1,4 +1,4 @@
-//go:build darwin || linux
+//go:build retired && (darwin || linux)
 
 package unrealagent
 

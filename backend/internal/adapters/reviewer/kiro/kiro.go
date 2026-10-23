@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package kiro adapts Kiro's interactive terminal UI for AO code reviews.
 package kiro
 

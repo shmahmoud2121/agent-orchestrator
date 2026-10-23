@@ -10,10 +10,7 @@ import (
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/codex"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/crush"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/droid"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/memcode"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/muse"
+	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/fake"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 )
@@ -122,6 +119,7 @@ func TestPollKeepsGenuineLongCodexTurnActive(t *testing.T) {
 }
 
 func TestPollContinuouslyReconcilesMuse(t *testing.T) {
+	if !retiredActivityAdaptersAvailable { t.Skip("Muse is retired in this build") }
 	now := time.Unix(500, 0).UTC()
 	tests := []struct {
 		name    string
@@ -144,7 +142,7 @@ func TestPollContinuouslyReconcilesMuse(t *testing.T) {
 				fakeSessions{rows: []domain.SessionRecord{session}},
 				sink,
 				&fakeRuntime{output: tt.output},
-				fakeAgents{domain.HarnessMuse: muse.New()},
+				fakeAgents{domain.HarnessMuse: retiredMuseAgent()},
 				Config{Clock: func() time.Time { return now }, Logger: testLogger()},
 			)
 
@@ -159,6 +157,7 @@ func TestPollContinuouslyReconcilesMuse(t *testing.T) {
 }
 
 func TestPollReconcilesWaitingCrushAfterUserResponds(t *testing.T) {
+	if !retiredActivityAdaptersAvailable { t.Skip("Crush is retired in this build") }
 	for _, tt := range []struct {
 		name   string
 		output string
@@ -177,7 +176,7 @@ func TestPollReconcilesWaitingCrushAfterUserResponds(t *testing.T) {
 				fakeSessions{rows: []domain.SessionRecord{session}},
 				sink,
 				&fakeRuntime{output: tt.output},
-				fakeAgents{domain.HarnessCrush: crush.New()},
+				fakeAgents{domain.HarnessCrush: retiredCrushAgent()},
 				Config{Clock: func() time.Time { return now }, Logger: testLogger()},
 			)
 
@@ -222,7 +221,7 @@ func TestPollLeavesOtherHarnessesUntouched(t *testing.T) {
 		fakeSessions{rows: []domain.SessionRecord{activeSession(now, domain.HarnessDroid)}},
 		sink,
 		runtime,
-		fakeAgents{domain.HarnessDroid: droid.New()},
+		fakeAgents{domain.HarnessDroid: fake.New()},
 		Config{Clock: func() time.Time { return now }, Logger: testLogger()},
 	)
 
@@ -346,6 +345,7 @@ func (r *renderedMemcodeRuntime) GetStyledOutput(context.Context, ports.RuntimeH
 }
 
 func TestMemcodeDecisionObservationBlocksAndResolvesOnlyOnCurrentChrome(t *testing.T) {
+	if !retiredActivityAdaptersAvailable { t.Skip("memcode is retired in this build") }
 	now := time.Unix(500, 0).UTC()
 	card := "Do you want to proceed?\n❯ 1. Yes\n→  Ask memcode…   ·   $ = shell\nmemcode · model · ask"
 	idle := "○ idle\n→  Ask memcode…   ·   $ = shell\nmemcode · model · ask"
@@ -360,7 +360,7 @@ func TestMemcodeDecisionObservationBlocksAndResolvesOnlyOnCurrentChrome(t *testi
 			session := activeSession(now, domain.HarnessMemcode)
 			session.Activity.State = tc.current
 			sink := &fakeSink{}
-			observer := New(fakeSessions{rows: []domain.SessionRecord{session}}, sink, &renderedMemcodeRuntime{fakeRuntime: &fakeRuntime{output: "stale raw history"}, rendered: tc.output}, fakeAgents{domain.HarnessMemcode: memcode.New()}, Config{Clock: func() time.Time { return now }, Logger: testLogger()})
+			observer := New(fakeSessions{rows: []domain.SessionRecord{session}}, sink, &renderedMemcodeRuntime{fakeRuntime: &fakeRuntime{output: "stale raw history"}, rendered: tc.output}, fakeAgents{domain.HarnessMemcode: retiredMemcodeAgent()}, Config{Clock: func() time.Time { return now }, Logger: testLogger()})
 			if err := observer.Poll(context.Background()); err != nil {
 				t.Fatal(err)
 			}
@@ -378,11 +378,12 @@ func TestMemcodeDecisionObservationBlocksAndResolvesOnlyOnCurrentChrome(t *testi
 }
 
 func TestMemcodeObservationUsesCurrentRenderedScreen(t *testing.T) {
+	if !retiredActivityAdaptersAvailable { t.Skip("memcode is retired in this build") }
 	now := time.Unix(500, 0).UTC()
 	session := activeSession(now, domain.HarnessMemcode)
 	sink := &fakeSink{}
 	rt := &renderedMemcodeRuntime{fakeRuntime: &fakeRuntime{output: "⠋ Thinking… (1s · esc to interrupt)"}, rendered: "○ idle\n→  Ask memcode…   ·   $ = shell\nmemcode · model · ask"}
-	observer := New(fakeSessions{rows: []domain.SessionRecord{session}}, sink, rt, fakeAgents{domain.HarnessMemcode: memcode.New()}, Config{Clock: func() time.Time { return now }, Logger: testLogger()})
+	observer := New(fakeSessions{rows: []domain.SessionRecord{session}}, sink, rt, fakeAgents{domain.HarnessMemcode: retiredMemcodeAgent()}, Config{Clock: func() time.Time { return now }, Logger: testLogger()})
 	if err := observer.Poll(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -390,7 +391,7 @@ func TestMemcodeObservationUsesCurrentRenderedScreen(t *testing.T) {
 		t.Fatal(rt.calls, rt.styledCalls, sink.signals)
 	}
 	rawSink := &fakeSink{}
-	observer = New(fakeSessions{rows: []domain.SessionRecord{session}}, rawSink, &fakeRuntime{output: rt.rendered}, fakeAgents{domain.HarnessMemcode: memcode.New()}, Config{Clock: func() time.Time { return now }, Logger: testLogger()})
+	observer = New(fakeSessions{rows: []domain.SessionRecord{session}}, rawSink, &fakeRuntime{output: rt.rendered}, fakeAgents{domain.HarnessMemcode: retiredMemcodeAgent()}, Config{Clock: func() time.Time { return now }, Logger: testLogger()})
 	if err := observer.Poll(context.Background()); err != nil {
 		t.Fatal(err)
 	}

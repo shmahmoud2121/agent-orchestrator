@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package crush implements the Crush agent adapter: launching new sessions,
 // resuming sessions by native ID, and reading session info.
 //

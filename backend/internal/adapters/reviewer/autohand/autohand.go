@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package autohand adapts Autohand as an experimental user-approved AO reviewer.
 package autohand
 

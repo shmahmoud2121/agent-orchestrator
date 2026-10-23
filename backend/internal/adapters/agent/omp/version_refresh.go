@@ -1,3 +1,5 @@
+//go:build retired
+
 package omp
 
 // SupportsTerminalVersionRefresh declares unattended exact-conversation resume.

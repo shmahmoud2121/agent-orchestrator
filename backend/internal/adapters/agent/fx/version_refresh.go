@@ -1,3 +1,5 @@
+//go:build retired
+
 package fx
 
 // SupportsTerminalVersionRefresh declares unattended exact-conversation resume.

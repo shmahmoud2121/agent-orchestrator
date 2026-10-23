@@ -1,3 +1,5 @@
+//go:build retired
+
 package mimocode
 
 import "github.com/aoagents/agent-orchestrator/backend/internal/domain"

@@ -1,3 +1,5 @@
+//go:build retired
+
 package commandcode
 
 // SupportsTerminalVersionRefresh declares unattended exact-conversation resume.

@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package kimchi adapts Kimchi as an experimental host-trusted reviewer.
 package kimchi
 

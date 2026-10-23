@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package copilotacp binds the user's own GitHub Copilot CLI installation to
 // AO's reusable ACP Chat transport.
 //

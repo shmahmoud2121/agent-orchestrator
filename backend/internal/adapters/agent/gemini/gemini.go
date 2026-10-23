@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package gemini integrates the user's Gemini CLI with AO's terminal sessions.
 package gemini
 

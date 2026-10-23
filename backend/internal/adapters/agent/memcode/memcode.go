@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package memcode integrates the official memcode TUI. Native interactive
 // /resume is deliberately separate from its broken mount-time --resume route.
 package memcode

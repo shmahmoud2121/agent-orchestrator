@@ -6,7 +6,6 @@ import (
 	"log/slog"
 
 	scmgithub "github.com/aoagents/agent-orchestrator/backend/internal/adapters/scm/github"
-	scmgitlab "github.com/aoagents/agent-orchestrator/backend/internal/adapters/scm/gitlab"
 	scmmulti "github.com/aoagents/agent-orchestrator/backend/internal/adapters/scm/multi"
 	"github.com/aoagents/agent-orchestrator/backend/internal/config"
 	"github.com/aoagents/agent-orchestrator/backend/internal/lifecycle"
@@ -28,12 +27,7 @@ func startSCMObserver(ctx context.Context, store *sqlite.Store, lcm *lifecycle.M
 		named = append(named, scmmulti.NamedProvider{Key: "github", Provider: ghProvider})
 	}
 
-	glProvider, glErr := newGitLabSCMProvider(gitlabCfg, logger)
-	if glErr != nil {
-		logSCMProviderDisabled(logger, "gitlab", glErr)
-	} else {
-		named = append(named, scmmulti.NamedProvider{Key: "gitlab", Provider: glProvider})
-	}
+	named = appendRetiredSCMProviders(named, gitlabCfg, logger)
 
 	if len(named) == 0 {
 		logger.Warn("scm observer disabled: no usable SCM provider")
@@ -52,27 +46,8 @@ func newGitHubSCMProvider(logger *slog.Logger) (*scmgithub.Provider, error) {
 	return scmgithub.NewProvider(scmgithub.ProviderOptions{Token: tokens, SkipTokenPreflight: true, Logger: logger})
 }
 
-func newGitLabSCMProvider(gitlabCfg config.GitLabConfig, logger *slog.Logger) (*scmgitlab.Provider, error) {
-	tokens := scmgitlab.FallbackTokenSource{
-		scmgitlab.EnvTokenSource{EnvVars: []string{"AO_GITLAB_TOKEN"}},
-		&scmgitlab.GLabTokenSource{},
-	}
-	hostTokens := make(map[string]scmgitlab.TokenSource, len(gitlabCfg.HostTokens))
-	for host, token := range gitlabCfg.HostTokens {
-		hostTokens[host] = scmgitlab.StaticTokenSource(token)
-	}
-	return scmgitlab.NewProvider(scmgitlab.ProviderOptions{
-		Token:              tokens,
-		SkipTokenPreflight: true,
-		Logger:             logger,
-		AllowedHosts:       gitlabCfg.AllowedHosts,
-		HostTokens:         hostTokens,
-	})
-}
-
 func logSCMProviderDisabled(logger *slog.Logger, provider string, err error) {
-	if errors.Is(err, scmgithub.ErrNoToken) || errors.Is(err, scmgithub.ErrAuthFailed) ||
-		errors.Is(err, scmgitlab.ErrNoToken) || errors.Is(err, scmgitlab.ErrAuthFailed) {
+	if errors.Is(err, scmgithub.ErrNoToken) || errors.Is(err, scmgithub.ErrAuthFailed) || retiredSCMAuthError(err) {
 		logger.Warn("scm provider disabled: no usable token", "provider", provider, "err", err)
 	} else {
 		logger.Warn("scm provider disabled: setup failed", "provider", provider, "err", err)
@@ -87,9 +62,7 @@ func newMultiSCMProvider(gitlabCfg config.GitLabConfig, logger *slog.Logger) *sc
 	if gh, err := newGitHubSCMProvider(logger); err == nil {
 		named = append(named, scmmulti.NamedProvider{Key: "github", Provider: gh})
 	}
-	if gl, err := newGitLabSCMProvider(gitlabCfg, logger); err == nil {
-		named = append(named, scmmulti.NamedProvider{Key: "gitlab", Provider: gl})
-	}
+	named = appendRetiredSCMProviders(named, gitlabCfg, logger)
 	if len(named) == 0 {
 		return nil
 	}
@@ -106,9 +79,7 @@ func newMultiSCMMerger(gitlabCfg config.GitLabConfig, logger *slog.Logger) *scmm
 	if gh, err := newGitHubSCMProvider(logger); err == nil {
 		named = append(named, scmmulti.NamedMerger{Key: "github", Merger: gh})
 	}
-	if gl, err := newGitLabSCMProvider(gitlabCfg, logger); err == nil {
-		named = append(named, scmmulti.NamedMerger{Key: "gitlab", Merger: gl})
-	}
+	named = appendRetiredSCMMergers(named, gitlabCfg, logger)
 	if len(named) == 0 {
 		return nil
 	}

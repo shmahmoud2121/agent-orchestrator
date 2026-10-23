@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package gitlab implements the ports.Tracker outbound port for GitLab
 // Issues. v1 is read-only:
 //

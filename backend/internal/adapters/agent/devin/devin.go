@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package devin implements the Devin ("Devin for Terminal", Cognition) agent
 // adapter.
 //

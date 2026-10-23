@@ -4,6 +4,7 @@ import { type FormEvent, useEffect, useLayoutEffect, useRef, useState } from "re
 import { useTranslation } from "react-i18next";
 import type { components } from "../../api/schema";
 import { agentModelsQueryOptions } from "../hooks/useAgentModelsQuery";
+import { useAgentReadinessQuery } from "../hooks/useAgentReadinessQuery";
 import {
 	agentSwitchesQueryKey,
 	agentSwitchNeedsRecovery,
@@ -47,7 +48,6 @@ import { onMenuTeardownComplete } from "./ui/menu-focus";
 export const SWITCH_AGENT_OPTIONS = [
 	{ value: "claude-code", label: "Claude Code" },
 	{ value: "codex", label: "Codex" },
-	{ value: "fx", label: "fx" },
 ] as const satisfies ReadonlyArray<{ value: SwitchAgentHarness; label: string }>;
 
 const ALL_SWITCH_AGENT_OPTIONS = AGENT_OPTIONS.map((value) => ({ value, label: AGENT_LABELS[value] }));
@@ -138,18 +138,21 @@ function useSuppressOpeningRace(open: boolean) {
 function SwitchTargetPicker({
 	currentHarness,
 	disabled,
+	hostId,
 	mode,
 	onChange,
 	value,
 }: {
 	currentHarness: string;
 	disabled: boolean;
+	hostId?: string;
 	mode?: WorkspaceSession["mode"];
 	onChange: (value: SwitchAgentHarness) => void;
 	value: SwitchAgentHarness;
 }) {
 	const { t } = useTranslation();
-	const options = ALL_SWITCH_AGENT_OPTIONS.map((option) => ({
+	const registered = new Set(useAgentReadinessQuery(true, hostId).data?.agents.map((agent) => agent.id) ?? []);
+	const options = ALL_SWITCH_AGENT_OPTIONS.filter((option) => registered.has(option.value)).map((option) => ({
 		...option,
 		disabled: !canSwitchAgentHarness(option.value, mode) || option.value === currentHarness,
 	}));
@@ -460,6 +463,7 @@ export function SwitchAgentDialog({ agentSwitch, container, open, session, onOpe
 									<SwitchTargetPicker
 										currentHarness={session.provider}
 										disabled={admissionPending}
+											hostId={hostId}
 										mode={session.mode}
 										onChange={changeTarget}
 										value={targetHarness}

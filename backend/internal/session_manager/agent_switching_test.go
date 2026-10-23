@@ -14,7 +14,6 @@ import (
 	"testing"
 	"time"
 
-	fxagent "github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/fx"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/runtime/conpty"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
@@ -2424,6 +2423,7 @@ func TestSwitchAgentAfterStartAcknowledgementCompletesWithoutRecoveryRead(t *tes
 }
 
 func TestSwitchAgentWithRealFXAdapterInBothDirections(t *testing.T) {
+	if !retiredTestAgentsAvailable { t.Skip("fx is retired in this build") }
 	binDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(binDir, "fx"), []byte("#!/bin/sh\n"), 0o755); err != nil {
 		t.Fatal(err)
@@ -2437,7 +2437,7 @@ func TestSwitchAgentWithRealFXAdapterInBothDirections(t *testing.T) {
 		project := store.projects["proj"]
 		project.Config.Env = map[string]string{"HOME": fxHome}
 		store.projects[project.ID] = project
-		manager.agents.(switchTestAgents)[domain.HarnessFX] = fxagent.New()
+		manager.agents.(switchTestAgents)[domain.HarnessFX] = testFXAgent()
 		runtime.afterCreate = func(_ ports.RuntimeConfig, _ ports.RuntimeHandle) {
 			sw, _, _ := store.GetActiveAgentSwitch(context.Background(), "proj-1")
 			native, _, _ := store.GetAgentNativeSession(context.Background(), *sw.TargetNativeSessionRef)
@@ -2467,7 +2467,7 @@ func TestSwitchAgentWithRealFXAdapterInBothDirections(t *testing.T) {
 		project := store.projects["proj"]
 		project.Config.Env = map[string]string{"HOME": fxHome}
 		store.projects[project.ID] = project
-		manager.agents.(switchTestAgents)[domain.HarnessFX] = fxagent.New()
+		manager.agents.(switchTestAgents)[domain.HarnessFX] = testFXAgent()
 		rec := store.sessions["proj-1"]
 		rec.Harness = domain.HarnessFX
 		rec.Metadata.AgentSessionID = "fx-real-source"

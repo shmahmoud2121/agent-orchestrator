@@ -1,3 +1,5 @@
+//go:build retired
+
 package droid
 
 // SupportsTerminalVersionRefresh declares unattended exact-conversation resume.

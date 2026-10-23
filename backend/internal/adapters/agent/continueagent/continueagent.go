@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package continueagent implements the Continue CLI agent adapter.
 //
 // Continue (https://docs.continue.dev/guides/cli) is Continue's terminal coding

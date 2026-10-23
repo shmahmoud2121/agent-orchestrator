@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package copilot adapts the GitHub Copilot CLI worker for persistent,
 // restricted AO code-review sessions.
 package copilot

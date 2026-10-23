@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package cursoracp binds the user's own Cursor Agent installation to AO's
 // reusable ACP Chat transport.
 package cursoracp

@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package commandcode implements the Command Code agent adapter.
 //
 // Command Code is a terminal coding agent whose CLI binary is `cmd` (Windows

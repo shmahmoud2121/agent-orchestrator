@@ -73,7 +73,7 @@ func TestRegistryMatchesDomainVocabulary(t *testing.T) {
 		}
 		registered[h] = true
 	}
-	for _, h := range domain.AllReviewerHarnesses {
+	for _, h := range registeredReviewerHarnesses() {
 		if !registered[h] {
 			t.Errorf("reviewer harness %q has no registered adapter", h)
 		}
@@ -85,7 +85,7 @@ func TestNewResolverResolvesShippedReviewers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewResolver: %v", err)
 	}
-	for _, h := range domain.AllReviewerHarnesses {
+	for _, h := range registeredReviewerHarnesses() {
 		if _, ok := resolver.Reviewer(h); !ok {
 			t.Errorf("resolver missing reviewer %q", h)
 		}
@@ -125,10 +125,10 @@ func TestResolverInvalidatesOneReviewersBinary(t *testing.T) {
 
 // Every reviewer built on a caching worker plugin forwards the invalidation.
 func TestCachingReviewersForwardBinaryInvalidation(t *testing.T) {
-	for _, harness := range []domain.ReviewerHarness{
-		domain.ReviewerClaudeCode, domain.ReviewerCodex, domain.ReviewerCopilot, domain.ReviewerCursor,
-		domain.ReviewerKimchi, domain.ReviewerOpenCode, domain.ReviewerKiloCode, domain.ReviewerOpenCodeV2,
-	} {
+	cached := []domain.ReviewerHarness{domain.ReviewerClaudeCode, domain.ReviewerCodex, domain.ReviewerOpenCode}
+	if retiredReviewersEnabled { cached = append(cached, domain.ReviewerCopilot, domain.ReviewerCursor,
+		domain.ReviewerKimchi, domain.ReviewerKiloCode, domain.ReviewerOpenCodeV2) }
+	for _, harness := range cached {
 		resolver, err := NewResolver()
 		if err != nil {
 			t.Fatal(err)

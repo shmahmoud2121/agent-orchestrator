@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package kimiacp binds the user's own Kimi Code installation to AO's
 // reusable ACP Chat transport.
 package kimiacp

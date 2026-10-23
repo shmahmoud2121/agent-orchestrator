@@ -19,7 +19,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/memcode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/modelcatalog"
 	"github.com/aoagents/agent-orchestrator/backend/internal/agentlaunch"
 	"github.com/aoagents/agent-orchestrator/backend/internal/attachmentstore"
@@ -1019,7 +1018,7 @@ func (m *Manager) Spawn(ctx context.Context, cfg ports.SpawnConfig) (domain.Sess
 	// after CreateSession would leave a terminated orphan row and waste a
 	// worktree on a spawn that can never launch.
 	if _, ok := m.agents.Agent(cfg.Harness); !ok {
-		return domain.SessionRecord{}, 0, 0, fmt.Errorf("spawn: %w: %q", ErrUnknownHarness, cfg.Harness)
+		return domain.SessionRecord{}, 0, 0, fmt.Errorf("spawn: %w", unavailableHarnessError(cfg.Harness))
 	}
 	// Unreal Agent has no terminal interface or interactive approval channel.
 	// Selecting the harness therefore supplies its only valid launch defaults;
@@ -1420,7 +1419,7 @@ func (m *Manager) Spawn(ctx context.Context, cfg ports.SpawnConfig) (domain.Sess
 	agent, ok := m.agents.Agent(cfg.Harness)
 	if !ok {
 		m.rollbackSeedSpawnWorkspace(ctx, rec, ws, workspaceProject, false, false)
-		return domain.SessionRecord{}, 0, 0, fmt.Errorf("spawn %s: %w: no agent adapter for harness %q", id, ErrUnknownHarness, cfg.Harness)
+		return domain.SessionRecord{}, 0, 0, fmt.Errorf("spawn %s: %w", id, unavailableHarnessError(cfg.Harness))
 	}
 	var env map[string]string
 	rec, env, err = m.prepareWorkerLaunchEnv(ctx, rec, project.Config.Env)
@@ -1431,7 +1430,7 @@ func (m *Manager) Spawn(ctx context.Context, cfg ports.SpawnConfig) (domain.Sess
 	if cfg.Harness == domain.HarnessMemcode && agentConfig.Model != "" {
 		// The workspace may introduce a native endpoint, so resolve this after
 		// provisioning but before hooks or launch validation see the model.
-		customEndpoint, modelErr := memcode.UsesCustomEndpoint(ctx, ws.Path, env)
+		customEndpoint, modelErr := retiredMemcodeUsesCustomEndpoint(ctx, ws.Path, env)
 		if modelErr == nil && customEndpoint {
 			if explicitModel {
 				modelErr = fmt.Errorf("%w: memcode custom endpoints require native model selection", ErrUnsupportedModel)
@@ -3487,7 +3486,7 @@ func (m *Manager) relaunchSessionWithPolicyAndGeneration(ctx context.Context, op
 
 	agent, ok := m.agents.Agent(rec.Harness)
 	if !ok {
-		return RestoreResult{}, fmt.Errorf("%s %s: no agent adapter for harness %q", operation, rec.ID, rec.Harness)
+		return RestoreResult{}, fmt.Errorf("%s %s: %w", operation, rec.ID, unavailableHarnessError(rec.Harness))
 	}
 	// Recompute standing instructions, then reapply the durable finalized inbound
 	// handoff for this exact native conversation when one exists.
@@ -3528,7 +3527,7 @@ func (m *Manager) relaunchSessionWithPolicyAndGeneration(ctx context.Context, op
 		return RestoreResult{}, fmt.Errorf("%s %s: browser capability: %w", operation, rec.ID, err)
 	}
 	if rec.Harness == domain.HarnessMemcode && agentConfig.Model != "" {
-		customEndpoint, err := memcode.UsesCustomEndpoint(ctx, ws.Path, env)
+		customEndpoint, err := retiredMemcodeUsesCustomEndpoint(ctx, ws.Path, env)
 		if err != nil {
 			return RestoreResult{}, fmt.Errorf("%s %s: model configuration: %w", operation, rec.ID, err)
 		}

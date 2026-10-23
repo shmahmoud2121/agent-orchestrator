@@ -1106,6 +1106,7 @@ func TestRefreshUsesNormalResolutionInsteadOfStartupPresenceShortcut(t *testing.
 }
 
 func TestDefaultCatalogDisplaysPrimeAgent(t *testing.T) {
+	if !retiredCatalogExpected { t.Skip("Prime Agent is retired in this build") }
 	got, err := New().List(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -1122,6 +1123,7 @@ func TestDefaultCatalogDisplaysPrimeAgent(t *testing.T) {
 }
 
 func TestDefaultCatalogDisplaysFX(t *testing.T) {
+	if !retiredCatalogExpected { t.Skip("fx is retired in this build") }
 	got, err := New().List(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -1655,7 +1657,7 @@ func TestGlobalModelDiscoveryUsesAODirectoryWithoutProject(t *testing.T) {
 	discoveryDir := filepath.Join(t.TempDir(), "model-discovery")
 	svc := NewWithDeps(Deps{ModelDiscoveryDir: discoveryDir})
 
-	request, err := svc.modelDiscoveryRequest(context.Background(), "deepseek-harness", "", "/usr/local/bin/dsh")
+	request, err := svc.modelDiscoveryRequest(context.Background(), "opencode", "", "/usr/local/bin/opencode")
 	if err != nil {
 		t.Fatal(err)
 	}

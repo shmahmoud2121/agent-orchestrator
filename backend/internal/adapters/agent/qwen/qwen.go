@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package qwen implements the Qwen Code agent adapter: launching new sessions,
 // resuming hook-tracked sessions, installing workspace-local native hooks, and
 // reading hook-derived session info.

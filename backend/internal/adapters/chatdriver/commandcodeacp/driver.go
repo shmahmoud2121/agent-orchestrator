@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package commandcodeacp binds the user's own Command Code installation to AO's
 // reusable ACP Chat transport.
 //

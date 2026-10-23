@@ -1,3 +1,5 @@
+//go:build retired
+
 package copilot
 
 // SupportsTerminalVersionRefresh declares unattended exact-conversation resume.

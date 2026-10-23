@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package kimchi implements the Kimchi agent adapter: launching headless Kimchi
 // sessions and resuming sessions when a native session id is known.
 //

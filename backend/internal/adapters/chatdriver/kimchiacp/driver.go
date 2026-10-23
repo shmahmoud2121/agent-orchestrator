@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package kimchiacp binds the user's own Kimchi installation to AO's
 // reusable ACP Chat transport.
 package kimchiacp

@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package deepseekacp binds the user's own DeepSeek Harness installation to
 // AO's reusable ACP Chat transport.
 package deepseekharnessacp

@@ -1,3 +1,5 @@
+//go:build retired
+
 package qwen
 
 import "context"

@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package muse implements the Muse Code CLI agent adapter.
 //
 // Muse Code is Meta's terminal coding agent, installed from

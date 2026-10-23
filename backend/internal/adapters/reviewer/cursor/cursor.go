@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package cursor adapts the Cursor CLI worker agent for code-review sessions.
 package cursor
 

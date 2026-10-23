@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package crush adapts Crush as an experimental user-approved AO reviewer.
 package crush
 

@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package amp implements the Amp agent adapter: launching new interactive Amp
 // sessions and resuming sessions when a native Amp thread id is known.
 //

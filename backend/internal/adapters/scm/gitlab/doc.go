@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package gitlab observes GitLab merge requests for AO's SCM integrations.
 //
 // It implements the provider-neutral scm.Provider interface using the GitLab
