@@ -1,6 +1,6 @@
 ---
 title: Platforms
-description: Install and use AO on macOS, Windows, Linux, and mobile.
+description: Install and use AO on macOS, Windows, and Linux.
 ---
 
 Orchestrator has a desktop app for macOS, Windows, and Linux. The basic workflow is the same on each platform: add a repository, start an isolated worker, and follow its pull request in Chat or Terminal UI.
@@ -47,27 +47,11 @@ Windows supports the desktop workflow, structured Chat, and native Terminal UI t
 
 Use PowerShell, Command Prompt, or Git Bash for optional CLI commands. Orchestrator suppresses transient console windows for tools launched by the desktop daemon.
 
-## Mobile companion
-
-Orchestrator's Expo mobile app is a second interface to the desktop daemon. In desktop settings, choose **Connect Mobile** to enable a separate LAN listener and pair the phone.
-
-Security properties:
-
-- The LAN listener is off by default and exists only while Connect Mobile is enabled.
-- It is protected by a rotating connection password.
-- Scanning the pairing QR fills the advertised host, port, connection password, and any secure transport mode automatically. Treat the QR as a bearer credential: do not share it or screenshots of it, and rotate the connection password if it is exposed.
-- Direct LAN traffic is plaintext and belongs on a trusted network. Managed HTTPS access and current Tailscale pairing limits are described in [Connect Mobile](/configuration/remote-access).
-- Daemon control, telemetry, and browser-control routes remain loopback-only.
-
-Mobile defaults new workers and orchestrators to Chat when the selected harness supports it. Terminal UI remains available as a compatibility choice.
-
 ## Remote and server use
 
-The primary desktop listener is fixed to `127.0.0.1` and has no authentication. Do not expose it with a public bind or reverse proxy. Connect Mobile provides a separate authenticated listener for local or secure remote connections. Never publish the primary listener.
+The desktop listener is fixed to `127.0.0.1` and has no authentication. Do not expose it with a public bind or reverse proxy.
 
 For unattended work, keep the desktop host awake and reachable on its local network. Orchestrator does not turn the local desktop product into a hosted multi-user service.
-
-When Cloud is enabled for your build and account, its remote sessions use a separate control plane. Availability and provider choices are gated; local desktop installation alone does not grant Cloud access.
 
 <span id="next" />
 
@@ -75,6 +59,6 @@ When Cloud is enabled for your build and account, its remote sessions use a sepa
 
 <Cards>
 	<Card title="Installation" href="/installation" description="Download Orchestrator and connect GitHub and an agent harness." />
-	<Card title="Dashboard" href="/dashboard" description="Learn the desktop and mobile control surfaces." />
+	<Card title="Dashboard" href="/dashboard" description="Learn the desktop control surface." />
 	<Card title="Troubleshooting" href="/troubleshooting" description="Resolve platform-specific startup and terminal issues." />
 </Cards>

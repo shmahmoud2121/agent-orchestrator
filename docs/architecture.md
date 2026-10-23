@@ -87,7 +87,6 @@ The daemon starts with Chat hibernation disabled; the desktop synchronizes its D
 graph TB
     subgraph Frontend
         FE[Electron + React UI]
-        Mobile[Expo + React Native UI]
         CLI[ao CLI]
     end
 
@@ -127,8 +126,6 @@ graph TB
     end
 
     FE -->|REST/SSE| Controllers
-    Mobile -->|Authenticated LAN REST/SSE| Controllers
-    Mobile -->|Authenticated mux| Terminal
     CLI -->|REST| Controllers
     Controllers --> SessionSvc
     Controllers --> ProjectSvc
@@ -1022,35 +1019,11 @@ flowchart TD
 
 ```
 
-### Multi-listener architecture (loopback + LAN)
+### Loopback-only architecture
 
-The daemon runs two independent HTTP listeners sharing the same chi router:
-
-1. **Primary (Loopback) Listener:** Binds `127.0.0.1:3001` with no
-   authentication. All existing daemon operations, including the CLI and desktop
-   app, use this listener.
-2. **LAN Listener (Connect Mobile):** An opt-in second listener that binds
-   `0.0.0.0:3011` (or an ephemeral fallback) **only when explicitly enabled**
-   through desktop settings. Bearer-password middleware protects the app API.
-   Loopback-gated shutdown, telemetry, mobile-control, and browser-control routes
-   remain unavailable. Exactly `GET /api/v1/identity` is public for host and
-   contract verification. Direct LAN transport is plaintext for trusted
-   networks. A managed cloudflared HTTPS endpoint wraps the authenticated mobile
-   path. The current v2 offer advertises Tailscale addresses as plaintext;
-   Tailscale TLS setup and QR advertisement remain incomplete. The rotating password is persisted in a mode-`0600`
-   file at `AO_DATA_DIR/mobile/config.json` (normally
-   `~/.ao/data/mobile/config.json`); its comparison hash is in memory. See the
-   [current access guide](../frontend/src/docs/content/configuration/remote-access.mdx)
-   and [historical LAN ADR](adr/0001-lan-listener-for-mobile.md).
-
-The mobile app is a second thin renderer over those same session resources. It
-branches on the session's persisted `mode`: TUI attaches the existing mux PTY,
-while Chat reads the paged conversation projection and uses the durable CDC SSE
-stream only for targeted invalidation/reconnect. Sends, approvals, input,
-provider configuration, compaction, rollback, and shell creation remain daemon
-commands; no provider or lifecycle policy is implemented in React Native.
-
-For implementation details and security model, consult `docs/adr/0001-lan-listener-for-mobile.md` and the glossary in `CONTEXT.md`.
+The daemon binds `127.0.0.1:3001` with no authentication. The CLI and desktop
+app use this listener. This build does not create a LAN listener, tunnel, mobile
+pairing endpoint, or remote-host connection.
 
 ### Request flow
 
@@ -1200,7 +1173,7 @@ architectural assumptions:
 2. **Never treat failed probes as death:** A failed probe is a fact, not a termination signal.
 3. **Never force-delete dirty worktrees:** User data safety comes before cleanup convenience.
 4. **Keep all app state under `~/.ao`:** Do not use OS-default app-data locations.
-5. **Keep the primary daemon on loopback:** Only the opt-in authenticated mobile path provides off-device access. Control routes remain loopback-gated.
+5. **Keep the daemon on loopback:** This local-only service must not be exposed off-device.
 6. **Keep the CLI thin:** All logic lives in the daemon. The CLI is an HTTP client.
 7. **Use CDC as the source of truth for events:** DB triggers write to `change_log`, and the poller fans out changes.
 8. **Keep adapters as leaves:** Adapters never import core packages, only ports and domain.

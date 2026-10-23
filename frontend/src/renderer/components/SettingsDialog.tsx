@@ -26,9 +26,6 @@ import { NAV_ROW_HIGHLIGHT_HOST_CLASS, NavRowHighlight } from "./NavRowHighlight
 import { labelForHost } from "../lib/host-clients";
 import { LOCAL_HOST, refKey } from "../lib/hosts";
 import { globalSettingsItem, visibleGlobalSettings } from "./settings/settingsCatalog";
-import { fetchMobileStatus, mobileStatusQueryKey } from "./settings/ConnectMobileContent";
-import { fetchDevices, mobileDevicesQueryKey } from "./settings/MobileDevicesSection";
-import { LOCAL_ONLY_BUILD } from "../../shared/local-only";
 
 function initialProjectSaveState(): ProjectSettingsSaveState {
 	return { phase: "idle" };
@@ -224,14 +221,6 @@ function useSettingsLayer(settingsModal: SettingsModal | null) {
 		})
 			.then((next) => writeCodexAccounts(queryClient, next, "replace"))
 			.catch(() => undefined);
-		// Same for Mobile: its pairing state and Keep awake are known before the
-		// page is first drawn, so nothing pops in or flips after it opens. The
-		// local-only build has no Mobile page and the daemon serves no mobile
-		// routes, so there is nothing to prefetch.
-		if (!LOCAL_ONLY_BUILD) {
-			void queryClient.prefetchQuery({ queryKey: mobileStatusQueryKey, queryFn: fetchMobileStatus });
-			void queryClient.prefetchQuery({ queryKey: mobileDevicesQueryKey, queryFn: fetchDevices });
-		}
 	}, [queryClient, settingsModal?.scope]);
 
 	const selectProjectSection = (id: ProjectSettingsSection) => {

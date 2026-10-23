@@ -3,7 +3,7 @@ title: Architecture
 description: How the Go daemon, Electron app, storage, controllers, and adapters fit together.
 ---
 
-Orchestrator is a local, single-user system built around a long-running Go daemon. The Electron/React desktop app, optional CLI, and Expo mobile app connect to it over HTTP, server-sent events (SSE), and terminal streams.
+Orchestrator is a local, single-user system built around a long-running Go daemon. The Electron/React desktop app and optional CLI connect to it over HTTP, server-sent events (SSE), and terminal streams.
 
 <Callout type="info">
 	This page is a technical reference for contributors and users who want to understand Orchestrator internals. For everyday controls and workflows, start with the [Dashboard guide](/dashboard).
@@ -13,8 +13,7 @@ Orchestrator is a local, single-user system built around a long-running Go daemo
 
 ```text
 Electron + React desktop ─┐
-ao CLI ──────────────────┼─> Go daemon ─> services/managers ─> SQLite
-Expo mobile (opt-in)     ┘       │                 │
+ao CLI ──────────────────┴─> Go daemon ─> services/managers ─> SQLite
                                 │                 ├─> agent/runtime/workspace adapters
                                 ├─> SSE events    ├─> native Chat drivers
                                 ├─> terminal mux  └─> GitHub/GitLab SCM observer
@@ -56,7 +55,7 @@ Orchestrator stores local data in SQLite under `~/.ao/data` by default. Database
 
 The event stream supports replay with `Last-Event-ID`. Clients use it to invalidate targeted queries rather than transferring every full session or Chat payload on each update.
 
-All application state stays under `~/.ao`, including the run file, managed worktrees, Electron data, and mobile configuration. `AO_DATA_DIR` and `AO_RUN_FILE` override the daemon's data and discovery paths.
+All application state stays under `~/.ao`, including the run file, managed worktrees, and Electron data. `AO_DATA_DIR` and `AO_RUN_FILE` override the daemon's data and discovery paths.
 
 ## Services and adapters
 
@@ -76,19 +75,17 @@ The daemon also exposes pull-request merge and comment-resolution actions plus r
 
 The primary daemon listener binds `127.0.0.1:3001` and is unauthenticated. It serves the desktop app and CLI and is never configurable to a public bind.
 
-Connect Mobile starts a second listener only when you enable it. The listener is protected by a bearer password and serves the mobile app API and terminal connection. It does not serve shutdown, telemetry, mobile-control, or browser-control routes.
-
-Direct connections use plain HTTP and are intended for trusted networks. A managed connector can provide an HTTPS endpoint to this authenticated listener for remote access. Current Tailscale pairing has additional limits described in the access guide. Only `GET /api/v1/identity` is public; the phone uses it to verify the computer and app version before sending the password. See [Connect Mobile](/configuration/remote-access).
+This build does not open a LAN listener or expose the daemon for remote access.
 
 ## Terminal and browser bridges
 
 `/mux` lets clients connect to a terminal. Terminal UI sessions attach to the agent runtime. Chat sessions can use a separate shell in the worktree.
 
-Browser automation uses a local connection between the daemon and Electron. The daemon authorizes and matches commands to results. Electron displays each session's browser in an isolated `WebContentsView`. The mobile listener cannot control the browser.
+Browser automation uses a local connection between the daemon and Electron. The daemon authorizes and matches commands to results. Electron displays each session's browser in an isolated `WebContentsView`.
 
 The temporary browser profile is isolated per session. Named profiles save cookies and storage and can be reused across sessions. Sessions using the same named profile share its browser state. Orchestrator copies imported browser data into Orchestrator-owned storage and does not change the source profile.
 
-The architecture above describes local sessions. Cloud execution is a separate gated integration requiring build enablement, account access, and a reachable control plane. Standalone local workers are projectless; they are not Cloud sessions.
+Standalone local workers are projectless and still run entirely on this computer.
 
 ## Load-bearing rules
 
@@ -96,7 +93,7 @@ The architecture above describes local sessions. Cloud execution is a separate g
 2. Never treat failed probes as proof that a session died.
 3. Never force-delete dirty worktrees.
 4. Keep all app state under `~/.ao` unless an explicit supported override applies.
-5. Keep the primary listener on loopback; only Connect Mobile may create the authenticated opt-in LAN listener.
+5. Keep the daemon listener on loopback.
 6. Keep the CLI and UI thin; domain logic belongs in the daemon.
 7. Emit change events through SQLite triggers and the background poller.
 8. Add new migrations; never modify an already-merged migration.
@@ -107,6 +104,6 @@ The architecture above describes local sessions. Cloud execution is a separate g
 
 <Cards>
 	<Card title="Dashboard" href="/dashboard" description="See how these capabilities appear in the desktop app." />
-	<Card title="Platforms" href="/platforms" description="Understand desktop and mobile platform behavior." />
+	<Card title="Platforms" href="/platforms" description="Understand desktop platform behavior." />
 	<Card title="Troubleshooting" href="/troubleshooting" description="Diagnose daemon, controller, terminal, and SCM problems." />
 </Cards>

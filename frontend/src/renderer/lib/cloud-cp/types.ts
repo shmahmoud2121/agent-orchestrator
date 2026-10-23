@@ -210,11 +210,63 @@ export interface CloudCpListQuery {
 // Projects (`resource_handlers.go`)
 // ---------------------------------------------------------------------------
 
-import type { ProjectConfig, ProjectAgentConfig, ProjectSettingsInput, ProjectRoleConfig, ProjectReviewer } from "../../../../../packages/cloud-client/src/types";
-
-export type CloudCpProjectAgentConfig = ProjectAgentConfig;
-export type CloudCpProjectRoleConfig = ProjectRoleConfig;
-export type CloudCpProjectReviewer = ProjectReviewer;
+export type CloudCpProjectAgentConfig = {
+	model?: string;
+	mode?: "" | "plan" | "ask";
+	effort?: "" | "low" | "medium" | "high" | "xhigh" | "max";
+	permissions?: "" | "default" | "auto" | "accept-edits" | "bypass-permissions";
+};
+export type CloudCpProjectRoleConfig = {
+	agent: "claude-code" | "codex" | "cursor" | "opencode";
+	agentConfig?: CloudCpProjectAgentConfig;
+};
+export type CloudCpProjectReviewer = {
+	harness: "claude-code" | "codex" | "cursor" | "opencode";
+	agentConfig?: CloudCpProjectAgentConfig;
+};
+type ProjectConfig = {
+	sessionPrefix?: string;
+	worker?: CloudCpProjectRoleConfig;
+	orchestrator?: CloudCpProjectRoleConfig;
+	reviewers?: CloudCpProjectReviewer[];
+	autoReview?: boolean;
+	coder?: {
+		templateId?: string;
+		size?: "small" | "medium" | "large";
+		startupScript?: string;
+		extraRepos?: Array<{ url: string; branch?: string }>;
+		workspaceNamePrefix?: string;
+		parameters?: Record<string, string>;
+	};
+	postCreate?: CloudCpProjectScriptStep[];
+	preRemove?: CloudCpProjectScriptStep[];
+	repos?: CloudCpProjectRepo[];
+	agentStartsIn?: CloudCpAgentStartsIn;
+	workingDirectory?: string;
+	agentRules?: string;
+	orchestratorRules?: string;
+	source?: string;
+	[key: string]: unknown;
+};
+type ProjectSettingsInput = {
+	displayName?: string;
+	defaultBranch?: string;
+	config?: {
+		sessionPrefix?: string;
+		worker?: Partial<CloudCpProjectRoleConfig> | null;
+		orchestrator?: Partial<CloudCpProjectRoleConfig> | null;
+		reviewers?: CloudCpProjectReviewer[];
+		autoReview?: boolean;
+		coder?: { workspaceNamePrefix?: string; parameters?: Record<string, string> };
+		postCreate?: CloudCpProjectScriptStep[];
+		preRemove?: CloudCpProjectScriptStep[];
+		repos?: CloudCpProjectRepo[];
+		agentStartsIn?: CloudCpAgentStartsIn;
+		workingDirectory?: string;
+		agentRules?: string;
+		orchestratorRules?: string;
+	};
+};
 /**
  * PATCH /orgs/{orgId}/projects/{projectId}/settings. `config.coder` accepts
  * `workspaceNamePrefix` (an empty string returns to the default `ao`) and

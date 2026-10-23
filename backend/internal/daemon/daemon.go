@@ -43,7 +43,6 @@ import (
 	"github.com/aoagents/agent-orchestrator/backend/internal/daemon/supervisor"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/httpd"
-	"github.com/aoagents/agent-orchestrator/backend/internal/mobilebridge"
 	"github.com/aoagents/agent-orchestrator/backend/internal/notify"
 	agentswitchobs "github.com/aoagents/agent-orchestrator/backend/internal/observe/agentswitch"
 	"github.com/aoagents/agent-orchestrator/backend/internal/observe/sentryobs"
@@ -922,10 +921,9 @@ func Run() error {
 	// connector, host identity, push dispatcher, or mobile keep-awake. A
 	// connector left running by an earlier remote-capable build is still
 	// reaped: it would otherwise keep a public tunnel to this machine open.
-	if reapErr := mobilebridge.ReapStaleTunnel(mobilebridge.TunnelPIDPath(cfg.DataDir), mobilebridge.IsLiveCloudflared, mobilebridge.KillProcess); reapErr != nil {
+	if reapErr := reapStaleTunnel(staleTunnelPIDPath(cfg.DataDir)); reapErr != nil {
 		log.Warn("could not reap a stale mobile tunnel", "error", reapErr)
 	}
-	logRemoteAccessDisabled(cfg.DataDir, log)
 	awakeHost := awakesvc.NewHost(os.Getpid(), os.Getenv("AO_WAKE_HELPER"), cfg.DataDir)
 	awakeSvc, stopAwake := startAwake(ctx, store, awakeHost, awakesvc.BindingFuncs{
 		Session: func(ctx context.Context, id string) (bool, error) {

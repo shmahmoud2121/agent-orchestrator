@@ -3,11 +3,9 @@ title: Installation
 description: Download the AO desktop app and connect your coding tools.
 ---
 
-For the latest stable desktop build, start at the [official Orchestrator download page](https://orchestrator.inc/download/). It also lists nightly builds and the mobile apps. If you want a direct desktop package, choose one below:
+For the latest stable desktop build, start at the [official Orchestrator download page](https://orchestrator.inc/download/). It also lists nightly builds. If you want a direct desktop package, choose one below:
 
 <InstallDownloads />
-
-On your phone, install [Orchestrator Mobile for iPhone or iPad](https://apps.apple.com/app/ao-mobile/id6792552173) or [Orchestrator Mobile for Android](https://play.google.com/store/apps/details?id=aoagents.dev). Then use [Connect Mobile](/configuration/remote-access) in the desktop app to pair it.
 
 The desktop app is the canonical install path. It owns the local daemon, requires no global `ao` command, and checks for updates after launch and while it is running.
 
@@ -114,7 +112,7 @@ New users should install the desktop app directly instead.
 <span id="where-ao-stores-data" />
 ## Where Orchestrator stores data
 
-All Orchestrator application state lives under `~/.ao` by default, including the daemon database, run file, managed worktrees, Electron browser data, and mobile pairing configuration. Advanced installations can override daemon paths with `AO_DATA_DIR` and `AO_RUN_FILE`.
+All Orchestrator application state lives under `~/.ao` by default, including the daemon database, run file, managed worktrees, and Electron browser data. Advanced installations can override daemon paths with `AO_DATA_DIR` and `AO_RUN_FILE`.
 
 ## Common installation problems
 
