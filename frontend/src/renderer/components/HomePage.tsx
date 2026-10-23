@@ -1,9 +1,8 @@
 import type { ProjectSource } from "@aoagents/product-ui";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Cloud, Folder, Folders, FolderOpen, GitFork, MessageSquarePlus, Star } from "lucide-react";
+import { AlertTriangle, Folder, Folders, FolderOpen, GitFork, MessageSquarePlus, Star } from "lucide-react";
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
-import { useCloudGate } from "../hooks/useCloudGate";
 import { useSystemRequirementsGate } from "../hooks/useSystemRequirementsGate";
 import { useWorkspaceQuery } from "../hooks/useWorkspaceQuery";
 import { aoBridge } from "../lib/bridge";
@@ -148,13 +147,11 @@ export function HomePage() {
 	const navigate = useNavigate();
 	const { t } = useTranslation();
 	const requestNewTask = useUiStore((state) => state.requestNewTask);
-	const developerMode = useUiStore((state) => state.developerMode);
 	const { cloneProject, createProject, daemonStatus, initializeProjectRepository, workspaceStartupState } =
 		useShell();
 	const { blocked: requirementsBlocked } = useSystemRequirementsGate();
-	const { cloudEnabled } = useCloudGate();
 	const workspaceQuery = useWorkspaceQuery();
-	const [sourceSignal, setSourceSignal] = useState<{ source: ProjectSource | "cloud"; nonce: number } | null>(null);
+	const [sourceSignal, setSourceSignal] = useState<{ source: ProjectSource; nonce: number } | null>(null);
 	const projects = workspaceQuery.data ?? [];
 	const recentProjects = useMemo(
 		() =>
@@ -176,7 +173,7 @@ export function HomePage() {
 
 	if (showStartup) return <DaemonStartupLoader />;
 
-	const requestSource = (source: ProjectSource | "cloud") => {
+	const requestSource = (source: ProjectSource) => {
 		setSourceSignal({ source, nonce: Date.now() });
 	};
 
@@ -240,19 +237,11 @@ export function HomePage() {
 								label={t("createProject.addWorkspace")}
 								onClick={() => requestSource("workspace")}
 							/>
-							{developerMode && cloudEnabled ? (
-								<HomeActionCard
-									icon={<Cloud strokeWidth={1.8} />}
-									label={t("createProject.cloudTitle")}
-									onClick={() => requestSource("cloud")}
-								/>
-							) : (
-								<HomeActionCard
-									icon={<MessageSquarePlus strokeWidth={1.8} />}
-									label={t("home.newStandaloneAgent")}
-									onClick={() => requestNewTask(STANDALONE_WORKSPACE_ID)}
-								/>
-							)}
+							<HomeActionCard
+								icon={<MessageSquarePlus strokeWidth={1.8} />}
+								label={t("home.newStandaloneAgent")}
+								onClick={() => requestNewTask(STANDALONE_WORKSPACE_ID)}
+							/>
 						</div>
 
 						{/* Same section as the grid so the gap matches the grid's gap-3. */}

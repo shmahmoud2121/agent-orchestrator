@@ -38,7 +38,6 @@ agent-orchestrator/
     src/                # Renderer, main, preload
     e2e/                # Playwright end-to-end tests
   packages/
-    mobile/             # React Native (Expo) mobile companion app
     ao/                 # Legacy npm CLI package (frozen)
   docs/                 # Architecture, ADRs, CLI docs, status
   CONTRIBUTING.md       # Contribution guide
@@ -210,13 +209,6 @@ Or from repo root:
 npm run frontend:typecheck
 ```
 
-## Mobile companion app
-
-The mobile companion app is still being wired into the contributor docs. Do not
-assume `packages/mobile/README.md` is a complete setup guide on this branch.
-Until a tracked guide lands, use the desktop/backend workflow above and check
-open issues/PRs for current mobile-specific setup notes.
-
 ## Running end-to-end
 
 1. Start the desktop app with `npm run dev` from `frontend/`.
@@ -292,8 +284,7 @@ The diff check should pass after committing the regenerated files. Do not edit
 `gen/` by hand or use a different sqlc version; the version in `package.json` is
 authoritative. Review any unexpected query or generated type changes before
 committing. The storage tests also check that the config is valid YAML and keeps
-the boolean overrides for `agent_switch_failure_policy.enabled` and
-`app_settings.cloud_offering`.
+the boolean override for `agent_switch_failure_policy.enabled`.
 
 If CI fails on the `api-drift` check, the OpenAPI-generated files are out of sync with source. Regenerate them locally and commit the updated files:
 

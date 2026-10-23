@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/httpd/envelope"
-	"github.com/aoagents/agent-orchestrator/backend/internal/httpd/requestscope"
 	previewutil "github.com/aoagents/agent-orchestrator/backend/internal/preview"
 )
 
@@ -23,9 +22,7 @@ import (
 // tool listening on a localhost port can host a hostile page. The one loopback
 // origin admitted without an allowlist entry is a workspace preview reaching
 // its own host, where PreviewOrigin answers every path read-only and the API
-// is never mounted (previewSelfOrigin). The LAN listener, where every request
-// carries the pairing password, still admits loopback origins for the mobile
-// app (lanLoopbackOrigin).
+// is never mounted (previewSelfOrigin).
 //
 // Requests without an Origin header (the CLI, curl, health probes) pass
 // through untouched. Requests bearing an Origin outside the allowlist are
@@ -60,7 +57,7 @@ func corsMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
-			if _, ok := allowed[origin]; !ok && !previewSelfOrigin(origin, r.Host) && !lanLoopbackOrigin(r, origin) {
+			if _, ok := allowed[origin]; !ok && !previewSelfOrigin(origin, r.Host) {
 				envelope.WriteAPIError(w, r, http.StatusForbidden, "forbidden", "ORIGIN_FORBIDDEN",
 					"Origin is not allowed to access this daemon", nil)
 				return
@@ -125,15 +122,12 @@ func exactAllowedOrigins(origins []string) map[string]struct{} {
 	return allowed
 }
 
-// isAppOnlyPath reports the routes appOriginMiddleware guards: account
-// credentials, and Connect Mobile, which turns on LAN and tunnel access and
-// returns the pairing password.
+// isAppOnlyPath reports the account routes appOriginMiddleware guards.
 func isAppOnlyPath(path string) bool {
 	for _, prefix := range []string{
 		"/api/v1/agents/codex/accounts",
 		"/api/v1/agents/codex/account-switches",
 		"/api/v1/agents/accounts",
-		"/api/v1/mobile",
 	} {
 		if path == prefix || strings.HasPrefix(path, prefix+"/") {
 			return true
@@ -158,24 +152,6 @@ func previewSelfOrigin(origin, requestHost string) bool {
 	return ok
 }
 
-// lanLoopbackOrigin admits a loopback origin on a request the LAN listener
-// authenticated. The mobile app pins "Origin: http://localhost" on its
-// WebSocket upgrades (iOS sets an Origin React Native cannot drop), and every
-// LAN request already carries the pairing password, which a hostile page does
-// not have.
-func lanLoopbackOrigin(r *http.Request, origin string) bool {
-	if !requestscope.IsLAN(r.Context()) {
-		return false
-	}
-	u, err := url.Parse(origin)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
-		return false
-	}
-	return isLoopbackHostname(u.Hostname())
-}
-
-// isLoopbackHostname reports whether host (no port, no brackets) names this
-// machine's loopback: localhost, any name below it (RFC 6761), or a loopback IP.
 func isLoopbackHostname(host string) bool {
 	host = strings.ToLower(strings.TrimSuffix(host, "."))
 	if host == "localhost" || strings.HasSuffix(host, ".localhost") {
