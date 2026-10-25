@@ -6,6 +6,7 @@
 		"frontend:typecheck": "npm --prefix frontend run typecheck",
 		"product-ui:check": "npm --prefix packages/product-ui run typecheck && npm --prefix packages/product-ui test && npm --prefix packages/product-ui run build",
 		"shared:check": "npm run product-ui:check",
+		"test:go:changed": "node scripts/test-go-changed.mjs",
 		"migration:create": "node scripts/create-migration.mjs",
 		"sqlc": "cd backend && go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate",
 		"api:spec": "cd backend && go generate ./internal/httpd/apispec/...",
