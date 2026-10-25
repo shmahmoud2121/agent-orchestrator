@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"testing"
 	"time"
@@ -18,6 +19,9 @@ import (
 // (cwd matches the session workspace) and the pipeline must ingest both files,
 // with the write-once event key keeping replays clean.
 func TestPipelineIngestsDiscoveredClaudeContinuation(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the fixture embeds a Windows workspace path in JSON without escaping backslashes")
+	}
 	ctx := context.Background()
 	now := time.Unix(1700000000, 0).UTC()
 	store, session := seedUsageTestSession(

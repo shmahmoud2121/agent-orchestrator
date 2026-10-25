@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
 import {
 	MAX_BROWSER_ANNOTATION_MESSAGE_LENGTH,

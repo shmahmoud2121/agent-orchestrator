@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -215,6 +216,9 @@ func newStack(t *testing.T) *stack {
 }
 
 func TestDelegateEndpointDoesNotDependOnCodexDeviceReconciliation(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Codex account directories under the host temp directory fail the Windows ancestor ACL check when the temp directory grants write access to other principals")
+	}
 	ctx := context.Background()
 	root := t.TempDir()
 	store, err := sqlitetest.Open(filepath.Join(root, "db"))

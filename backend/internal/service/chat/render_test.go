@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -407,6 +408,9 @@ func TestPublishRenderStopsWaitingForAMeasureAtTheTimeout(t *testing.T) {
 }
 
 func TestSaveRenderAsArtifactWritesTheServedPage(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod permissions are not enforced on Windows")
+	}
 	h := newHarnessForHarness(t, domain.HarnessCodex)
 	ctx := context.Background()
 	// A failed output-type update is only logged; the file is saved.

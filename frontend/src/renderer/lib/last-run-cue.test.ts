@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { expect, test, vi } from "vitest";
 import { readLastRunCue, rememberLastRunCue } from "./last-run-cue";
 

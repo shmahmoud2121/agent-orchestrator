@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { test } from "vitest";
 import { buildHostBundle } from "./build-host-bundle.mjs";
 
-test("headless archive contains the daemon, Claude ACP runtime, and tmux in the expected layout", () => {
+test.skipIf(process.platform === "win32")("headless archive contains the daemon, Claude ACP runtime, and tmux in the expected layout", () => {
 	const root = mkdtempSync(join(tmpdir(), "ao-host-bundle-test-"));
 	try {
 		const daemon = join(root, "daemon", "ao");

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -119,6 +120,9 @@ SET state = 'complete', last_error_code = 'artifact_replaced' WHERE id = ?`, sou
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if runtime.GOOS == "windows" && tt.name == "replaced transcript identity" {
+				t.Skip("os.SameFile on a stale FileInfo re-reads the path on Windows, so it cannot observe the old file identity")
+			}
 			ctx := context.Background()
 			dataDir := t.TempDir()
 			store, source, path, now := seedCodexIngestionSource(t, dataDir)

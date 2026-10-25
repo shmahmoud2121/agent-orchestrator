@@ -224,6 +224,9 @@ func nextEvent(t *testing.T, events <-chan ports.ChatEvent, want ports.ChatEvent
 }
 
 func TestStartCompletesHandshakeAndOpensThread(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 
 	conv, err := d.Start(context.Background(), ports.ChatStartConfig{
@@ -286,6 +289,9 @@ func TestStartCompletesHandshakeAndOpensThread(t *testing.T) {
 }
 
 func TestReconnectAdoptsInitializedHostWithoutNativeResume(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	prepareCalls := 0
 	proc, err := d.spawn(context.Background(), "codex", "/tmp/ws", nil)
@@ -397,6 +403,9 @@ func TestCodexHibernateStopsAppServerAndNativeResumesThread(t *testing.T) {
 }
 
 func TestResumeDoesNotCompeteWithAttachedHostDuringDaemonOverlap(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	d.persistent = true
 	d.connectHost = func(context.Context, persistenthost.Config) (*persistenthost.Transport, error) {
@@ -428,6 +437,9 @@ func TestStartRejectsRelativeWorkspacePath(t *testing.T) {
 }
 
 func TestSendTurnCarriesIdempotencyKey(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	conv, err := d.Start(context.Background(), ports.ChatStartConfig{WorkspacePath: "/tmp/ws"})
 	if err != nil {
@@ -473,6 +485,9 @@ func TestSendTurnCarriesIdempotencyKey(t *testing.T) {
 // An empty send is a caller bug, not a way to nudge the agent: there is no
 // keystroke concept in Chat mode.
 func TestSendTurnRejectsEmptyText(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, _ := newTestDriver(t)
 	conv, err := d.Start(context.Background(), ports.ChatStartConfig{WorkspacePath: "/tmp/ws"})
 	if err != nil {
@@ -489,6 +504,9 @@ func TestSendTurnRejectsEmptyText(t *testing.T) {
 // request, AO surfaces it with the provider's own decision list, and the user's
 // choice is what unblocks the turn.
 func TestApprovalIsParkedUntilResolved(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	conv, err := d.Start(context.Background(), ports.ChatStartConfig{WorkspacePath: "/tmp/ws"})
 	if err != nil {
@@ -566,6 +584,9 @@ func TestApprovalIsParkedUntilResolved(t *testing.T) {
 // an execpolicy amendment — so AO answers with the provider's own payload for the
 // option that was offered.
 func TestStructuredDecisionIsAnsweredWithTheProvidersOwnPayload(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	conv, err := d.Start(context.Background(), ports.ChatStartConfig{WorkspacePath: "/tmp/ws"})
 	if err != nil {
@@ -593,6 +614,9 @@ func TestStructuredDecisionIsAnsweredWithTheProvidersOwnPayload(t *testing.T) {
 // be refused, and — just as important — the request must stay pending so the
 // user's real answer still has something to answer.
 func TestDecisionNotOfferedIsRefusedAndLeavesTheRequestPending(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	conv, err := d.Start(context.Background(), ports.ChatStartConfig{WorkspacePath: "/tmp/ws"})
 	if err != nil {
@@ -622,6 +646,9 @@ func TestDecisionNotOfferedIsRefusedAndLeavesTheRequestPending(t *testing.T) {
 // Answering a request that is no longer waiting is ordinary — two clients can
 // watch the same approval — so it comes back typed rather than as a raw failure.
 func TestResolvingAnUnknownRequestIsTyped(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, _ := newTestDriver(t)
 	conv, err := d.Start(context.Background(), ports.ChatStartConfig{WorkspacePath: "/tmp/ws"})
 	if err != nil {
@@ -638,6 +665,9 @@ func TestResolvingAnUnknownRequestIsTyped(t *testing.T) {
 // A card the user clicks after the request is gone must fail, never resolve
 // something newer.
 func TestResolveUnknownRequestIsRefused(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, _ := newTestDriver(t)
 	conv, err := d.Start(context.Background(), ports.ChatStartConfig{WorkspacePath: "/tmp/ws"})
 	if err != nil {
@@ -654,6 +684,9 @@ func TestResolveUnknownRequestIsRefused(t *testing.T) {
 // Answering a request AO does not model could consent to something on the user's
 // behalf, so it must be refused with an error instead.
 func TestUnmodelledServerRequestIsRefused(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	conv, err := d.Start(context.Background(), ports.ChatStartConfig{WorkspacePath: "/tmp/ws"})
 	if err != nil {
@@ -670,6 +703,9 @@ func TestUnmodelledServerRequestIsRefused(t *testing.T) {
 }
 
 func TestNotificationsBecomeNeutralEvents(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	conv, err := d.Start(context.Background(), ports.ChatStartConfig{WorkspacePath: "/tmp/ws"})
 	if err != nil {
@@ -769,6 +805,9 @@ func TestReloadMCPServersMarksFailedInventoryUnavailable(t *testing.T) {
 // an interrupt without an explicit id can stop a child and leave the requested
 // root work running.
 func TestNestedThreadDoesNotReplaceRootActiveTurn(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	conv, err := d.Start(context.Background(), ports.ChatStartConfig{WorkspacePath: "/tmp/ws"})
 	if err != nil {
@@ -803,6 +842,9 @@ func TestNestedThreadDoesNotReplaceRootActiveTurn(t *testing.T) {
 // Resume must not quietly become a fresh thread: that would present unrelated
 // history as continuous.
 func TestResumeFailureDoesNotFallBackToStart(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	srv.mu.Lock()
 	delete(srv.responses, "thread/resume")
@@ -833,6 +875,9 @@ func TestResumeFailureDoesNotFallBackToStart(t *testing.T) {
 }
 
 func TestResumeReappliesWorkspaceAndStandingInstructions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	conv, err := d.Resume(context.Background(), ports.ChatResumeConfig{
 		SessionID:              "ao-1",
@@ -1191,6 +1236,9 @@ func TestReadOnlyTurnCannotOverrideSandbox(t *testing.T) {
 }
 
 func TestBackgroundReadOnlySandboxPersistsAcrossTurnOverrides(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	conv, err := d.Start(context.Background(), ports.ChatStartConfig{
 		WorkspacePath: "/tmp/ws", Permissions: ports.PermissionModeAuto,
@@ -1268,6 +1316,9 @@ func TestEnvSliceIsSortedForReproducibleRelaunch(t *testing.T) {
 
 // When the process dies, the stream must say so rather than just going quiet.
 func TestControllerStopIsAnnounced(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	conv, err := d.Start(context.Background(), ports.ChatStartConfig{WorkspacePath: "/tmp/ws"})
 	if err != nil {
@@ -1288,6 +1339,9 @@ func TestControllerStopIsAnnounced(t *testing.T) {
 // `sandboxPolicy: {type:"workspaceWrite"}`. Sending a thread's shape to a turn is
 // rejected as a missing `type`, so this pins the difference.
 func TestTurnSettingsUseTheTurnLevelWireShapes(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	conv, err := d.Start(context.Background(), ports.ChatStartConfig{WorkspacePath: "/tmp/ws"})
 	if err != nil {
@@ -1331,6 +1385,9 @@ func TestTurnSettingsUseTheTurnLevelWireShapes(t *testing.T) {
 // per-turn settings existed: an empty field is not a value the provider has to
 // interpret.
 func TestNoTurnSettingsSendsNoSettingsFields(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	conv, err := d.Start(context.Background(), ports.ChatStartConfig{WorkspacePath: "/tmp/ws"})
 	if err != nil {
@@ -1358,6 +1415,9 @@ func TestNoTurnSettingsSendsNoSettingsFields(t *testing.T) {
 // would fail, while the opened thread's effort is more specific than the generic
 // model default returned by model/list.
 func TestListModelsKeepsCatalogAndUsesThreadEffort(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	// Scripted before Start: the server goroutine reads this map, so writing it
 	// afterwards would race the connection it is already serving.
@@ -1397,6 +1457,9 @@ func TestListModelsKeepsCatalogAndUsesThreadEffort(t *testing.T) {
 }
 
 func TestListModelsUsesConfiguredThreadDefault(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	for _, configured := range []string{"nano", "custom-model"} {
 		t.Run(configured, func(t *testing.T) {
 			d, srv := newTestDriver(t)
@@ -1471,6 +1534,9 @@ func TestDiscoverModelsDrainsEveryModelListPage(t *testing.T) {
 // result from a live pro account, on ONE line: readFrame is line-delimited, so a
 // pretty-printed reply hangs the test forever rather than failing it.
 func TestReadRateLimitsFromProviderResult(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	srv.reply("account/rateLimits/read", `{"rateLimits":{"limitId":"codex","limitName":null,"primary":{"usedPercent":71,"windowDurationMins":10080,"resetsAt":4102444800},"secondary":null,"credits":{"hasCredits":false,"unlimited":false,"balance":"0"},"individualLimit":null,"spendControlReached":false,"planType":"pro","rateLimitReachedType":null},"rateLimitsByLimitId":{"codex_bengalfox":{"limitId":"codex_bengalfox","limitName":"GPT-5.3-Codex-Spark","primary":{"usedPercent":0,"windowDurationMins":10080,"resetsAt":4102444800},"secondary":null,"credits":null,"individualLimit":null,"spendControlReached":null,"planType":"pro","rateLimitReachedType":null}},"rateLimitResetCredits":{"availableCount":0,"credits":[]}}`)
 
@@ -1532,6 +1598,9 @@ func TestCapabilitiesAdvertiseUsageAndRateLimits(t *testing.T) {
 // turn id and a tagged sandbox policy, and sending a turn's params to a thread
 // method is rejected outright.
 func TestCompactSendsOnlyTheThreadID(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	srv.reply("thread/compact/start", `{}`)
 
@@ -1571,6 +1640,9 @@ func TestCompactSendsOnlyTheThreadID(t *testing.T) {
 // starts, which is why "before" is snapshotted at turn start rather than at the
 // moment Compact is called.
 func TestCompactionReportsWhatItReclaimed(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	conv, err := d.Start(context.Background(), ports.ChatStartConfig{WorkspacePath: "/tmp/ws"})
 	if err != nil {
@@ -1614,6 +1686,9 @@ func TestCompactionReportsWhatItReclaimed(t *testing.T) {
 // A provider build that emits both the deprecated notification and the item
 // reports one compaction, not two. The turn id is the only key both carry.
 func TestCompactionIsReportedOncePerTurn(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	conv, err := d.Start(context.Background(), ports.ChatStartConfig{WorkspacePath: "/tmp/ws"})
 	if err != nil {
@@ -1735,6 +1810,9 @@ func TestReconnectMissingHostNeverLaunchesProvider(t *testing.T) {
 }
 
 func TestStartAndResumePassAOToolServersInThreadConfig(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	servers := []ports.ChatMCPServerConfig{{
 		Name: "ao", Type: "stdio", Command: "/opt/ao/bin/ao", Args: []string{"mcp"},
 		Env: map[string]string{"AO_SESSION_ID": "ao-1"},

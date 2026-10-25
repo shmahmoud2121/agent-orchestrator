@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import type { CloudCpProviderConnection } from "../lib/cloud-cp";
 import { hasValidAgentConnection } from "./useProviderConnections";

@@ -146,13 +146,13 @@ describe("macOS signing", () => {
 		"com.apple.security.cs.allow-unsigned-executable-memory",
 	];
 
-	it("allows the bundled Node runtime to execute V8 JIT code on Intel Macs", () => {
+	it.skipIf(process.platform === "win32")("allows the bundled Node runtime to execute V8 JIT code on Intel Macs", () => {
 		expect(macSignOptionsForFile(acpNodeWith(thinMachO(CPU_TYPE_X86_64)))).toEqual({
 			entitlements: NODE_ENTITLEMENTS,
 		});
 	});
 
-	it("keeps the override for a universal binary carrying an x86_64 slice", () => {
+	it.skipIf(process.platform === "win32")("keeps the override for a universal binary carrying an x86_64 slice", () => {
 		expect(macSignOptionsForFile(acpNodeWith(fatMachO([CPU_TYPE_X86_64, CPU_TYPE_ARM64])))).toEqual({
 			entitlements: NODE_ENTITLEMENTS,
 		});
@@ -170,7 +170,7 @@ describe("macOS signing", () => {
 		expect(macSignOptionsForFile(acpNodeWith(fatMachO([CPU_TYPE_ARM64])))).toEqual({});
 	});
 
-	it("fails the signing pass when the file cannot be parsed", () => {
+	it.skipIf(process.platform === "win32")("fails the signing pass when the file cannot be parsed", () => {
 		expect(() => macSignOptionsForFile(acpNodeWith(Buffer.from("garbage header")))).toThrow(
 			MachOParseError,
 		);

@@ -81,7 +81,7 @@ describe("removeSavedRemote", () => {
 		expect(disconnect).toHaveBeenCalledWith("http://192.0.2.1:1");
 	});
 
-	it("refuses to touch a file others can read", async () => {
+	it.skipIf(process.platform === "win32")("refuses to touch a file others can read", async () => {
 		const path = await tempFile(TWO_HOSTS, 0o644);
 		const disconnect = dropped();
 		await expect(removeSavedRemote(path, "http://192.0.2.1:1", disconnect)).rejects.toThrow(/chmod 600/);

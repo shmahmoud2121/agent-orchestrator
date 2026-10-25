@@ -5915,6 +5915,9 @@ func TestSpawn_DefaultBranchFetchFailureDoesNotBlockWorkerSpawn(t *testing.T) {
 }
 
 func TestSpawn_DefaultsBranchUnderDevNamespaceForDevDataDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows resolves the home directory from USERPROFILE, so setting HOME does not move the dev data directory")
+	}
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	m, st, _, _ := newManager()
@@ -8150,6 +8153,9 @@ func TestSpawn_ProjectPATHIsPinBase(t *testing.T) {
 }
 
 func TestSpawnAndRestore_PrependsResolvedBinaryAndNodeDirsToRuntimePATH(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("node version-manager discovery under HOME is POSIX only (Windows uses USERPROFILE)")
+	}
 	daemonExe := filepath.Join(t.TempDir(), "ao")
 	home := t.TempDir()
 	binDir := filepath.Join(home, ".npm-global", "bin")
@@ -8246,6 +8252,9 @@ func TestSpawn_LaunchBinaryDirDoesNotShadowDaemonAO(t *testing.T) {
 }
 
 func TestSpawn_DoesNotAddNodeRuntimeForNativeBinary(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the fixture uses a hard-coded Unix executable path whose directory changes separators on Windows")
+	}
 	t.Setenv("PATH", "/usr/bin")
 	home := t.TempDir()
 	binDir := filepath.Join(home, "native", "bin")

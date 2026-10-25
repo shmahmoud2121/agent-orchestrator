@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
 import { CloudCpError } from "./cloud-cp";
 import type { CloudCpCreateSessionRequest } from "./cloud-cp";

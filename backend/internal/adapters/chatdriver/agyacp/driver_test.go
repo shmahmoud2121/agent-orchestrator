@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -173,6 +174,9 @@ func TestHarnessPathFollowsASymlinkedServer(t *testing.T) {
 }
 
 func TestLaunchPointsTheServerAtItsHarness(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture uses hard-coded Unix paths that are not absolute on Windows")
+	}
 	install := t.TempDir()
 	server := writeExecutable(t, filepath.Join(install, "agy_acp_server.par"))
 	harness := writeExecutable(t, filepath.Join(install, "localharness_external"))

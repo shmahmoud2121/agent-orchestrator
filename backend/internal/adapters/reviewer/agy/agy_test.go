@@ -5,6 +5,7 @@ package agy
 import (
 	"context"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -35,6 +36,9 @@ func TestReviewCommandPreflightShapeOnlyResolvesBinary(t *testing.T) {
 }
 
 func TestReviewCommandLaunchesHostTrustedInteractiveTUI(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture uses hard-coded Unix paths that are not absolute on Windows")
+	}
 	dataDir := t.TempDir()
 	spec, err := testReviewer(strings.Join(requiredFlags, "\n"), "1.1.9").ReviewCommand(context.Background(), ports.ReviewInvocation{
 		DataDir:          dataDir,

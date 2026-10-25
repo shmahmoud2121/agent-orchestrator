@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { annotationTextMatches, annotationTextRange, highlightChatAnnotation } from "./chat-annotation-navigation";
 

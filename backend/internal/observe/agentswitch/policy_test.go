@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -33,6 +34,9 @@ func TestHeadlessAuthorityTruthTable(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			if runtime.GOOS == "windows" && tc.file == "unsafe" {
+				t.Skip("Windows does not enforce POSIX file modes, so the reader accepts a group-readable file there")
+			}
 			dir := t.TempDir()
 			generation := "7f80c8a9-ec67-4a16-a067-a444ffcc5cca"
 			path := filepath.Join(dir, PolicyFileName)

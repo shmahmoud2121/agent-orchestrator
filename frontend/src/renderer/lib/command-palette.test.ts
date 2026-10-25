@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import {
 	buildCommands,
@@ -24,6 +25,7 @@ import {
 } from "../types/workspace";
 import { appI18n } from "../i18n";
 import { sessionBranchPresentation } from "./session-branch";
+import "../test/all-catalogs";
 
 function session(overrides: Partial<WorkspaceSession> & { id: string }): WorkspaceSession {
 	return {

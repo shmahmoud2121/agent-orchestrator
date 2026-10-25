@@ -140,6 +140,7 @@ func TestCodexCapacityFailurePreservesLastKnownStateAsStale(t *testing.T) {
 }
 
 func TestCodexCapacityRevokedAccessTokenDoesNotRefreshOrRetry(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	now := time.Date(2026, 9, 11, 9, 30, 0, 0, time.UTC)
 	email := "person@example.com"
 	var capacityReads atomic.Int32
@@ -178,6 +179,7 @@ func TestCodexCapacityRevokedAccessTokenDoesNotRefreshOrRetry(t *testing.T) {
 }
 
 func TestCodexCapacitySuccessDoesNotMutateAuthentication(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	now := time.Date(2026, 9, 11, 9, 30, 0, 0, time.UTC)
 	email := "person@example.com"
 	client := &fakeCodexAccountClient{capacity: ports.CodexCapacityObservation{ObservedAt: now}}
@@ -204,6 +206,7 @@ func TestCodexCapacitySuccessDoesNotMutateAuthentication(t *testing.T) {
 }
 
 func TestCodexCapacityDefinitiveRejectionRequiresSignInAgain(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	now := time.Date(2026, 9, 11, 9, 30, 0, 0, time.UTC)
 	email := "person@example.com"
 	var capacityReads atomic.Int32
@@ -251,6 +254,7 @@ func TestCodexCapacityDefinitiveRejectionRequiresSignInAgain(t *testing.T) {
 }
 
 func TestCodexCapacityTemporaryFailureDoesNotSignAccountOut(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	now := time.Date(2026, 9, 11, 9, 30, 0, 0, time.UTC)
 	email := "person@example.com"
 	client := &fakeCodexAccountClient{capacityErr: ports.ErrCodexCapacityProviderUnavailable}

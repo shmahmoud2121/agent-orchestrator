@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -182,6 +183,9 @@ func TestValidateProjectImportRejectsFilePath(t *testing.T) {
 }
 
 func TestValidateProjectImportRejectsAOStatePath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows resolves the home directory from USERPROFILE, so setting HOME does not redirect the AO state path")
+	}
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	statePath := filepath.Join(home, ".ao", "data")

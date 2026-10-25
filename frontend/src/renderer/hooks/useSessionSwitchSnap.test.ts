@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SESSION_SWITCHING_ATTR, useSessionSwitchSnap } from "./useSessionSwitchSnap";

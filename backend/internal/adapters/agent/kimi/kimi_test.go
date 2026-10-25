@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -626,6 +627,9 @@ func assertKimiOAuthProfileSeeded(
 }
 
 func TestGetAgentHooksSeedsAOManagedCredentialsFromUserKimiHome(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod permissions are not enforced on Windows")
+	}
 	workspace := t.TempDir()
 	userHome := t.TempDir()
 	aoHome := t.TempDir()

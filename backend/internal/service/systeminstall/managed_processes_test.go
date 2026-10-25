@@ -53,6 +53,9 @@ func TestManagedCleanupRetainsDetachedNativeProcessRelease(t *testing.T) {
 }
 
 func TestBrewCleanupRetainsDetachedProviderHub(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the macOS/Homebrew code path under test is exercised with Unix-style paths that do not round-trip through Windows path handling")
+	}
 	s, ran := updateWhileRunningService(t, nil)
 	s.SetHarnessUpdateObserver(&updateObserverStub{})
 	s.deferredCleanups = map[Target]string{TargetKimi: "kimi-code"}
@@ -83,6 +86,9 @@ func TestBrewCleanupRetainsDetachedProviderHub(t *testing.T) {
 }
 
 func TestManagedProcessReferencesRespectReleaseBoundaries(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the macOS/Homebrew code path under test is exercised with Unix-style paths that do not round-trip through Windows path handling")
+	}
 	s := newTestService("darwin")
 	s.managedRoot = filepath.Join(t.TempDir(), "with spaces")
 	record := managedRecord{CLI: "codex", Method: "npm"}

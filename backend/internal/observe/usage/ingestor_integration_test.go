@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -308,6 +309,9 @@ func TestIngestorReplaysReplacementWithoutStableTimestampAcrossClocks(t *testing
 }
 
 func TestIngestorReadsIdentityAndContentFromSingleDescriptorAcrossAtomicReplacement(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows cannot rename a replacement over a file that is still open")
+	}
 	ctx := context.Background()
 	store, source, path, now := seedCodexIngestionSource(t, t.TempDir())
 	openedContent := string(codexSessionMetaLine(t, "codex-root", "")) + "\n" +

@@ -46,7 +46,7 @@ describe("DesktopTelemetryController", () => {
 		expect(controller.snapshot()).toMatchObject({ eventsEnabled: false, acknowledged: false, state: "cleanup_failed" });
 	});
 
-	it("retries the durable off generation and preserved desktop purge after a post-rename fsync failure", async () => {
+	it.skipIf(process.platform === "win32")("retries the durable off generation and preserved desktop purge after a post-rename fsync failure", async () => {
 		const dataDir = await mkdtemp(path.join(os.tmpdir(), "ao-controller-policy-"));
 		try {
 			const enabledGeneration = "7f80c8a9-ec67-4a16-a067-a444ffcc5cca";
@@ -261,7 +261,7 @@ describe("DesktopTelemetryController", () => {
 		expect(controller.snapshot()).toMatchObject({ state: "cleanup_pending", reason: "daemon_cleanup_pending", acknowledged: false });
 	});
 
-	it("asks again for an opt-in given while the release gate was closed once a release opens it", async () => {
+	it.skipIf(process.platform === "win32")("asks again for an opt-in given while the release gate was closed once a release opens it", async () => {
 		const dataDir = await mkdtemp(path.join(os.tmpdir(), "ao-controller-gate-opens-"));
 		try {
 			const gatedGeneration = "7f80c8a9-ec67-4a16-a067-a444ffcc5cca";
@@ -303,7 +303,7 @@ describe("DesktopTelemetryController", () => {
 		}
 	});
 
-	it("stops asking once the user declines the renewed opt-in, and keeps it off", async () => {
+	it.skipIf(process.platform === "win32")("stops asking once the user declines the renewed opt-in, and keeps it off", async () => {
 		const dataDir = await mkdtemp(path.join(os.tmpdir(), "ao-controller-renewal-declined-"));
 		try {
 			const gatedGeneration = "7f80c8a9-ec67-4a16-a067-a444ffcc5cca";

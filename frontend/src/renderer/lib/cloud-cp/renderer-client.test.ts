@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
 import { appI18n } from "../../i18n";
 import { useUiStore } from "../../stores/ui-store";

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { sessionInterfaceTransition } from "../test/interface-transition-fixtures";
 import type { WorkspaceSession } from "../types/workspace";

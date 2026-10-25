@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -93,6 +94,9 @@ func TestRecordReportedArtifactShowsTheHTMLPageInTheRunningTurn(t *testing.T) {
 }
 
 func TestRecordReportedArtifactSkipsWhatItCannotShow(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires a privilege Windows does not grant by default")
+	}
 	h, _ := steerHarness(t)
 	ctx := context.Background()
 	dir := sessionartifacts.Dir(h.rendersDir, testSession)

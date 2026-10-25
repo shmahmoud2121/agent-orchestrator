@@ -275,7 +275,8 @@ async function runCase(fault = "none", { arch = "arm64", progress = true, disabl
 }
 
 const fullGETs = result => result.requests.filter(req => req.name.endsWith(".zip") && !req.range);
-describe("real MacUpdater with isolated v2 transfer", () => {
+// cross-zip needs the POSIX `zip` command, which Windows does not ship.
+describe.skipIf(process.platform === "win32")("real MacUpdater with isolated v2 transfer", () => {
   it.each(["arm64", "x64"])("reconstructs %s and hands off only exact target bytes", async arch => {
     const result = await runCase("none", { arch });
     expect(result.error).toBeUndefined();

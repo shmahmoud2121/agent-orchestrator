@@ -184,12 +184,18 @@ export default defineConfig({
 		injectCspMeta,
 	],
 	test: {
-		environment: "jsdom",
 		testTimeout: 20_000,
 		// Anchor node_modules at any depth: a bare "node_modules/**" replaces
 		// vitest's default "**/node_modules/**" and only matches the root.
 		exclude: ["**/node_modules/**", "dist/**", "dist-electron/**", "e2e/**"],
 		globals: true,
 		setupFiles: "./src/renderer/test/setup.ts",
+		// Building a jsdom window costs about as much as a small test file, so
+		// only component tests get one by default. A .ts test that touches
+		// window or document opts in with `// @vitest-environment jsdom`.
+		projects: [
+			{ extends: true, test: { name: "node", environment: "node", include: ["**/*.test.ts", "**/*.test.mjs"] } },
+			{ extends: true, test: { name: "dom", environment: "jsdom", include: ["**/*.test.tsx"] } },
+		],
 	},
 });

@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"syscall"
@@ -25,6 +26,7 @@ import (
 )
 
 func TestCodexAccountStoreAndDeviceReconciliationNeverOpenProvider(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := t.TempDir()
 	globalHome := filepath.Join(root, "global")
 	if err := ensurePrivateDirectory(globalHome); err != nil {
@@ -58,6 +60,7 @@ func TestCodexAccountStoreAndDeviceReconciliationNeverOpenProvider(t *testing.T)
 }
 
 func TestCodexDeviceReconciliationReportsMalformedCredentialSafely(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := t.TempDir()
 	globalHome := filepath.Join(root, "global")
 	if err := ensurePrivateDirectory(globalHome); err != nil {
@@ -147,6 +150,9 @@ func TestBootstrapStorageFailureClassifiesPreservedIOCause(t *testing.T) {
 }
 
 func TestCodexBootstrapPermanentSafetyFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires a privilege Windows does not grant by default")
+	}
 	root := t.TempDir()
 	pending := filepath.Join(root, "pending")
 	if err := os.Symlink(t.TempDir(), pending); err != nil {
@@ -177,6 +183,7 @@ func TestCodexBootstrapPermanentSafetyFailure(t *testing.T) {
 }
 
 func TestCodexDeviceReconciliationFailureKeepsSavedAccountsReadable(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := t.TempDir()
 	globalHome := filepath.Join(root, "global")
 	if err := ensurePrivateDirectory(globalHome); err != nil {

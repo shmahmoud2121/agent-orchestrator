@@ -160,6 +160,7 @@ func (f *codexLaunchReadinessFixture) account(view CodexAccounts, id string) dom
 }
 
 func TestSettingsUsesProtectedCallInsteadOfRefreshAccountRead(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	fixture := newCodexLaunchReadinessFixture(t)
 
 	view := fixture.ensureSettings()
@@ -177,6 +178,7 @@ func TestSettingsUsesProtectedCallInsteadOfRefreshAccountRead(t *testing.T) {
 }
 
 func TestLaunchFallsBackToNativeReadinessWhileDeviceReconciliationIsUnavailable(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	fixture := newCodexLaunchReadinessFixture(t)
 	fixture.manager.mu.Lock()
 	fixture.manager.reconciliation = domain.CodexDeviceReconciliation{
@@ -197,6 +199,7 @@ func TestLaunchFallsBackToNativeReadinessWhileDeviceReconciliationIsUnavailable(
 }
 
 func TestLaunchFallsBackToNativeReadinessOnTransientProtectedFailure(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	fixture := newCodexLaunchReadinessFixture(t)
 	fixture.rejectActiveCapacity(ports.ErrCodexCapacityProviderUnavailable)
 	authentication, handled := fixture.service.structuredCodexAuthentication(context.Background(), string(domain.HarnessCodex), domain.AgentReadinessPurposeLaunch)
@@ -213,6 +216,7 @@ func TestLaunchFallsBackToNativeReadinessOnTransientProtectedFailure(t *testing.
 }
 
 func TestDisplayReadInFlightCannotClearARequiredReauthentication(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	started, release := make(chan struct{}, 1), make(chan struct{})
 	client := &fakeCodexAccountClient{
 		read:        ports.CodexAccountObservation{Authentication: domain.AgentAuthenticationAuthorized, Method: domain.CodexAuthMethodChatGPT},
@@ -242,6 +246,7 @@ func TestDisplayReadInFlightCannotClearARequiredReauthentication(t *testing.T) {
 }
 
 func TestAuthorizedInactiveAccountDoesNotMaskTheActiveAccount(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	fixture := newCodexLaunchReadinessFixture(t)
 	fixture.rejectActiveCapacity(ports.ErrCodexOAuthTokenRevoked, ports.ErrCodexOAuthTokenRevoked)
 
@@ -266,6 +271,7 @@ func TestAuthorizedInactiveAccountDoesNotMaskTheActiveAccount(t *testing.T) {
 }
 
 func TestSuccessfulReauthenticationKeepsCapacitySeparateFromLaunchReadiness(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	fixture := newCodexLaunchReadinessFixture(t)
 	fixture.ensureSettings()
 
@@ -284,6 +290,7 @@ func TestSuccessfulReauthenticationKeepsCapacitySeparateFromLaunchReadiness(t *t
 }
 
 func TestRepeatedSettingsEnsuresReuseProtectedConfirmation(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	fixture := newCodexLaunchReadinessFixture(t)
 	first := fixture.ensureSettings()
 	reads := fixture.protectedReads()
@@ -301,6 +308,7 @@ func TestRepeatedSettingsEnsuresReuseProtectedConfirmation(t *testing.T) {
 }
 
 func TestUserAuthenticationRetryBypassesFreshCachesAndBackoff(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	fixture := newCodexLaunchReadinessFixture(t)
 	fixture.ensureSettings()
 	reads := fixture.protectedReads()
@@ -316,6 +324,7 @@ func TestUserAuthenticationRetryBypassesFreshCachesAndBackoff(t *testing.T) {
 }
 
 func TestRotatedCredentialsDoNotReVerifyAnAuthorizedAccount(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	fixture := newCodexLaunchReadinessFixture(t)
 	fixture.signIn()
 	fixture.ensureSettings()
@@ -339,6 +348,7 @@ func TestRotatedCredentialsDoNotReVerifyAnAuthorizedAccount(t *testing.T) {
 }
 
 func TestExternallyReplacedCredentialsDoNotGetAttributedToOldActiveSlot(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	fixture := newCodexLaunchReadinessFixture(t)
 	fixture.rejectActiveCapacity(ports.ErrCodexOAuthTokenRevoked, ports.ErrCodexOAuthTokenRevoked)
 	view := fixture.ensureSettings()

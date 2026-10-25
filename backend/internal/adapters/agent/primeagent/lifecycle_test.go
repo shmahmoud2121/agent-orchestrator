@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -13,6 +14,9 @@ import (
 )
 
 func TestTerminateNativeSessionStopsTheActiveOwnerOfTheTranscript(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture uses hard-coded Unix paths that are not absolute on Windows")
+	}
 	listJSON := []byte(`{"sessions":[{"id":"active-7","sessionId":"native-7","activeSessionId":"active-7","cwd":"/work","lifecycle":"active","activity":"idle","isSessionActive":true,"isStreaming":false,"isCompacting":false,"attachedClients":0,"messageCount":2,"sessionActions":{"queuedCount":0,"steering":[],"followUps":[]}}]}`)
 	var stopped string
 	p := &Plugin{
@@ -55,6 +59,9 @@ func TestTerminateNativeSessionStopsTheActiveOwnerOfTheTranscript(t *testing.T) 
 }
 
 func TestAugmentRuntimeEnvUsesAOPrimeStateRoot(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture uses hard-coded Unix paths that are not absolute on Windows")
+	}
 	env := map[string]string{}
 	New().AugmentRuntimeEnv(env, "/ao-data")
 	if got, want := env["PRIME_AGENT_CODING_AGENT_DIR"], "/ao-data/agent-runtime/prime-agent"; got != want {

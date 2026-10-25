@@ -8,11 +8,15 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 )
 
 func TestEnsureWorkspaceTrustedCreatesConfig(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows resolves the home directory from USERPROFILE, not HOME")
+	}
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("COPILOT_HOME", "")

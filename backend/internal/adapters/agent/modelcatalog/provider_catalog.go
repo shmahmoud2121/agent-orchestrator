@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -183,8 +182,7 @@ func ompProviderCatalog(ctx context.Context, path string) ports.AgentModelCatalo
 	if _, err := os.Stat(path); err != nil {
 		return result
 	}
-	dsn := (&url.URL{Scheme: "file", Path: filepath.ToSlash(path), RawQuery: "mode=ro"}).String()
-	db, err := sql.Open("sqlite", dsn)
+	db, err := sql.Open("sqlite", readOnlySQLiteDSN(path))
 	if err != nil {
 		return result
 	}

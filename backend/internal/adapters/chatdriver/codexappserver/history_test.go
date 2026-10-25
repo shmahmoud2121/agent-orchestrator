@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -51,6 +52,9 @@ func TestReadHistoryIgnoresEmptyCompletedTurnError(t *testing.T) {
 }
 
 func TestReadHistoryReconstructsNativeTurnsForTheChatTimeline(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := openConversation(t)
 	srv.reply("thread/read", threadWithRenderedHistory)
 
@@ -96,6 +100,9 @@ func TestReadHistoryReconstructsNativeTurnsForTheChatTimeline(t *testing.T) {
 }
 
 func TestReadHistoryPreservesStructuredProviderFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := openConversation(t)
 	srv.reply("thread/read", `{"thread":{"id":"thread-1","turns":[`+
 		`{"id":"turn-a","status":"failed","items":[],"error":{"message":"Usage limit reached","additionalDetails":"Resets tomorrow."}}`+
@@ -114,6 +121,9 @@ func TestReadHistoryPreservesStructuredProviderFailure(t *testing.T) {
 }
 
 func TestReadHistoryMakesMissingItemIDsUniqueAcrossTurns(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := openConversation(t)
 	srv.reply("thread/read", `{"thread":{"id":"thread-1","turns":[`+
 		`{"id":"turn-a","status":"completed","items":[{"type":"agentMessage","text":"first"}]},`+
@@ -136,6 +146,9 @@ func TestReadHistoryMakesMissingItemIDsUniqueAcrossTurns(t *testing.T) {
 }
 
 func TestReadHistoryRejectsAnUnsettledNativeTurnInsteadOfOmittingIt(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := openConversation(t)
 	srv.reply("thread/read", `{"thread":{"id":"thread-1","turns":[`+
 		`{"id":"turn-a","status":"completed","items":[{"type":"agentMessage","text":"settled"}]},`+
@@ -152,6 +165,9 @@ func TestReadHistoryRejectsAnUnsettledNativeTurnInsteadOfOmittingIt(t *testing.T
 }
 
 func TestRefreshHistoryPerformsANewThreadRead(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := openConversation(t)
 	srv.reply("thread/read", `{"thread":{"id":"thread-1","turns":[`+
 		`{"id":"turn-a","status":"inProgress"}`+
@@ -190,6 +206,9 @@ func TestRefreshHistoryPerformsANewThreadRead(t *testing.T) {
 // correctness of rollback rests on turning the named turn into the right number.
 // Naming the middle of three turns must discard that turn and the one after it.
 func TestRollbackCountsTurnsFromTheNamedOneToTheEnd(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := openConversation(t)
 	srv.reply("thread/read", threadWithTurns)
 	srv.reply("thread/rollback", `{"thread":{"id":"thread-1","turns":[{"id":"turn-a","status":"completed"}]}}`)
@@ -229,6 +248,9 @@ func TestRollbackCountsTurnsFromTheNamedOneToTheEnd(t *testing.T) {
 // Naming the last turn is the common case and must ask for exactly one turn: the
 // provider rejects numTurns < 1, and asking for zero would be a silent no-op.
 func TestRollbackOfTheLastTurnDiscardsOne(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := openConversation(t)
 	srv.reply("thread/read", threadWithTurns)
 	srv.reply("thread/rollback", `{"thread":{"id":"thread-1","turns":[]}}`)
@@ -252,6 +274,9 @@ func TestRollbackOfTheLastTurnDiscardsOne(t *testing.T) {
 // A turn the provider does not have must not produce a rollback at all. Guessing a
 // count would discard turns the user never named.
 func TestRollbackRefusesATurnTheProviderDoesNotHave(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := openConversation(t)
 	srv.reply("thread/read", threadWithTurns)
 
@@ -271,6 +296,9 @@ func TestRollbackRefusesATurnTheProviderDoesNotHave(t *testing.T) {
 // caller as a conflict, not as an internal failure: it is an ordinary thing to press
 // undo a moment too early.
 func TestRollbackUsesRevertWhenTheProviderRemovedRollback(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	for _, code := range []int{-32600, -32601} {
 		t.Run(fmt.Sprint(code), func(t *testing.T) {
 			conv, srv := openConversation(t)
@@ -293,6 +321,9 @@ func TestRollbackUsesRevertWhenTheProviderRemovedRollback(t *testing.T) {
 }
 
 func TestRollbackTranslatesTheMidTurnRefusal(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := openConversation(t)
 	srv.reply("thread/read", threadWithTurns)
 	srv.replyError("thread/rollback", -32600, "Cannot rollback while a turn is in progress.")
@@ -315,6 +346,9 @@ func TestRollbackTranslatesTheMidTurnRefusal(t *testing.T) {
 // A transport failure is NOT a refusal. Reporting it as one would tell the user to
 // stop the agent when the real problem is that the provider is gone.
 func TestRollbackKeepsATransportFailureAsAFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := openConversation(t)
 	srv.replyError("thread/read", -32603, "internal error")
 
@@ -328,6 +362,9 @@ func TestRollbackKeepsATransportFailureAsAFailure(t *testing.T) {
 }
 
 func TestForkReturnsTheNewThreadIDAndInheritsTheWorkingDirectory(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := openConversation(t)
 	srv.reply("thread/fork", `{"thread":{"id":"thread-2","forkedFromId":"thread-1"},"cwd":"/tmp/ws"}`)
 
@@ -360,6 +397,9 @@ func TestForkReturnsTheNewThreadIDAndInheritsTheWorkingDirectory(t *testing.T) {
 }
 
 func TestForkThroughTurnSendsLastTurnID(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := openConversation(t)
 	srv.reply("thread/fork", `{"thread":{"id":"thread-2"},"cwd":"/tmp/ws"}`)
 	anchor := "turn-before-edit"
@@ -385,6 +425,9 @@ func TestForkThroughTurnSendsLastTurnID(t *testing.T) {
 }
 
 func TestForkRejectsAResponseWithNoThreadID(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := openConversation(t)
 	srv.reply("thread/fork", `{"thread":{}}`)
 
@@ -394,6 +437,9 @@ func TestForkRejectsAResponseWithNoThreadID(t *testing.T) {
 }
 
 func TestSetTitleSendsTheTrimmedName(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := openConversation(t)
 	srv.reply("thread/name/set", `{}`)
 
@@ -420,6 +466,9 @@ func TestSetTitleSendsTheTrimmedName(t *testing.T) {
 // The provider rejects a blank name. Refusing locally keeps the error about the
 // caller's input and spends no round trip on a call that cannot succeed.
 func TestSetTitleRefusesABlankName(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := openConversation(t)
 
 	err := conv.SetTitle(context.Background(), "   \t ")
@@ -437,6 +486,9 @@ func TestSetTitleRefusesABlankName(t *testing.T) {
 // A title AO did not set still has to reach it: another client naming the thread is
 // how a provider-derived title arrives at all.
 func TestThreadRenamedNotificationBecomesATitleEvent(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := openConversation(t)
 	srv.push(`{"method":"thread/name/updated","params":{"threadId":"thread-1","threadName":"  Restore Canvas Renderer Fallback  "}}`)
 
@@ -449,6 +501,9 @@ func TestThreadRenamedNotificationBecomesATitleEvent(t *testing.T) {
 // A cleared name is reported as an empty title rather than dropped: the projection
 // has to see that the thread no longer has one.
 func TestThreadRenamedNotificationReportsAClearedName(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := openConversation(t)
 	srv.push(`{"method":"thread/name/updated","params":{"threadId":"thread-1","threadName":null}}`)
 

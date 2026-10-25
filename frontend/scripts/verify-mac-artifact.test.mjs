@@ -45,7 +45,7 @@ afterAll(() => {
 });
 
 describe("verify-mac-artifact.sh", () => {
-	it("is committed executable so CI and humans invoke it the same way", () => {
+	it.skipIf(process.platform === "win32")("is committed executable so CI and humans invoke it the same way", () => {
 		expect(statSync(SCRIPT).mode & 0o111).not.toBe(0);
 	});
 

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -192,6 +193,9 @@ func TestReadNativeTranscriptTailMarksEarlierOmissionAtIncompleteBoundary(t *tes
 }
 
 func TestWriteAgentHandoffFileIsPrivateAtomicAndImmutable(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod permissions are not enforced on Windows")
+	}
 	m := &Manager{dataDir: t.TempDir()}
 	body, err := validateAndCanonicalizeSourceSemanticHandoff(json.RawMessage(`{
 		"schemaVersion": 1,

@@ -253,6 +253,19 @@ func supportedCodexAccountCapabilities() domain.CodexAccountCapabilities {
 	}
 }
 
+// skipIfHostTempACLUnsafe skips tests that build Codex account directories
+// under the host temp directory when a Windows ancestor of that directory grants
+// write access to other principals, which the production ancestor check rejects.
+func skipIfHostTempACLUnsafe(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS != "windows" {
+		return
+	}
+	if err := validateCodexDirectoryAncestors(t.TempDir()); err != nil {
+		t.Skipf("host temp directory ancestors are writable by other principals: %v", err)
+	}
+}
+
 func newTestCodexAccountManager(t *testing.T, factory ports.CodexAccountClientFactory, state testCodexDeviceStateSeed) *codexAccountManager {
 	t.Helper()
 	root := t.TempDir()
@@ -290,6 +303,7 @@ func TestCachedCodexAccountsPerformsNoFilesystemOrNativeWork(t *testing.T) {
 }
 
 func TestUnverifiedDeviceAssociationUsesSavedHomeDuringTemporaryReconciliationFailure(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	manager := newTestCodexAccountManager(t, nil, nil)
 	manager.catalog.newID = func() string { return testAccountID }
 	record := commitTestAccount(t, manager.catalog, manager.pendingRoot, "b60a377d-da68-4a61-86f2-f31f04c571f2", ports.CodexAccountObservation{
@@ -313,6 +327,7 @@ func TestUnverifiedDeviceAssociationUsesSavedHomeDuringTemporaryReconciliationFa
 }
 
 func TestCheckingReconciliationKeepsLastMatchedAccountVisibleWithoutUsingGlobalHome(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	manager := newTestCodexAccountManager(t, nil, nil)
 	inactiveID := "11111111-1111-4111-8111-111111111111"
 	ids := []string{inactiveID, testAccountID}
@@ -356,6 +371,7 @@ func TestCheckingReconciliationKeepsLastMatchedAccountVisibleWithoutUsingGlobalH
 }
 
 func TestNativeLoginTerminalUsesOnePrivatePendingHomeAndNoName(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	manager := newTestCodexAccountManager(t, nil, nil)
 	manager.newID = func() string { return "b60a377d-da68-4a61-86f2-f31f04c571f2" }
 	manager.executable = func() (string, error) { return "/Applications/AO.app/Contents/MacOS/ao", nil }
@@ -382,6 +398,7 @@ func TestNativeLoginTerminalUsesOnePrivatePendingHomeAndNoName(t *testing.T) {
 }
 
 func TestCachedCodexAccountsProjectsOnlySafeActiveLoginMetadata(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	manager := newTestCodexAccountManager(t, nil, nil)
 	manager.newID = func() string { return "b60a377d-da68-4a61-86f2-f31f04c571f2" }
 	manager.executable = func() (string, error) { return "/Applications/AO.app/Contents/MacOS/ao-private", nil }
@@ -424,6 +441,7 @@ func TestCachedCodexAccountsProjectsOnlySafeActiveLoginMetadata(t *testing.T) {
 }
 
 func TestNativeLoginCreatesAndActivatesFirstAccountWithoutProviderCheck(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	email := "person@example.com"
 	client := &fakeCodexAccountClient{read: ports.CodexAccountObservation{Authentication: domain.AgentAuthenticationAuthorized, Method: domain.CodexAuthMethodChatGPT, Email: &email}}
 	factory := &fakeCodexAccountFactory{capabilities: supportedCodexAccountCapabilities(), open: func(ports.CodexAccountContext) (ports.CodexAccountClient, error) { return client, nil }}
@@ -463,6 +481,7 @@ func TestNativeLoginCreatesAndActivatesFirstAccountWithoutProviderCheck(t *testi
 }
 
 func TestNativeLoginVerificationDoesNotReplaceExistingDeviceAccount(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	email := "saved@example.com"
 	client := &fakeCodexAccountClient{read: ports.CodexAccountObservation{Authentication: domain.AgentAuthenticationAuthorized, Method: domain.CodexAuthMethodChatGPT, Email: &email}}
 	factory := &fakeCodexAccountFactory{capabilities: supportedCodexAccountCapabilities(), open: func(ports.CodexAccountContext) (ports.CodexAccountClient, error) { return client, nil }}
@@ -502,6 +521,7 @@ func TestNativeLoginVerificationDoesNotReplaceExistingDeviceAccount(t *testing.T
 }
 
 func TestNativeLoginVerificationSavesAccountWhileDeviceReconciliationRetries(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	email := "person@example.com"
 	client := &fakeCodexAccountClient{read: ports.CodexAccountObservation{
 		Authentication: domain.AgentAuthenticationAuthorized, Method: domain.CodexAuthMethodChatGPT, Email: &email,
@@ -550,6 +570,7 @@ func TestNativeLoginVerificationSavesAccountWhileDeviceReconciliationRetries(t *
 }
 
 func TestNativeReauthenticationReplacesTheExistingAccountSlot(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	email := "person@example.com"
 	observation := ports.CodexAccountObservation{Authentication: domain.AgentAuthenticationAuthorized, Method: domain.CodexAuthMethodChatGPT, Email: &email}
 	client := &fakeCodexAccountClient{
@@ -609,6 +630,7 @@ func TestNativeReauthenticationReplacesTheExistingAccountSlot(t *testing.T) {
 }
 
 func TestActiveReauthenticationRevalidatesAndReplacesTheDeviceCredential(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	email := "person@example.com"
 	observation := ports.CodexAccountObservation{
 		Authentication: domain.AgentAuthenticationAuthorized, Method: domain.CodexAuthMethodChatGPT, Email: &email,
@@ -665,6 +687,7 @@ func TestActiveReauthenticationRevalidatesAndReplacesTheDeviceCredential(t *test
 }
 
 func TestOpenReauthenticationReconcilesBeforeCapturingActiveOwnership(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	observation := ports.CodexAccountObservation{Authentication: domain.AgentAuthenticationAuthorized, Method: domain.CodexAuthMethodChatGPT}
 	factory := &fakeCodexAccountFactory{capabilities: supportedCodexAccountCapabilities()}
 	manager := newTestCodexAccountManager(t, factory, nil)
@@ -698,6 +721,7 @@ func TestOpenReauthenticationReconcilesBeforeCapturingActiveOwnership(t *testing
 }
 
 func TestActiveReauthenticationPreservesCredentialsWhenDeviceChangesAfterTerminalOpens(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	observation := ports.CodexAccountObservation{
 		Authentication: domain.AgentAuthenticationAuthorized,
 		Method:         domain.CodexAuthMethodChatGPT,
@@ -753,6 +777,7 @@ func TestActiveReauthenticationPreservesCredentialsWhenDeviceChangesAfterTermina
 }
 
 func TestActiveReauthenticationCommitsWhenProviderIsUnavailable(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	email := "person@example.com"
 	observation := ports.CodexAccountObservation{
 		Authentication: domain.AgentAuthenticationAuthorized, Method: domain.CodexAuthMethodChatGPT, Email: &email,
@@ -808,6 +833,7 @@ func TestActiveReauthenticationCommitsWhenProviderIsUnavailable(t *testing.T) {
 }
 
 func TestRequiredReauthenticationStaysSignedOutUntilLogin(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	factory := &fakeCodexAccountFactory{open: func(ports.CodexAccountContext) (ports.CodexAccountClient, error) {
 		t.Fatal("account requiring sign-in was read again")
 		return nil, nil
@@ -831,6 +857,7 @@ func TestRequiredReauthenticationStaysSignedOutUntilLogin(t *testing.T) {
 }
 
 func TestLogoutRetainsInactiveAccountAsSignedOut(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	factory := &fakeCodexAccountFactory{open: func(account ports.CodexAccountContext) (ports.CodexAccountClient, error) {
 		return fakeNativeLogoutClient(t, account), nil
 	}}
@@ -848,6 +875,7 @@ func TestLogoutRetainsInactiveAccountAsSignedOut(t *testing.T) {
 }
 
 func TestNativeLogoutFailurePreservesInactiveAccountCredential(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	client := &fakeCodexAccountClient{logoutErr: errors.New("provider unavailable")}
 	manager := newTestCodexAccountManager(t, &fakeCodexAccountFactory{open: func(ports.CodexAccountContext) (ports.CodexAccountClient, error) {
 		return client, nil
@@ -872,6 +900,7 @@ func TestNativeLogoutFailurePreservesInactiveAccountCredential(t *testing.T) {
 }
 
 func TestUnsupportedNativeLogoutPreservesAccountCredential(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	client := &fakeCodexAccountClient{logoutErr: ports.ErrCodexAccountLogoutUnsupported}
 	manager := newTestCodexAccountManager(t, &fakeCodexAccountFactory{open: func(ports.CodexAccountContext) (ports.CodexAccountClient, error) {
 		return client, nil
@@ -892,6 +921,7 @@ func TestUnsupportedNativeLogoutPreservesAccountCredential(t *testing.T) {
 }
 
 func TestInactiveLogoutDoesNotAcquireGlobalGate(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	state := &testCodexDeviceSeed{active: testCodexDeviceAccount{AccountID: "source-account", Revision: 1}, found: true}
 	manager := newTestCodexAccountManager(t, nil, state)
 	manager.catalog.newID = func() string { return testAccountID }
@@ -925,6 +955,7 @@ func TestInactiveLogoutDoesNotAcquireGlobalGate(t *testing.T) {
 }
 
 func TestServiceInactiveLogoutDoesNotDependOnDeviceReconciliation(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	manager := newTestCodexAccountManager(t, nil, nil)
 	ids := []string{testAccountID, "bb1e9a5d-37ad-43f8-83bd-13de8168f8af"}
 	manager.catalog.newID = func() string { id := ids[0]; ids = ids[1:]; return id }
@@ -954,6 +985,7 @@ func TestServiceInactiveLogoutDoesNotDependOnDeviceReconciliation(t *testing.T) 
 }
 
 func TestDeleteAccountOwnsNativeLogoutBeforeCatalogRemoval(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	client := &fakeCodexAccountClient{}
 	manager := newTestCodexAccountManager(t, &fakeCodexAccountFactory{open: func(account ports.CodexAccountContext) (ports.CodexAccountClient, error) {
 		client.logoutFn = func(context.Context) error {
@@ -979,6 +1011,7 @@ func TestDeleteAccountOwnsNativeLogoutBeforeCatalogRemoval(t *testing.T) {
 }
 
 func TestDeleteAlreadySignedOutAccountSkipsNativeLogout(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	manager := newTestCodexAccountManager(t, &fakeCodexAccountFactory{open: func(ports.CodexAccountContext) (ports.CodexAccountClient, error) {
 		t.Fatal("native logout opened for signed-out account")
 		return nil, nil
@@ -996,6 +1029,7 @@ func TestDeleteAlreadySignedOutAccountSkipsNativeLogout(t *testing.T) {
 }
 
 func TestLogoutActiveAccountClearsDeviceCredentialAndActiveProjection(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	email := "active@example.com"
 	observation := ports.CodexAccountObservation{Authentication: domain.AgentAuthenticationAuthorized, Method: domain.CodexAuthMethodChatGPT, Email: &email}
 	factory := &fakeCodexAccountFactory{open: func(account ports.CodexAccountContext) (ports.CodexAccountClient, error) {
@@ -1033,6 +1067,7 @@ func TestLogoutActiveAccountClearsDeviceCredentialAndActiveProjection(t *testing
 }
 
 func TestLogoutActiveAPIKeyRejectsExternalCredentialReplacement(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	state := &testCodexDeviceSeed{active: testCodexDeviceAccount{AccountID: testAccountID, Revision: 1}, found: true}
 	manager := newTestCodexAccountManager(t, nil, state)
 	manager.catalog.newID = func() string { return testAccountID }
@@ -1075,6 +1110,7 @@ func TestLogoutActiveAPIKeyRejectsExternalCredentialReplacement(t *testing.T) {
 }
 
 func TestLoginCloseFailureRetainsPendingOperation(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	manager := newTestCodexAccountManager(t, nil, nil)
 	manager.newID = func() string { return "b60a377d-da68-4a61-86f2-f31f04c571f2" }
 	manager.executable = func() (string, error) { return "/ao", nil }
@@ -1096,6 +1132,7 @@ func TestLoginCloseFailureRetainsPendingOperation(t *testing.T) {
 }
 
 func TestBootstrapImportsUnknownDeviceCredentialOnlyOnce(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := t.TempDir()
 	device := filepath.Join(root, "device")
 	if err := ensurePrivateDirectory(device); err != nil {
@@ -1134,6 +1171,7 @@ func TestBootstrapImportsUnknownDeviceCredentialOnlyOnce(t *testing.T) {
 }
 
 func TestGlobalReconciliationKeepsMatchingDeviceAccountActiveWithoutProactiveRefresh(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := t.TempDir()
 	globalHome := filepath.Join(root, "global-codex")
 	if err := ensurePrivateDirectory(globalHome); err != nil {
@@ -1194,6 +1232,7 @@ func TestGlobalReconciliationKeepsMatchingDeviceAccountActiveWithoutProactiveRef
 }
 
 func TestGlobalReconciliationMatchesRotatedOAuthByAccountID(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := t.TempDir()
 	globalHome := filepath.Join(root, "global-codex")
 	if err := ensurePrivateDirectory(globalHome); err != nil {
@@ -1244,6 +1283,7 @@ func TestGlobalReconciliationMatchesRotatedOAuthByAccountID(t *testing.T) {
 }
 
 func TestGlobalReconciliationExactCredentialMatchRemainsActiveOffline(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := t.TempDir()
 	globalHome := filepath.Join(root, "global-codex")
 	if err := ensurePrivateDirectory(globalHome); err != nil {
@@ -1284,6 +1324,7 @@ func TestGlobalReconciliationExactCredentialMatchRemainsActiveOffline(t *testing
 }
 
 func TestExternalDeviceSwitchImportsBWithoutWritingIntoA(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := t.TempDir()
 	globalHome := filepath.Join(root, "global-codex")
 	if err := ensurePrivateDirectory(globalHome); err != nil {
@@ -1327,6 +1368,7 @@ func TestExternalDeviceSwitchImportsBWithoutWritingIntoA(t *testing.T) {
 }
 
 func TestGlobalReconciliationMissingGlobalClearsActiveProjectionWithoutRestoringSavedAccount(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := t.TempDir()
 	globalHome := filepath.Join(root, "global-codex")
 	if err := ensurePrivateDirectory(globalHome); err != nil {
@@ -1368,6 +1410,7 @@ func TestGlobalReconciliationMissingGlobalClearsActiveProjectionWithoutRestoring
 }
 
 func TestEnsureCodexAccountsReconcilesRecentlyRemovedGlobalCredentialBeforeAccountChecks(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := t.TempDir()
 	globalHome := filepath.Join(root, "global-codex")
 	if err := ensurePrivateDirectory(globalHome); err != nil {
@@ -1450,6 +1493,7 @@ func TestEnsureCodexAccountsReconcilesRecentlyRemovedGlobalCredentialBeforeAccou
 }
 
 func TestEnsureCodexAccountsTargetedRefreshDoesNotReconcileDeviceCredential(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := t.TempDir()
 	globalHome := filepath.Join(root, "global-codex")
 	if err := ensurePrivateDirectory(globalHome); err != nil {
@@ -1513,6 +1557,7 @@ func TestEnsureCodexAccountsTargetedRefreshDoesNotReconcileDeviceCredential(t *t
 }
 
 func TestEnsureCodexAccountsRetriesSavedAccountWhenGlobalCredentialDisappearsDuringCheck(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := t.TempDir()
 	globalHome := filepath.Join(root, "global-codex")
 	if err := ensurePrivateDirectory(globalHome); err != nil {
@@ -1582,6 +1627,7 @@ func TestEnsureCodexAccountsRetriesSavedAccountWhenGlobalCredentialDisappearsDur
 }
 
 func TestGlobalAccountMatchingUsesUniqueOpaqueCredentialIdentity(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	manager := newTestCodexAccountManager(t, nil, nil)
 	accountIDs := []string{testAccountID, "bb1e9a5d-37ad-43f8-83bd-13de8168f8af"}
 	manager.catalog.newID = func() string {
@@ -1611,6 +1657,7 @@ func TestGlobalAccountMatchingUsesUniqueOpaqueCredentialIdentity(t *testing.T) {
 }
 
 func TestGlobalReconciliationRefusesAmbiguousProviderAccountID(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := t.TempDir()
 	globalHome := filepath.Join(root, "global-codex")
 	if err := ensurePrivateDirectory(globalHome); err != nil {
@@ -1640,6 +1687,7 @@ func TestGlobalReconciliationRefusesAmbiguousProviderAccountID(t *testing.T) {
 }
 
 func TestGlobalReconciliationReusesImportedAccountAcrossExternalTokenRotation(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := t.TempDir()
 	globalHome := filepath.Join(root, "global-codex")
 	if err := ensurePrivateDirectory(globalHome); err != nil {
@@ -1685,6 +1733,7 @@ func TestGlobalReconciliationReusesImportedAccountAcrossExternalTokenRotation(t 
 }
 
 func TestGlobalReconciliationMatchesAPIKeyDirectlyWhenFileBytesChange(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := t.TempDir()
 	globalHome := filepath.Join(root, "global-codex")
 	if err := ensurePrivateDirectory(globalHome); err != nil {
@@ -1726,6 +1775,7 @@ func TestGlobalReconciliationMatchesAPIKeyDirectlyWhenFileBytesChange(t *testing
 }
 
 func TestGlobalReconciliationReactivatesSignedOutIdentityFromDeviceCredential(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := t.TempDir()
 	globalHome := filepath.Join(root, "global-codex")
 	if err := ensurePrivateDirectory(globalHome); err != nil {
@@ -1767,6 +1817,7 @@ func TestGlobalReconciliationReactivatesSignedOutIdentityFromDeviceCredential(t 
 }
 
 func TestImportedGlobalCredentialDoesNotBlockNormalAuthentication(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := t.TempDir()
 	globalHome := filepath.Join(root, "global-codex")
 	if err := ensurePrivateDirectory(globalHome); err != nil {
@@ -1815,6 +1866,7 @@ func TestImportedGlobalCredentialDoesNotBlockNormalAuthentication(t *testing.T) 
 }
 
 func TestProbeRecognizesFirstCodexLoginWithoutDaemonRestart(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := t.TempDir()
 	globalHome := filepath.Join(root, "global-codex")
 	if err := ensurePrivateDirectory(globalHome); err != nil {
@@ -1879,6 +1931,7 @@ func TestProbeRecognizesFirstCodexLoginWithoutDaemonRestart(t *testing.T) {
 }
 
 func TestGlobalSwitchCapabilityAllowsMissingCredentialButRejectsUnsafeCredential(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := t.TempDir()
 	globalHome := filepath.Join(root, "global-codex")
 	if err := ensurePrivateDirectory(globalHome); err != nil {
@@ -1908,6 +1961,7 @@ func TestGlobalSwitchCapabilityAllowsMissingCredentialButRejectsUnsafeCredential
 }
 
 func TestLocalReconciliationPreservesActiveSlotProjection(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := t.TempDir()
 	globalHome := filepath.Join(root, "global-codex")
 	if err := ensurePrivateDirectory(globalHome); err != nil {
@@ -1996,6 +2050,7 @@ func newAPIKeySwitchFixture(t *testing.T) apiKeySwitchFixture {
 }
 
 func TestVerifySwitchTargetDoesNotRequireManagedDeviceSource(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	fixture := newAPIKeySwitchFixture(t)
 	fixture.manager.mu.Lock()
 	fixture.manager.reconciliation = domain.CodexDeviceReconciliation{Status: domain.CodexDeviceReconciliationNotChecked, ReasonCode: "not_checked"}
@@ -2022,6 +2077,7 @@ func TestVerifySwitchTargetDoesNotRequireManagedDeviceSource(t *testing.T) {
 }
 
 func TestRecentVerifiedReconciliationDoesNotScheduleAnotherRead(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	fixture := newAPIKeySwitchFixture(t)
 	factory := &fakeCodexAccountFactory{open: func(ports.CodexAccountContext) (ports.CodexAccountClient, error) {
 		return nil, errors.New("fresh device reconciliation unexpectedly opened Codex")
@@ -2041,6 +2097,7 @@ func TestRecentVerifiedReconciliationDoesNotScheduleAnotherRead(t *testing.T) {
 }
 
 func TestRepeatedReconciliationRequestsJoinOneBackgroundRead(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	fixture := newAPIKeySwitchFixture(t)
 	release, err := fixture.manager.acquireAccountMutation(context.Background())
 	if err != nil {
@@ -2093,6 +2150,7 @@ func TestRepeatedReconciliationRequestsJoinOneBackgroundRead(t *testing.T) {
 }
 
 func TestPrepareSwitchRejectsChangedAPIKeyCredential(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	fixture := newAPIKeySwitchFixture(t)
 	if err := writePrivateFileAtomic(filepath.Join(fixture.target.Home, codexCredentialFilename), []byte("malformed-target-credential")); err != nil {
 		t.Fatal(err)
@@ -2103,6 +2161,7 @@ func TestPrepareSwitchRejectsChangedAPIKeyCredential(t *testing.T) {
 }
 
 func TestActivationRejectsExternalAuthorizedAPIKeyReplacement(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	fixture := newAPIKeySwitchFixture(t)
 	switchID := "6f8dfc76-8db4-4621-8974-c480093e0d55"
 	source, err := fixture.service.PrepareCodexAccountForSwitch(context.Background(), switchID, fixture.target.Snapshot.ID)
@@ -2122,6 +2181,7 @@ func TestActivationRejectsExternalAuthorizedAPIKeyReplacement(t *testing.T) {
 }
 
 func TestInspectCodexAccountSwitchClassifiesExternalAPIKeyReplacement(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	fixture := newAPIKeySwitchFixture(t)
 	if err := writeGlobalCredentialAtomic(fixture.manager.globalCredentialPath(), testAPIKeyCredential("external")); err != nil {
 		t.Fatal(err)
@@ -2137,6 +2197,7 @@ func TestInspectCodexAccountSwitchClassifiesExternalAPIKeyReplacement(t *testing
 }
 
 func TestInspectCodexAccountSwitchClassifiesTargetWithoutChangingProjection(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	fixture := newAPIKeySwitchFixture(t)
 	targetCredential := testAPIKeyCredential("target-api-key")
 	if err := writePrivateFileAtomic(filepath.Join(fixture.target.Home, codexCredentialFilename), targetCredential); err != nil {
@@ -2155,6 +2216,7 @@ func TestInspectCodexAccountSwitchClassifiesTargetWithoutChangingProjection(t *t
 }
 
 func TestCredentialActivationDoesNotOpenCodex(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	fixture := newAPIKeySwitchFixture(t)
 	fixture.manager.factory = &fakeCodexAccountFactory{open: func(ports.CodexAccountContext) (ports.CodexAccountClient, error) {
 		t.Fatal("credential activation opened Codex")
@@ -2173,6 +2235,7 @@ func TestCredentialActivationDoesNotOpenCodex(t *testing.T) {
 }
 
 func TestConsumeResetCreditVerifiesAvailabilityAndRefreshesCapacity(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	now := time.Now().UTC()
 	available := &domain.CodexResetCreditsSummary{AvailableCount: 1}
 	client := &fakeCodexAccountClient{
@@ -2208,6 +2271,7 @@ func TestConsumeResetCreditVerifiesAvailabilityAndRefreshesCapacity(t *testing.T
 }
 
 func TestAuthenticationRequestCancellationDoesNotCancelSharedRead(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	started := make(chan struct{}, 1)
 	release := make(chan struct{})
 	client := &fakeCodexAccountClient{read: ports.CodexAccountObservation{Authentication: domain.AgentAuthenticationAuthorized}, readStarted: started, readRelease: release}
@@ -2251,6 +2315,7 @@ func TestAuthenticationRequestCancellationDoesNotCancelSharedRead(t *testing.T) 
 }
 
 func TestLoginDeduplicatesExistingAccountByProviderID(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	email := "duplicate@example.com"
 	observation := ports.CodexAccountObservation{
 		Authentication: domain.AgentAuthenticationAuthorized,
@@ -2347,6 +2412,7 @@ func newSwitchAdmissionFixture(t *testing.T, factory *fakeCodexAccountFactory, o
 }
 
 func TestSwitchAdmissionDoesNotOpenCodexWhenProviderIsUnavailable(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	email := "switch-test@example.com"
 	observation := ports.CodexAccountObservation{
 		Authentication: domain.AgentAuthenticationAuthorized,
@@ -2371,6 +2437,7 @@ func TestSwitchAdmissionDoesNotOpenCodexWhenProviderIsUnavailable(t *testing.T) 
 }
 
 func TestSwitchAdmissionIgnoresStaleAuthenticationFailure(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	email := "read-err@example.com"
 	observation := ports.CodexAccountObservation{
 		Authentication: domain.AgentAuthenticationAuthorized,
@@ -2392,6 +2459,7 @@ func TestSwitchAdmissionIgnoresStaleAuthenticationFailure(t *testing.T) {
 }
 
 func TestSwitchAdmissionIgnoresCachedUnauthorizedState(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	email := "unauth@example.com"
 	manager, svc, record := newSwitchAdmissionFixture(t, &fakeCodexAccountFactory{}, ports.CodexAccountObservation{
 		Authentication: domain.AgentAuthenticationAuthorized,
@@ -2410,6 +2478,7 @@ func TestSwitchAdmissionIgnoresCachedUnauthorizedState(t *testing.T) {
 // (agent Probe) must reconcile that credential so an earlier "sign in again"
 // result does not keep reporting Codex as signed out until the app restarts.
 func TestRecheckAfterExternalLoginClearsStaleReauthentication(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	for _, test := range []struct {
 		name       string
 		loginAgain bool
@@ -2475,6 +2544,7 @@ func TestRecheckAfterExternalLoginClearsStaleReauthentication(t *testing.T) {
 // auth.json; the follow-up recheck must see it instead of repeating "Sign in to
 // Codex" from the stale reconciliation.
 func TestRecheckAfterExternalLoginFindsTheNewDeviceCredential(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := t.TempDir()
 	globalHome := filepath.Join(root, "global-codex")
 	if err := ensurePrivateDirectory(globalHome); err != nil {

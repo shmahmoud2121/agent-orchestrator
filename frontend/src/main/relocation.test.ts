@@ -83,7 +83,7 @@ describe("decideRelocation", () => {
 });
 
 describe("installedBundlePath", () => {
-	it("maps any running bundle to the same name under /Applications", () => {
+	it.skipIf(process.platform === "win32")("maps any running bundle to the same name under /Applications", () => {
 		expect(
 			installedBundlePath("/Users/x/Downloads/Agent Orchestrator.app"),
 		).toBe("/Applications/Agent Orchestrator.app");

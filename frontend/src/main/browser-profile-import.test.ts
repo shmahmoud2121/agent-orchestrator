@@ -292,7 +292,7 @@ describe("BrowserProfileImportService", () => {
 		expect(await Promise.all([directory, path.relative(browserRoot, absolute)].map((dir) => readFile(path.join(browserRoot, dir, "places.sqlite"))))).toEqual(before);
 	});
 
-	it.each(["relative", "absolute", "escape", "symlink"])("validates %s Firefox install defaults and deduplicates registered aliases", async (kind) => {
+	it.skipIf(process.platform === "win32").each(["relative", "absolute", "escape", "symlink"])("validates %s Firefox install defaults and deduplicates registered aliases", async (kind) => {
 		const root = await fixtureRoot();
 		const browserRoot = path.join(root, ".mozilla", "firefox");
 		const profileRoot = path.join(browserRoot, "Profiles", "abc.default-release");
@@ -315,7 +315,7 @@ describe("BrowserProfileImportService", () => {
 		]);
 	});
 
-	it("accepts absolute Firefox registry paths through a canonical parent alias without changing source files", async () => {
+	it.skipIf(process.platform === "win32")("accepts absolute Firefox registry paths through a canonical parent alias without changing source files", async () => {
 		const root = await fixtureRoot();
 		const canonicalHome = path.join(root, "canonical-home");
 		const aliasHome = path.join(root, "alias-home");
@@ -376,7 +376,8 @@ describe("BrowserProfileImportService", () => {
 		expect(JSON.stringify(discovery)).not.toContain(root);
 	});
 
-	it.each(["outside", "symlink"])("retains Firefox legacy defaults when the install default is %s", async (kind) => {
+	it.for(["outside", "symlink"])("retains Firefox legacy defaults when the install default is %s", async (kind, { skip }) => {
+		if (kind === "symlink" && process.platform === "win32") skip("symlink creation requires a privilege Windows does not grant by default");
 		const root = await fixtureRoot();
 		const browserRoot = path.join(root, ".mozilla", "firefox");
 		for (const directory of ["legacy.Legacy", "work.Work", "orphan.default-release"]) {
@@ -404,7 +405,8 @@ describe("BrowserProfileImportService", () => {
 		expect(JSON.stringify(discovery)).not.toContain(root);
 	});
 
-	it.each(["missing", "malformed", "oversized", "symlink", "escape", "profile-symlink"])("safely falls back from a %s Firefox registry", async (kind) => {
+	it.for(["missing", "malformed", "oversized", "symlink", "escape", "profile-symlink"])("safely falls back from a %s Firefox registry", async (kind, { skip }) => {
+		if (kind.endsWith("symlink") && process.platform === "win32") skip("symlink creation requires a privilege Windows does not grant by default");
 		const root = await fixtureRoot();
 		const browserRoot = path.join(root, ".mozilla", "firefox");
 		for (const profile of [path.join(browserRoot, "abc.Work"), path.join(root, "outside")]) {

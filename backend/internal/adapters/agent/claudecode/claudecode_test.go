@@ -1447,6 +1447,9 @@ func TestLaunchAndRestoreGuardAutoDefaultNudgePerSession(t *testing.T) {
 // AO's default mode whose user settings would make Claude offer it, and never
 // touches the user's settings or permission mode.
 func TestPreLaunchMarksAutoDefaultNudgeSeenOnlyWhenOffered(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows resolves the home directory from USERPROFILE, not HOME")
+	}
 	tests := []struct {
 		name         string
 		permission   ports.PermissionMode
@@ -1564,6 +1567,9 @@ func TestPreLaunchMarksAutoDefaultNudgeSeenForTrustedWorkspace(t *testing.T) {
 // home directory (with settings in ~/.claude). A non-empty legacy .config.json
 // in the config directory is preferred over the global config path.
 func TestClaudeLaunchConfigPathsFollowTheLaunchConfigDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows resolves the home directory from USERPROFILE, not HOME")
+	}
 	home := t.TempDir()
 	daemonDir := filepath.Join(t.TempDir(), "daemon-claude")
 	projectDir := filepath.Join(t.TempDir(), "project-claude")
@@ -1615,6 +1621,9 @@ func TestClaudeLaunchConfigPathsFollowTheLaunchConfigDir(t *testing.T) {
 // directory when Claude has not used it yet. The home and daemon configs are
 // left alone.
 func TestPreLaunchUsesTheLaunchClaudeConfigDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("workspace trust keys are slash-normalised paths, the fixture assumes Unix separators")
+	}
 	home := t.TempDir()
 	daemonDir := t.TempDir()
 	t.Setenv("HOME", home)

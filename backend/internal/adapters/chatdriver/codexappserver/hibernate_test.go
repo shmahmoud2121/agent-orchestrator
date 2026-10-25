@@ -3,12 +3,16 @@ package codexappserver
 import (
 	"context"
 	"encoding/json"
+	"runtime"
 	"testing"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 )
 
 func TestCanHibernateRequiresAnEmptyBackgroundTerminalInventory(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	const method = "thread/backgroundTerminals/list"
 	for _, tc := range []struct {
 		name, response string
