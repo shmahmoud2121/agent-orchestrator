@@ -1,7 +1,7 @@
 import { act, fireEvent, render as rtlRender, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, type ReactElement } from "react";
-import { ActivityRow, AssistantMessage, HumanMessage, TurnOutcome } from "./ChatTimelineItems";
+import { ActivityRow, AssistantMessage, formatDuration, HumanMessage, TurnOutcome } from "./ChatTimelineItems";
 import { groupScriptRuns } from "../../lib/cloud-script-runs";
 import type { ConversationMessage } from "../../types/conversation";
 import { TooltipProvider } from "../ui/tooltip";
@@ -480,6 +480,26 @@ describe("ActivityRow", () => {
 		);
 		expect(screen.getByText("outcome unknown")).toBeInTheDocument();
 		expect(screen.queryByText("failed")).not.toBeInTheDocument();
+	});
+});
+
+describe("formatDuration", () => {
+	it("shows whole seconds under a minute", () => {
+		expect(formatDuration(40_000)).toBe("40s");
+		expect(formatDuration(999)).toBe("1s");
+	});
+
+	it("shows an exact minute without a zero-seconds suffix", () => {
+		expect(formatDuration(120_000)).toBe("2m");
+	});
+
+	it("includes leftover seconds under an hour", () => {
+		expect(formatDuration(130_000)).toBe("2m 10s");
+	});
+
+	it("shows hours and minutes without seconds", () => {
+		expect(formatDuration(3_900_000)).toBe("1h 5m");
+		expect(formatDuration(3_600_000)).toBe("1h");
 	});
 });
 

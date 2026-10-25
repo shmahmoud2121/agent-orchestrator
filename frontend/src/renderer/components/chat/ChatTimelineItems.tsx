@@ -510,12 +510,17 @@ function shortenPaths(text: string): string {
 	return text.replace(/\/(?:Users|home)\/[^/\s]+/g, "~");
 }
 
-function formatDuration(ms: number): string {
+/** Seconds under a minute, then minutes with seconds under an hour, then hours: "40s", "2m", "2m 10s", "1h 5m". */
+export function formatDuration(ms: number): string {
 	// Status labels are intentionally discrete: start at one second and advance
 	// in whole seconds so the live and settled rows never show fractional time.
 	if (ms < 60_000) return `${Math.max(1, Math.floor(ms / 1000))}s`;
-	const totalMinutes = Math.floor(ms / 60_000);
-	if (totalMinutes < 60) return `${totalMinutes}m`;
+	const totalSeconds = Math.floor(ms / 1000);
+	const totalMinutes = Math.floor(totalSeconds / 60);
+	if (totalMinutes < 60) {
+		const seconds = totalSeconds % 60;
+		return seconds === 0 ? `${totalMinutes}m` : `${totalMinutes}m ${seconds}s`;
+	}
 	const hours = Math.floor(totalMinutes / 60);
 	const minutes = totalMinutes % 60;
 	return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
@@ -959,6 +964,7 @@ export function LiveResponseStatus({ startedAt, settling = false, startupLabel, 
 	failed?: boolean;
 	children?: ReactNode;
 }) {
+	const { t } = useTranslation();
 	const reducedMotion = useReducedMotion();
 	const started = useMemo(() => {
 		const parsed = startedAt ? Date.parse(startedAt) : Date.now();
@@ -1000,7 +1006,7 @@ export function LiveResponseStatus({ startedAt, settling = false, startupLabel, 
 					data-settling={settling || undefined}
 					className={cn("text-sm font-normal", failed ? "text-destructive" : "chat-working-shimmer")}
 				>
-					{startupLabel ?? `${settling ? "Worked for" : "Working for"} ${formatDuration(elapsedMs)}`}
+					{startupLabel ?? `${settling ? t("chat.workedFor") : t("chat.workingFor")} ${formatDuration(elapsedMs)}`}
 				</span>
 			</div>
 			<AnimatePresence initial={false}>

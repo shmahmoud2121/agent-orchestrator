@@ -3229,6 +3229,7 @@
 	"sideChat.closeExplanation": "Closing stops this side chat’s running work and removes its conversation and draft.",
 	"sideChat.addToChat": "Add to chat",
 	"chat.workedFor": "Arbeitszeit",
+	"chat.workingFor": "Arbeitet seit",
 	"sideChat.deleteConfirm": "Seitenchat löschen?",
 	"sideChat.deleteExplanation": "Dieser Seitenchat und seine Nachrichten werden entfernt.",
 	"sideChat.delete": "Löschen",

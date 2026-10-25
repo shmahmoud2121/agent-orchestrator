@@ -322,8 +322,8 @@ The manager chat is home for a project. The person talks to one manager. Workers
 - Code blocks use one filled surface with a hairline edge and mono text. No syntax-colored chrome around them.
 
 **Collapsed work line**
-- All tool calls, file reads, and intermediate steps of a turn fold into one muted line above the reply: `Worked for 2m 10s ›`. While the turn is running it reads `Working · 40s` with the standard working spinner.
-- Expanding it shows the step list inline. It is collapsed by default and remembers its state per turn.
+- While the turn is running, its steps show live under a `Working for 40s` line with the standard working spinner, so the person can watch the work happen.
+- When the turn finishes, the steps fold into one muted line above the reply: `Worked for 2m 10s ›`. Expanding it shows the step list inline. It is collapsed by default and remembers its state per turn.
 - The reply text is the result. The steps are evidence on demand.
 
 **Team card (workers inline)**
@@ -496,3 +496,4 @@ Approve only when the answer to every applicable check is yes. Otherwise classif
 | 2026-10-23 | One permission vocabulary (Ask, Accept edits, Auto, Bypass) for every agent, defaulting to Ask; workers can never bypass | Claude's model is the project standard; per-agent labels were confusing, and Codex defaulted to full access. |
 | 2026-10-23 | Worker approvals route to the manager; the manager auto-approves only allowlisted actions, and risky requests always go to the person | The manager reads worker output and can be misled, so code-enforced rules and the person stay the final gate. |
 | 2026-10-23 | Sandbox status is shown per worker; unsandboxed workers are labeled | The global sandbox is weaker on Windows, so honest state matters more than a uniform look. |
+| 2026-10-25 | Steps stay visible while a turn runs and fold into "Worked for …" only once it finishes | The owner wants to watch work live; folding applies to finished turns. |
