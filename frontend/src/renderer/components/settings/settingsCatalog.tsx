@@ -1,20 +1,14 @@
-import { Activity, BadgeCheck, Bot, CircleHelp, CreditCard, Globe2, Keyboard, RefreshCw, Server, Settings2, Smartphone, type LucideIcon } from "lucide-react";
+import { Activity, BadgeCheck, Bot, CircleHelp, Globe2, Keyboard, RefreshCw, Settings2, type LucideIcon } from "lucide-react";
 import { lazy, type ReactNode } from "react";
 import type { TFunction } from "i18next";
-import { LOCAL_ONLY_BUILD } from "../../../shared/local-only";
 import type { GlobalSettingsSection, HarnessDiagnosticsRequest } from "../../stores/ui-store";
-import { BillingSection } from "./BillingSection";
 import { BrowserDownloadsSection } from "./BrowserDownloadsSection";
 import { BrowserProfilesSection } from "./BrowserProfilesSection";
-import { CoderSettingsSection } from "./CoderSettingsSection";
 import { CodexAccountsSection } from "./CodexAccountsSection";
-import { ConnectMobileContent } from "./ConnectMobileContent";
 import { GeneralSettingsSection } from "./GeneralSettingsSection";
 import { HarnessSettingsSection } from "./HarnessSettingsSection";
 import { KeyboardShortcutsContent } from "./KeyboardShortcutsContent";
-import { MobileDevicesSection } from "./MobileDevicesSection";
 import { ReportProblemContent } from "./ReportProblemContent";
-import { RemoteHostsSettings } from "./RemoteHostsSettings";
 import { SettingsSection } from "./SettingsSection";
 
 /** The memory window's own blocks, loaded only when the page is opened: it
@@ -83,13 +77,6 @@ const globalSettingsCatalog: SettingsCatalogItem[] = [
 		render: (_t, titleHidden) => <CodexAccountsSection titleHidden={titleHidden} />,
 	},
 	{
-		id: "billing",
-		icon: CreditCard,
-		label: (t) => t("settings.billing.navLabel"),
-		visible: ({ cloudEnabled, selfServeBilling }) => cloudEnabled && selfServeBilling,
-		render: (_t, titleHidden, { singlePage }) => <BillingSection titleHidden={titleHidden || Boolean(singlePage)} />,
-	},
-	{
 		id: "browserProfiles",
 		icon: Globe2,
 		label: (t) => t("settings.browserProfiles"),
@@ -97,39 +84,6 @@ const globalSettingsCatalog: SettingsCatalogItem[] = [
 			<>
 				<BrowserProfilesSection titleHidden={titleHidden} />
 				<BrowserDownloadsSection />
-			</>
-		),
-	},
-	{
-		id: "coder",
-		icon: Server,
-		label: (t) => t("settings.coder.navLabel"),
-		visible: ({ cloudEnabled, customCoder }) => cloudEnabled && customCoder,
-		render: (_t, titleHidden, { singlePage }) => <CoderSettingsSection titleHidden={titleHidden || Boolean(singlePage)} />,
-	},
-	{
-		id: "remoteHosts",
-		icon: Server,
-		label: (t) => t("settings.remoteHosts"),
-		// No remote hosts in the local-only build.
-		visible: ({ developerMode }) => developerMode && !LOCAL_ONLY_BUILD,
-		render: (_t, titleHidden) => <RemoteHostsSettings titleHidden={titleHidden} />,
-	},
-	{
-		id: "mobile",
-		icon: Smartphone,
-		label: (t) => t("settings.mobile"),
-		// No Connect Mobile in the local-only build: the daemon runs no LAN
-		// listener or tunnel to pair a phone with.
-		visible: () => !LOCAL_ONLY_BUILD,
-		render: (t, titleHidden) => (
-			<>
-				<SettingsSection titleHidden={titleHidden} title={t("settings.mobile")} grouped>
-					{/* Its own card rows: the pairing content row, then Keep awake. */}
-					<ConnectMobileContent active />
-				</SettingsSection>
-				{/* Its own section (and card) when devices are paired; renders nothing otherwise. */}
-				<MobileDevicesSection />
 			</>
 		),
 	},

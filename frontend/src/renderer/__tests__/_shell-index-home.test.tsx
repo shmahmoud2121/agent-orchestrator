@@ -116,14 +116,14 @@ describe("shell index route", () => {
 		expect(routeMocks.createProjectFlowProps?.sourceSignal?.source).toBe("clone");
 	});
 
-	it("swaps standalone for cloud project creation when Developer Mode and Cloud are enabled", () => {
+	it("keeps standalone creation when Developer Mode and Cloud are enabled", () => {
 		useUiStore.setState({ developerMode: true });
 		routeMocks.cloudEnabled = true;
 		render(<HomePage />);
 
-		fireEvent.click(screen.getByRole("button", { name: "Clone to the cloud" }));
-		expect(routeMocks.createProjectFlowProps?.sourceSignal?.source).toBe("cloud");
-		expect(screen.queryByRole("button", { name: "Start a standalone agent" })).not.toBeInTheDocument();
+		fireEvent.click(screen.getByRole("button", { name: "Start a standalone agent" }));
+		expect(useUiStore.getState().newTaskRequest?.projectId).toBe(STANDALONE_WORKSPACE_ID);
+		expect(screen.queryByRole("button", { name: "Clone to the cloud" })).not.toBeInTheDocument();
 	});
 
 	it.each([
@@ -139,7 +139,7 @@ describe("shell index route", () => {
 		expect(screen.queryByRole("button", { name: "Clone to the cloud" })).not.toBeInTheDocument();
 	});
 
-	it("shows cloud creation when standalone sessions exist without a registered project", () => {
+	it("keeps standalone creation when standalone sessions exist without a registered project", () => {
 		useUiStore.setState({ developerMode: true });
 		routeMocks.cloudEnabled = true;
 		routeMocks.workspaces = [{
@@ -151,8 +151,11 @@ describe("shell index route", () => {
 		}];
 		render(<HomePage />);
 
-		fireEvent.click(screen.getByRole("button", { name: "Clone to the cloud" }));
-		expect(routeMocks.createProjectFlowProps?.sourceSignal?.source).toBe("cloud");
+		expect(screen.getByText("Get started")).toBeInTheDocument();
+		expect(screen.queryByText("Jump back right in")).not.toBeInTheDocument();
+		fireEvent.click(screen.getByRole("button", { name: "Start a standalone agent" }));
+		expect(useUiStore.getState().newTaskRequest?.projectId).toBe(STANDALONE_WORKSPACE_ID);
+		expect(screen.queryByRole("button", { name: "Clone to the cloud" })).not.toBeInTheDocument();
 	});
 
 	it("renders the home page instead of redirecting to a scratch board when projects exist", async () => {
@@ -171,8 +174,8 @@ describe("shell index route", () => {
 		render(<HomePage />);
 
 		expect(screen.getByText("Jump back right in")).toBeInTheDocument();
-		expect(screen.getByRole("button", { name: "Clone to the cloud" })).toBeInTheDocument();
-		expect(screen.queryByRole("button", { name: "Start a standalone agent" })).not.toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "Start a standalone agent" })).toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "Clone to the cloud" })).not.toBeInTheDocument();
 		expect(screen.queryByRole("button", { name: "Connect mobile" })).not.toBeInTheDocument();
 		expect(routeMocks.navigate).not.toHaveBeenCalled();
 	});

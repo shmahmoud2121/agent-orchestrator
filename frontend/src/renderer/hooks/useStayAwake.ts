@@ -1,36 +1,13 @@
-import { useIsMutating, useMutation, useMutationState, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { components } from "../../api/schema";
-import { apiClient, apiErrorMessage } from "../lib/api-client";
-import { mobileStatusQueryKey } from "../lib/mobile-status-key";
-import { LOCAL_ONLY_BUILD } from "../../shared/local-only";
+import { useIsMutating, useMutation, useMutationState, useQueryClient } from "@tanstack/react-query";
 import { awakeCapability, awakeQueryKey, type AwakeState, useAwake } from "./useAwake";
 
-type MobileStatus = components["schemas"]["MobileStatusResponse"];
-type Change = { on: boolean; lidClosed?: boolean; rememberMobile?: boolean };
+type Change = { on: boolean; lidClosed?: boolean };
 const mutationKey = ["stay-awake-toggle"] as const;
 
-/** The desktop and mobile controls share intent, pending state, and ownership. */
+/** Stay Awake is the desktop awake service alone. */
 export function useStayAwake(enabled = true) {
 	const cache = useQueryClient();
 	const awake = useAwake(enabled);
-	const mobile = useQuery({
-		queryKey: mobileStatusQueryKey,
-		// The local-only daemon serves no /api/v1/mobile routes: Stay Awake is
-		// the desktop awake service alone.
-		enabled: enabled && !LOCAL_ONLY_BUILD,
-		queryFn: async ({ signal }) => {
-			const { data, error } = await apiClient.GET("/api/v1/mobile/status", { signal });
-			if (error) throw new Error(apiErrorMessage(error));
-			if (!data) throw new Error("Mobile status is unavailable");
-			return data;
-		},
-		// Status can spawn host probes; the sidebar only refreshes stale data on
-		// mount/focus. Connect Mobile owns its separate pairing-pending interval.
-		staleTime: 60_000,
-		refetchOnWindowFocus: true,
-		refetchInterval: false,
-		retry: false,
-	});
 	const sessions = awake.state?.sessions?.filter((s) => !s.endedAt) ?? [];
 	const rules = awake.state?.paused ? [] : awake.state?.rules?.filter((r) => r.enabled && !r.suppressed) ?? [];
 	const desktopOn = sessions.length > 0 || rules.length > 0 || !!awake.state?.active;
@@ -43,8 +20,8 @@ export function useStayAwake(enabled = true) {
 	const busy = useIsMutating({ mutationKey }) > 0 || awake.busy;
 	// Requested ownership must stay clearable even when a rule is waiting or a
 	// safety stop has released the host assertion. Actual wake is separate.
-	const active = !!awake.state?.active || !!mobile.data?.keepAwake?.active;
-	const on = intent?.on ?? (desktopOn || !!mobile.data?.keepAwake?.enabled || active);
+	const active = !!awake.state?.active;
+	const on = intent?.on ?? (desktopOn || active);
 	// Status also includes recovery/lid errors unrelated to an inactive request.
 	const pauseReason = awake.state?.paused ? awake.state.reason : undefined;
 	const reason = pauseReason === "low_battery" || pauseReason === "critical_heat" || pauseReason === "battery_unknown"
@@ -52,15 +29,6 @@ export function useStayAwake(enabled = true) {
 	const mutation = useMutation({
 		mutationKey,
 		mutationFn: async (change: Change) => {
-			// Cancel an older status read before writing the authoritative response.
-			await cache.cancelQueries({ queryKey: mobileStatusQueryKey });
-			const updateMobile = async (on: boolean, lidClosed: boolean) => {
-				if (LOCAL_ONLY_BUILD) return;
-				const { data, error } = await apiClient.POST("/api/v1/mobile/keep-awake", { body: { enabled: on, lidClosed } });
-				if (error) throw new Error(apiErrorMessage(error));
-				if (!data) throw new Error("Mobile status is unavailable");
-				cache.setQueryData<MobileStatus>(mobileStatusQueryKey, data);
-			};
 			const start = async () => {
 				let latest = await awake.actAsync({ kind: "start", request: { scope: "ao", sessionId: "", mode: "indefinite", lidClosed: false } });
 				// A successful POST writes a lease; the native helper acknowledges it
@@ -101,21 +69,15 @@ export function useStayAwake(enabled = true) {
 				}
 			};
 			if (!change.on) {
-				// Stop all scopes and pause automatic rules, including pre-upgrade owners.
-				// Attempt both releases even if one backend fails.
-				const results = await Promise.allSettled([awake.actAsync({ kind: "stop" }), updateMobile(false, false)]);
-				for (const result of results) if (result.status === "rejected") throw result.reason;
+				await awake.actAsync({ kind: "stop" });
 			} else if (change.lidClosed === false) {
 				if (desktopLid) {
 					// Retire legacy desktop lid owners and replace them with idle-only wake.
-					const results = await Promise.allSettled([awake.actAsync({ kind: "stop" }), updateMobile(true, false)]);
-					for (const result of results) if (result.status === "rejected") throw result.reason;
+					await awake.actAsync({ kind: "stop" });
 					await start();
-				} else await updateMobile(true, false);
+				}
 			} else {
 				await ensureDesktop();
-				// Main toggle is idle-only. Closed-lid wake requires the explicit option.
-				if (change.lidClosed === true || change.rememberMobile) await updateMobile(true, change.lidClosed === true);
 			}
 		},
 	});
@@ -129,8 +91,10 @@ export function useStayAwake(enabled = true) {
 		active,
 		attention: on && !active && !busy,
 		reason: desktopOn ? reason : undefined,
-		lidOn: intent ? intent.on && (intent.lidClosed ?? false) : desktopLid || !!(mobile.data?.keepAwake?.enabled && mobile.data.keepAwake.lidClosed),
-		set: (on: boolean, rememberMobile = false) => change({ on, rememberMobile }),
+		lidOn: intent ? intent.on && (intent.lidClosed ?? false) : desktopLid,
+		// The second argument is retained so existing callers keep compiling.
+		// Mobile wake no longer has a backend in this build.
+		set: (on: boolean, _rememberMobile = false) => change({ on }),
 		setLid: (lidClosed: boolean) => change({ on: true, lidClosed }),
 		busy,
 		error: mutation.error instanceof Error ? mutation.error.message : null,

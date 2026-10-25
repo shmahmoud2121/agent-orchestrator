@@ -2,10 +2,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { LOCAL_ONLY_DISABLED_MESSAGE } from "../shared/local-only";
 import {
-	installLocalOnlyCloudIpc,
-	installLocalOnlyRemotesIpc,
 	installLocalOnlyUpdateIpc,
 	LOCAL_ONLY_UPDATE_MESSAGE,
 } from "./local-only-ipc";
@@ -21,7 +18,7 @@ function fakeIpc() {
 		on: (channel: string, handler: Handler) => void listeners.set(channel, handler),
 	};
 	return {
-		ipc: ipc as unknown as Parameters<typeof installLocalOnlyCloudIpc>[0],
+		ipc: ipc as unknown as Parameters<typeof installLocalOnlyUpdateIpc>[0],
 		invoke: async (channel: string, event: unknown = {}, ...args: unknown[]) => {
 			const handler = handlers.get(channel);
 			if (!handler) throw new Error(`no handler for ${channel}`);
@@ -43,16 +40,6 @@ function preloadChannels(prefix: RegExp): string[] {
 }
 
 describe("local-only IPC stubs", () => {
-	it("answer every cloud and remote-host channel the preload exposes", () => {
-		const fake = fakeIpc();
-		installLocalOnlyCloudIpc(fake.ipc);
-		installLocalOnlyRemotesIpc(fake.ipc);
-		const registered = new Set(fake.channels());
-		const expected = preloadChannels(/^(cloud|cloudCp|remotes):/);
-		expect(expected.length).toBeGreaterThan(10);
-		expect(expected.filter((channel) => !registered.has(channel))).toEqual([]);
-	});
-
 	it("answer every update and feature-build channel the main process would otherwise wire", () => {
 		const fake = fakeIpc();
 		installLocalOnlyUpdateIpc(fake.ipc);
@@ -61,24 +48,6 @@ describe("local-only IPC stubs", () => {
 		const local = new Set(["featureBuilds:getActive", "updates:isPostUpdateRelaunch", "updates:relaunch"]);
 		const expected = preloadChannels(/^(updates|featureBuilds):/).filter((channel) => !local.has(channel));
 		expect(expected.filter((channel) => !registered.has(channel))).toEqual([]);
-	});
-
-	it("keep the renderer signed out of AO Cloud and refuse control-plane calls", async () => {
-		const fake = fakeIpc();
-		installLocalOnlyCloudIpc(fake.ipc);
-		await expect(fake.invoke("cloud:getSession")).resolves.toBeNull();
-		await expect(fake.invoke("cloud:localAuthAvailable", {}, "http://127.0.0.1:1")).resolves.toBe(false);
-		await expect(fake.invoke("cloudCp:agentBrowserUrl")).resolves.toBe("");
-		await expect(fake.invoke("cloudCp:request", {}, { path: "/x" })).rejects.toThrow(LOCAL_ONLY_DISABLED_MESSAGE);
-		await expect(fake.invoke("cloud:localLogin", {}, {})).rejects.toThrow(LOCAL_ONLY_DISABLED_MESSAGE);
-	});
-
-	it("list no remote hosts and refuse to add or connect one", async () => {
-		const fake = fakeIpc();
-		installLocalOnlyRemotesIpc(fake.ipc);
-		await expect(fake.invoke("remotes:list")).resolves.toEqual([]);
-		await expect(fake.invoke("remotes:add", {}, { url: "http://192.0.2.1:3011" })).rejects.toThrow(LOCAL_ONLY_DISABLED_MESSAGE);
-		await expect(fake.invoke("remotes:connect", {}, "http://192.0.2.1:3011")).rejects.toThrow(LOCAL_ONLY_DISABLED_MESSAGE);
 	});
 
 	it("report updates as unsupported and settle a request without checking any feed", async () => {

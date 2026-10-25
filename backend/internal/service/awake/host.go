@@ -15,19 +15,18 @@ import (
 	"time"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
-	"github.com/aoagents/agent-orchestrator/backend/internal/mobilebridge"
 	aoprocess "github.com/aoagents/agent-orchestrator/backend/internal/process"
 )
 
 // HostAdapter uses a distinct lease from mobile. Ending desktop wake cannot
 // withdraw mobile's lease, or another daemon's native ownership.
 type HostAdapter struct {
-	control            *mobilebridge.KeepAwake
+	control            *KeepAwake
 	binary             string
 	mu                 sync.Mutex
 	applications       []domain.AwakeApplication
 	observed           time.Time
-	native             *mobilebridge.LidAwake
+	native             *LidAwake
 	nativeGuard        bool
 	nativeDegraded     atomic.Bool // registered helper needs an upgrade; idle wake uses caffeinate
 	lowPowerControl    bool
@@ -44,8 +43,8 @@ type HostAdapter struct {
 
 // NewHost creates a desktop adapter with ownership separate from mobile.
 func NewHost(pid int, binary, dataDir string) *HostAdapter {
-	control := mobilebridge.NewKeepAwake(pid)
-	native := mobilebridge.NewLidAwake(pid, binary, dataDir)
+	control := NewKeepAwake(pid)
+	native := NewLidAwake(pid, binary, dataDir)
 	control.SetLidController(native)
 	supported, _, _ := native.Status()
 	return &HostAdapter{control: control, binary: binary, native: native, nativeGuard: supported}
@@ -94,7 +93,7 @@ var ErrLidHelperUpgrade = errors.New("registered wake helper needs an upgrade")
 // until setup succeeds again; the returned error wraps ErrLidHelperUpgrade.
 func (h *HostAdapter) SetupLid() error {
 	err := h.control.SetupLid()
-	if mobilebridge.IsLidHelperUpgrade(err) {
+	if IsLidHelperUpgrade(err) {
 		h.nativeDegraded.Store(true)
 		return errors.Join(ErrLidHelperUpgrade, err)
 	}

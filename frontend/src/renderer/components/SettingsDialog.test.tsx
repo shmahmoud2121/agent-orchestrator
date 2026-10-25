@@ -390,18 +390,22 @@ describe("SettingsDialog", () => {
 		const pages = (context: { customCoder: boolean; selfServeBilling: boolean; cloudEnabled?: boolean }) =>
 			visibleGlobalSettings({ cloudEnabled: true, developerMode: false, diagnostics: false, ...context }).map((item) => item.id);
 
-		it("a B2C self-serve org sees Upgrade and no Coder page", () => {
-			expect(pages({ customCoder: false, selfServeBilling: true })).toContain("billing");
-			expect(pages({ customCoder: false, selfServeBilling: true })).not.toContain("coder");
+		it("a B2C self-serve org sees neither Upgrade nor the Coder page", () => {
+			const ids = pages({ customCoder: false, selfServeBilling: true });
+			expect(ids).not.toContain("billing");
+			expect(ids).not.toContain("coder");
 		});
 
-		it("a B2B contract org sees the Coder page and no Upgrade", () => {
-			expect(pages({ customCoder: true, selfServeBilling: false })).toContain("coder");
-			expect(pages({ customCoder: true, selfServeBilling: false })).not.toContain("billing");
+		it("a B2B contract org sees neither the Coder page nor Upgrade", () => {
+			const ids = pages({ customCoder: true, selfServeBilling: false });
+			expect(ids).not.toContain("coder");
+			expect(ids).not.toContain("billing");
 		});
 
-		it("an org on both sees both, and Upgrade only while self-serve", () => {
-			expect(pages({ customCoder: true, selfServeBilling: true })).toEqual(expect.arrayContaining(["coder", "billing"]));
+		it("an org on both sees neither cloud page, including when self-serve is off", () => {
+			const both = pages({ customCoder: true, selfServeBilling: true });
+			expect(both).not.toContain("coder");
+			expect(both).not.toContain("billing");
 			expect(pages({ customCoder: true, selfServeBilling: false })).not.toContain("billing");
 		});
 

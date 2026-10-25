@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { awakeQueryKey, type AwakeState } from "../hooks/useAwake";
 import { useStayAwake } from "../hooks/useStayAwake";
-import { mobileStatusQueryKey } from "../lib/mobile-status-key";
 import { AwakeControl } from "./AwakeControl";
 import { TooltipProvider } from "./ui/tooltip";
 
@@ -14,11 +13,6 @@ function render(ui: React.ReactNode) {
 
 const test = vi.hoisted(() => ({ mac: true, get: vi.fn(), post: vi.fn() }));
 vi.mock("../lib/platform", () => ({ isMacPlatform: () => test.mac }));
-// These tests cover the desktop + Connect Mobile wake path, which the
-// local-only build switches off (see AwakeControl.localOnly.test.tsx for that
-// build's behavior). Keeping them against the full path preserves coverage for
-// when remote access returns.
-vi.mock("../../shared/local-only", () => ({ LOCAL_ONLY_BUILD: false, LOCAL_ONLY_DISABLED_MESSAGE: "disabled" }));
 vi.mock("../lib/api-client", () => ({
 	apiClient: { GET: test.get, POST: test.post },
 	apiErrorMessage: (e: unknown) => String(e),
@@ -80,7 +74,7 @@ describe("shared Stay Awake controls", () => {
 		render(<QueryClientProvider client={client}><AwakeControl /></QueryClientProvider>);
 		expect(screen.queryByTestId("awake-button")).toBeNull();
 	});
-	it.each([false, true])("does not poll mobile status in steady state (error=%s)", async (failing) => {
+	it.each([false, true])("does not read mobile status in steady state (error=%s)", async (failing) => {
 		vi.useFakeTimers();
 		focusManager.setFocused(true);
 		test.get.mockImplementation(async (path) => path === "/api/v1/awake"
@@ -90,32 +84,9 @@ describe("shared Stay Awake controls", () => {
 		try {
 			await act(async () => { await vi.advanceTimersByTimeAsync(0); });
 			const mobileReads = () => test.get.mock.calls.filter(([path]) => path === "/api/v1/mobile/status").length;
-			expect(mobileReads()).toBe(1);
+			expect(mobileReads()).toBe(0);
 			await act(async () => { await vi.advanceTimersByTimeAsync(120_000); });
-			expect(mobileReads()).toBe(1);
-		} finally {
-			view.unmount();
-			client.clear();
-			vi.useRealTimers();
-			focusManager.setFocused(undefined);
-		}
-	});
-	it("refreshes mobile status on focus only after its freshness window expires", async () => {
-		vi.useFakeTimers();
-		focusManager.setFocused(false);
-		client.setDefaultOptions({ queries: { retry: false, refetchOnWindowFocus: false } });
-		const view = render(<QueryClientProvider client={client}><AwakeControl /></QueryClientProvider>);
-		try {
-			await act(async () => { await vi.advanceTimersByTimeAsync(0); });
-			const mobileReads = () => test.get.mock.calls.filter(([path]) => path === "/api/v1/mobile/status").length;
-			expect(mobileReads()).toBe(1);
-			await act(async () => { focusManager.setFocused(true); await vi.advanceTimersByTimeAsync(0); });
-			expect(mobileReads()).toBe(1);
-			focusManager.setFocused(false);
-			await act(async () => { await vi.advanceTimersByTimeAsync(60_001); });
-			expect(mobileReads()).toBe(1);
-			await act(async () => { focusManager.setFocused(true); await vi.advanceTimersByTimeAsync(0); });
-			expect(mobileReads()).toBe(2);
+			expect(mobileReads()).toBe(0);
 		} finally {
 			view.unmount();
 			client.clear();
@@ -124,24 +95,16 @@ describe("shared Stay Awake controls", () => {
 		}
 	});
 
-	it("allows desktop wake while the mobile startup request is still pending", async () => {
-		let finishMobile: (() => void) | undefined;
-		test.get.mockImplementation(async (path) => path === "/api/v1/awake" ? { data: snapshot() }
-			: await new Promise((resolve) => { finishMobile = () => resolve({ data: structuredClone(mobile) }); }));
+	it("allows desktop wake without a mobile status request", async () => {
+		test.get.mockImplementation(async (path) => path === "/api/v1/awake"
+			? { data: snapshot() }
+			: { error: "mobile unavailable" });
 		render(<QueryClientProvider client={client}><AwakeControl /></QueryClientProvider>);
 		await waitFor(() => expect(coffee()).toBeEnabled());
-		expect(client.getQueryData(mobileStatusQueryKey)).toBeUndefined();
+		expect(test.get.mock.calls.filter(([path]) => path === "/api/v1/mobile/status")).toEqual([]);
 		fireEvent.click(coffee());
 		await waitFor(() => expect(state.active).toBe(true));
-		await act(async () => finishMobile!());
-	});
-	it("allows desktop wake when mobile status fails", async () => {
-		test.get.mockImplementation(async (path) => path === "/api/v1/awake" ? { data: snapshot() } : { error: "mobile unavailable" });
-		render(<QueryClientProvider client={client}><AwakeControl /></QueryClientProvider>);
-		await waitFor(() => expect(client.getQueryState(mobileStatusQueryKey)?.status).toBe("error"));
-		expect(coffee()).toBeEnabled();
-		fireEvent.click(coffee());
-		await waitFor(() => expect(state.active).toBe(true));
+		expect(test.post).not.toHaveBeenCalledWith("/api/v1/mobile/keep-awake", expect.anything());
 	});
 
 	it.each([-1, 0])("forwards tabIndex %i to the coffee button and respects keyboard navigation", async (tabIndex) => {
@@ -181,8 +144,7 @@ describe("shared Stay Awake controls", () => {
 		fireEvent.click(coffee());
 		await waitFor(() => expect(coffee()).toHaveAttribute("aria-pressed", "false"));
 	});
-	it.each(["mobile", "session", "rule"])("does not report a persisted %s wake request as starting", async (source) => {
-		if (source === "mobile") mobile.keepAwake.enabled = true;
+	it.each(["session", "rule"])("does not report a persisted %s wake request as starting", async (source) => {
 		if (source === "session") state.sessions = [awakeSession({})];
 		if (source === "rule") state.rules = [{ id: "automatic", enabled: true }] as AwakeState["rules"];
 		await show();
@@ -243,31 +205,21 @@ describe("shared Stay Awake controls", () => {
 		expect(coffee()).toHaveAttribute("aria-pressed", "true");
 		expect(coffee()).toHaveAccessibleDescription("Stay Awake is configured, but this Mac is not being kept awake. Click to turn off.");
 	});
-	it.each(["mobile", "rule"])("marks configured but inactive %s wake without an active fill", async (source) => {
-		if (source === "mobile") mobile.keepAwake.enabled = true;
-		else state.rules = [{ id: "automatic", enabled: true }] as AwakeState["rules"];
+	it("marks a configured but inactive rule without an active fill", async () => {
+		state.rules = [{ id: "automatic", enabled: true }] as AwakeState["rules"];
 		await show();
 		expect(coffee()).toHaveAccessibleDescription(/configured.*not being kept awake/);
 		expect(screen.getByTestId("awake-inactive-indicator")).toBeInTheDocument();
 		expect(coffee().querySelector("[data-nav-row-highlight]")).not.toHaveClass("bg-interactive-active");
 	});
-	it.each(["desktop", "mobile"])("fills the coffee button only when %s actually holds wake", async (source) => {
-		if (source === "desktop") state.active = true;
-		else Object.assign(mobile.keepAwake, { enabled: true, active: true });
+	it("fills the coffee button only when desktop actually holds wake", async () => {
+		state.active = true;
 		await show();
 		expect(coffee()).toHaveAccessibleDescription(/being kept awake/);
 		expect(screen.queryByTestId("awake-inactive-indicator")).toBeNull();
 		expect(coffee().querySelector("[data-nav-row-highlight]")).toHaveClass("bg-interactive-active");
 	});
 
-	it("fetches restored mobile wake with an empty cache and clears its cached response", async () => {
-		mobile.keepAwake.enabled = true;
-		await show();
-		expect(coffee()).toHaveAttribute("aria-pressed", "true");
-		fireEvent.click(coffee());
-		await waitFor(() => expect(coffee()).toHaveAttribute("aria-pressed", "false"));
-		expect(client.getQueryData(mobileStatusQueryKey)).toMatchObject({ keepAwake: { enabled: false } });
-	});
 	it("disables both controls until a pending start settles, preventing double-click races", async () => {
 		blockStart = true;
 		await show();
@@ -336,20 +288,19 @@ describe("shared Stay Awake controls", () => {
 
 	it("releases legacy desktop lid ownership when the lid option is turned off", async () => {
 		state.sessions = [awakeSession({ id: "legacy", lidClosed: true })];
-		mobile.keepAwake.enabled = true;
-		mobile.keepAwake.lidClosed = true;
 		await show();
 		fireEvent.click(screen.getByRole("button", { name: "Lid wake" }));
 		await waitFor(() => expect(screen.getByRole("button", { name: "Lid wake" })).toHaveAttribute("aria-pressed", "false"));
 		expect(state.sessions.filter((s) => !s.endedAt)).toEqual([expect.objectContaining({ lidClosed: false })]);
-		expect(mobile.keepAwake.lidClosed).toBe(false);
+		expect(test.post).not.toHaveBeenCalledWith("/api/v1/mobile/keep-awake", expect.anything());
 		expect(coffee()).toHaveAttribute("aria-pressed", "true");
 	});
-	it("keeps lid opt-in on the mobile backend and desktop idle-only", async () => {
+	it("starts desktop idle-only wake from the lid option without a mobile request", async () => {
 		await show();
 		fireEvent.click(screen.getByRole("button", { name: "Lid wake" }));
-		await waitFor(() => expect(mobile.keepAwake.lidClosed).toBe(true));
-		expect(state.sessions[0].lidClosed).toBe(false);
+		await waitFor(() => expect(state.sessions[0]?.lidClosed).toBe(false));
+		expect(test.post).not.toHaveBeenCalledWith("/api/v1/mobile/keep-awake", expect.anything());
+		await waitFor(() => expect(screen.getByRole("button", { name: "Lid wake" })).toHaveAttribute("aria-pressed", "false"));
 	});
 	it("resumes paused wake before starting", async () => {
 		state.paused = true;
@@ -411,12 +362,12 @@ describe("shared Stay Awake controls", () => {
 		expect(mobile.keepAwake.enabled).toBe(false);
 	});
 
-	it("attempts mobile cleanup even when desktop stop fails and displays the error", async () => {
-		mobile.keepAwake.enabled = true;
-		test.post.mockImplementation(async (path) => path === "/api/v1/awake/stop" ? { error: "stop failed" } : { data: { keepAwake: { enabled: false } } });
+	it("surfaces a desktop stop failure without a mobile cleanup request", async () => {
+		state.sessions = [awakeSession({})];
+		test.post.mockImplementation(async (path) => path === "/api/v1/awake/stop" ? { error: "stop failed" } : { data: snapshot() });
 		await show();
 		fireEvent.click(coffee());
 		await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("stop failed"));
-		expect(test.post).toHaveBeenCalledWith("/api/v1/mobile/keep-awake", { body: { enabled: false, lidClosed: false } });
+		expect(test.post).not.toHaveBeenCalledWith("/api/v1/mobile/keep-awake", expect.anything());
 	});
 });

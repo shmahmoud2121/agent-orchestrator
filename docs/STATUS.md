@@ -195,7 +195,7 @@ surface (`npm run sqlc`, `npm run api`).
   daemon coordinator.
 - Electron main handles daemon discovery, launch, and status reporting.
 - On macOS, window close and desktop Quit/Cmd+Q destroy the window while the
-  Dock, menu-bar tray, app-owned daemon, and enabled mobile access remain alive.
+  Dock, menu-bar tray, and app-owned daemon remain alive.
   Reopening creates a fresh window; **Quit AO Completely** in the tray performs
   a full exit. Desktop browser targets stop with the window. Updates and system
   shutdown still exit the app; Windows/Linux quit behavior is unchanged.
@@ -227,38 +227,8 @@ surface (`npm run sqlc`, `npm run api`).
   presents a newest-first feed. Opening the feed acknowledges loaded unread
   items, and clear-one and clear-all controls remove notifications.
 
-### Mobile (Expo + React Native)
-
-- Connect Mobile pairs with the daemon's opt-in authenticated LAN listener; the
-  loopback listener and its security model remain unchanged.
-- New mobile workers and orchestrators request Chat mode by default. Worker
-  creation filters to the daemon-advertised Chat harnesses, while Terminal UI
-  remains an explicit compatibility choice and typed Chat preflight failures
-  offer that fallback.
-- Session routing uses the same daemon-committed mode as desktop. TUI keeps
-  the existing authenticated mux/xterm surface; Chat uses the same durable,
-  paged conversation projection and CDC/SSE invalidation stream as desktop.
-- Mobile exposes the same capability-gated TUI↔Chat handoff, busy-turn policy,
-  cancellation window, progress overlay, and automatic renderer swap after the
-  daemon commits the new controller.
-- Native Chat includes prose/Markdown, provider activity, commands, plans,
-  changed files, approvals, structured input, model/effort/provider controls,
-  compaction, rollback, MCP recovery, skills and file references, staged/native
-  image delivery, embedded text resources, voice dictation, retryable delivery,
-  persisted drafts, and a session-scoped worktree shell through the existing
-  terminal mux.
-
-- Pairing uses v2 endpoint offers and host identity verification, with optional
-  managed cloudflared remote access and Tailscale secure pairing. The primary
-  listener remains loopback-only. Direct LAN transport remains plaintext.
-- Paired-device push, mute/unpair controls, supported macOS keep-awake, and
-  mobile review/reviewer screens.
-
 ## In flight / not yet a runtime feature
 
-- **Cloud availability**: public client and desktop integration exist, but usage
-  is gated by build configuration, account entitlement, and a reachable control
-  plane. This is not unconditional availability in every desktop release.
 - **Browser automation acceptance**: the runtime implementation is complete.
   AO packages one
   checksum-pinned Vercel `agent-browser` Rust binary and routes a deliberately

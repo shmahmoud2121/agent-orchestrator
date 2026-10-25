@@ -5,6 +5,8 @@ description: This build of AO runs entirely on your machine. Remote access is di
 
 Remote access is disabled in this build. There is no **Connect Mobile** pairing, no **Remote hosts**, and no `ao remote-host` command. A mobile connection saved by an earlier build is ignored; nothing starts from it.
 
+The retired cloud, mobile, and remote-access implementation is available at Git tag `archive/pre-retire-2026-10`.
+
 ## What AO never does
 
 - **No network listener beyond loopback.** The daemon binds `127.0.0.1` only. There is no LAN listener (port `3011`), no `cloudflared` tunnel, and no Tailscale serve.

@@ -1,5 +1,4 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { paidPlanBadge, useCloudBilling } from "../hooks/useCloudBilling";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { useNavigate, useParams, useRouterState } from "@tanstack/react-router";
@@ -24,8 +23,6 @@ import {
 	File,
 	Folder,
 	FolderOpen,
-	LogIn,
-	LogOut,
 	MoreVertical,
 	PanelLeft,
 	Pencil,
@@ -35,9 +32,7 @@ import {
 	RefreshCw,
 	Search,
 	Settings,
-	Smartphone,
 	Trash2,
-	User,
 	X,
 	ArrowLeft,
 } from "lucide-react";
@@ -89,9 +84,6 @@ import { formatTimeCompact, formatTimeTerse } from "../lib/format-time";
 import { useTerminateSession } from "../hooks/useTerminateSession";
 import { useResizable } from "../hooks/useResizable";
 import { useLatestCallback, useStableArray } from "../hooks/useStable";
-import { useCloudGate } from "../hooks/useCloudGate";
-import { useCloudLocalAuth } from "../hooks/useCloudLocalAuth";
-import { useLocalSignInDialogStore } from "../stores/local-signin-dialog-store";
 import { useShellMaybe } from "../lib/shell-context";
 import { useSidebarUpdateDismissal } from "../hooks/useSidebarUpdateDismissal";
 import { useUpdateStatus } from "../hooks/useUpdateStatus";
@@ -142,7 +134,6 @@ import { CreateProjectFlow, type CloneProjectInput, type CreateProjectInput } fr
 import { ResizeHandle } from "./ResizeHandle";
 import { NAV_ROW_HIGHLIGHT_HOST_CLASS, NavRowHighlight } from "./NavRowHighlight";
 import { isLinuxPlatform, isMacPlatform } from "../lib/platform";
-import { useCloudSession } from "../lib/cloud-session";
 import type { RemoteHost } from "../hooks/useRemoteHosts";
 import { sessionNavigateTarget } from "../lib/navigate-to-session";
 import { sessionUiKey } from "../lib/hosts";
@@ -526,7 +517,6 @@ function useSelection() {
 	const goArtifacts = useCallback(() => void navigate({ to: "/artifacts" }), [navigate]);
 	const goStandaloneBoard = useCallback(() => void navigate({ to: "/sessions" }), [navigate]);
 	const goGlobalSettings = useCallback(() => openGlobalSettings(), [openGlobalSettings]);
-	const goConnectMobile = useCallback(() => openGlobalSettings("mobile"), [openGlobalSettings]);
 	const goSettings = useCallback((projectId: string, cloudOrgId?: string) => openProjectSettings(projectId, { cloudOrgId }), [openProjectSettings]);
 	const goProject = useCallback(
 		(projectId: string) => void navigate({ to: "/projects/$projectId", params: { projectId } }),
@@ -561,11 +551,10 @@ function useSelection() {
 		// Settings is a modal — open it in place so the current page (session
 		// terminal, board, etc.) stays underneath.
 		goGlobalSettings,
-		goConnectMobile,
 		goSettings,
 		goProject,
 		goSession,
-	}), [goArtifacts, goAutomations, goConnectMobile, goGlobalSettings, goHome, goProject, goSession, goSettings, goStandaloneBoard, params.hostId, params.projectId, params.sessionId, pathname]);
+	}), [goArtifacts, goAutomations, goGlobalSettings, goHome, goProject, goSession, goSettings, goStandaloneBoard, params.hostId, params.projectId, params.sessionId, pathname]);
 }
 
 // Colour tracks the session's board section, preserving SCM state while the
@@ -1270,30 +1259,12 @@ export function Sidebar({
 						status={updateStatus}
 						tabIndex={isCollapsed ? -1 : 0}
 					/>
-					<CloudSignInRow tabIndex={isCollapsed ? -1 : 0} />
-					<CloudAccountRow tabIndex={isCollapsed ? -1 : 0} />
 					<UpdateInstallSlide
 						availableDismissed={updateDismissal.dismissed}
 						onRequestInstall={openUpdateInstallPrompt}
 						status={updateStatus}
 						tabIndex={isCollapsed ? -1 : 0}
 					/>
-					{/* No Connect Mobile in the local-only build. */}
-					{!LOCAL_ONLY_BUILD && (
-						<button
-							aria-label={t("settings.connectMobile")}
-							className={FOOTER_NAV_BUTTON_CLASS}
-							onClick={() => selection.goConnectMobile()}
-							tabIndex={isCollapsed ? -1 : 0}
-							type="button"
-						>
-							<NavRowHighlight />
-							<span className="relative z-[1] flex min-w-0 flex-1 items-center gap-2.5 [&_svg]:size-icon-md [&_svg]:shrink-0">
-								<Smartphone aria-hidden="true" />
-								<span className="tracking-tight">{t("settings.connectMobile")}</span>
-							</span>
-						</button>
-					)}
 					<div className="flex w-full items-center gap-1">
 						<button
 							aria-label={t("shell.settings")}
@@ -1321,28 +1292,6 @@ export function Sidebar({
 						status={updateStatus}
 						tabIndex={isCollapsed ? 0 : -1}
 					/>
-					<CloudSignInRailButton tabIndex={isCollapsed ? 0 : -1} />
-					<CloudAccountRailButton tabIndex={isCollapsed ? 0 : -1} />
-					{/* No Connect Mobile in the local-only build. */}
-					{!LOCAL_ONLY_BUILD && (
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<button
-									aria-label={t("settings.connectMobile")}
-									className={FOOTER_RAIL_BUTTON_CLASS}
-									onClick={() => selection.goConnectMobile()}
-									tabIndex={isCollapsed ? 0 : -1}
-									type="button"
-								>
-									<NavRowHighlight />
-									<span className="relative z-[1] grid place-items-center [&_svg]:size-icon-base">
-										<Smartphone aria-hidden="true" />
-									</span>
-								</button>
-							</TooltipTrigger>
-							<TooltipContent side="right">{t("settings.connectMobile")}</TooltipContent>
-						</Tooltip>
-					)}
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<button
@@ -2689,187 +2638,6 @@ const SessionActions = memo(function SessionActions({
 		</div>
 	);
 });
-
-// AO account sign-in is shared by Cloud execution and developer-mode remote hosts.
-function CloudSignInRow({ tabIndex }: { tabIndex: number }) {
-	const { t } = useTranslation();
-	const { cloudEnabled } = useCloudGate();
-	const developerMode = useUiStore((state) => state.developerMode);
-	const { configured, status, signIn } = useCloudSession();
-	// Dev + loopback CP: open the local email/password dialog instead of WorkOS.
-	const { available: localAuthAvailable } = useCloudLocalAuth();
-	const openLocalSignIn = useLocalSignInDialogStore((s) => s.openDialog);
-	const onSignIn = () => (localAuthAvailable ? openLocalSignIn() : signIn());
-	if (!configured || (!cloudEnabled && !developerMode) || status !== "unauthenticated") return null;
-
-	return (
-		<button
-			aria-label={t("shell.signInToAOCloud")}
-			className={FOOTER_NAV_BUTTON_CLASS}
-			onClick={onSignIn}
-			tabIndex={tabIndex}
-			type="button"
-		>
-			<NavRowHighlight />
-			<span className="relative z-[1] flex min-w-0 flex-1 items-center gap-2.5 [&_svg]:size-icon-md [&_svg]:shrink-0">
-				<LogIn aria-hidden="true" />
-				<span className="tracking-tight">{t("shell.signInToAOCloud")}</span>
-			</span>
-		</button>
-	);
-}
-
-// Icon-rail variant for the collapsed sidebar.
-function CloudSignInRailButton({ tabIndex }: { tabIndex: number }) {
-	const { t } = useTranslation();
-	const { cloudEnabled } = useCloudGate();
-	const developerMode = useUiStore((state) => state.developerMode);
-	const { configured, status, signIn } = useCloudSession();
-	// Dev + loopback CP: open the local email/password dialog instead of WorkOS.
-	const { available: localAuthAvailable } = useCloudLocalAuth();
-	const openLocalSignIn = useLocalSignInDialogStore((s) => s.openDialog);
-	const onSignIn = () => (localAuthAvailable ? openLocalSignIn() : signIn());
-	if (!configured || (!cloudEnabled && !developerMode) || status !== "unauthenticated") return null;
-
-	return (
-		<Tooltip>
-			<TooltipTrigger asChild>
-				<button
-					aria-label={t("shell.signInToAOCloud")}
-					className={FOOTER_RAIL_BUTTON_CLASS}
-					onClick={onSignIn}
-					tabIndex={tabIndex}
-					type="button"
-				>
-					<NavRowHighlight />
-					<span className="relative z-[1] grid place-items-center [&_svg]:size-icon-base">
-						<LogIn aria-hidden="true" />
-					</span>
-				</button>
-			</TooltipTrigger>
-			<TooltipContent side="right">{t("shell.signInToAOCloud")}</TooltipContent>
-		</Tooltip>
-	);
-}
-
-// CloudAccountRow: shown above the Settings button for an existing cloud
-// session (the signed-in state). The sign-in entry point is CloudSignInRow.
-function CloudAccountRow({ tabIndex }: { tabIndex: number }) {
-	const { t } = useTranslation();
-	const { cloudEnabled } = useCloudGate();
-	const developerMode = useUiStore((state) => state.developerMode);
-	const { configured, session, status, signOut } = useCloudSession();
-	// The plan badge is self-serve billing only; a contract org has no plan to show.
-	const billing = useCloudBilling();
-	const plan = billing.offering.selfServeBilling ? paidPlanBadge(billing.data) : null;
-	if (!configured || (!cloudEnabled && !developerMode) || status !== "authenticated") return null;
-	const name = accountName(session?.user);
-
-	return (
-		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<button
-					aria-label={t("shell.signedInAs", {
-						email: session?.user.email ?? "AO Cloud",
-					})}
-					className={FOOTER_NAV_BUTTON_CLASS}
-					tabIndex={tabIndex}
-					title={session?.user.email}
-					type="button"
-				>
-					<NavRowHighlight />
-					<span className="relative z-[1] flex min-w-0 flex-1 items-center gap-2.5 [&_svg]:size-icon-md [&_svg]:shrink-0">
-						<AccountAvatar user={session?.user} />
-						<span className="min-w-0 truncate tracking-tight">{name}</span>
-						{plan ? (
-							<span className="shrink-0 rounded-full bg-[var(--color-status-working)] px-1.5 py-px text-[length:var(--font-size-xs)] font-medium leading-4 text-white">
-								{plan}
-							</span>
-						) : null}
-					</span>
-				</button>
-			</DropdownMenuTrigger>
-			<DropdownMenuContent side="top" align="start" className="min-w-44">
-				<DropdownMenuItem
-					className="text-destructive focus:text-destructive [&_svg]:text-destructive"
-					onSelect={() => void signOut()}
-				>
-					<LogOut aria-hidden="true" />
-					{t("shell.signOut")}
-				</DropdownMenuItem>
-			</DropdownMenuContent>
-		</DropdownMenu>
-	);
-}
-
-/** The signed-in person's name, falling back to their email. */
-function accountName(user: { displayName?: string; email?: string } | undefined): string {
-	const display = user?.displayName?.trim();
-	if (display && display !== user?.email) return display;
-	return user?.email ?? "AO Cloud";
-}
-
-/** The profile picture from the sign-in provider, or the person's initials. */
-function AccountAvatar({ user }: { user: { displayName?: string; email?: string; avatarUrl?: string } | undefined }) {
-	const [broken, setBroken] = useState(false);
-	if (user?.avatarUrl && !broken) {
-		return (
-			<img
-				src={user.avatarUrl}
-				alt=""
-				aria-hidden="true"
-				referrerPolicy="no-referrer"
-				className="size-icon-md shrink-0 rounded-full object-cover"
-				onError={() => setBroken(true)}
-			/>
-		);
-	}
-	const source = accountName(user);
-	const initials = source.includes("@")
-		? source.charAt(0).toUpperCase()
-		: source.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join("");
-	if (!initials) return <User aria-hidden="true" />;
-	return (
-		<span aria-hidden="true" className="grid size-icon-md shrink-0 place-items-center rounded-full bg-[var(--color-bg-tertiary)] text-[length:var(--font-size-xs)] font-medium leading-none text-settings-label">
-			{initials}
-		</span>
-	);
-}
-
-// Icon-rail variant for collapsed sidebar.
-function CloudAccountRailButton({ tabIndex }: { tabIndex: number }) {
-	const { t } = useTranslation();
-	const { cloudEnabled } = useCloudGate();
-	const developerMode = useUiStore((state) => state.developerMode);
-	const { configured, session, status, signOut } = useCloudSession();
-	if (!configured || (!cloudEnabled && !developerMode) || status !== "authenticated") return null;
-
-	return (
-		<Tooltip>
-			<TooltipTrigger asChild>
-				<button
-					aria-label={t("shell.signedInAs", {
-						email: session?.user.email ?? "AO Cloud",
-					})}
-					className={FOOTER_RAIL_BUTTON_CLASS}
-					onClick={() => void signOut()}
-					tabIndex={tabIndex}
-					type="button"
-				>
-					<NavRowHighlight />
-					<span className="relative z-[1] grid place-items-center [&_svg]:size-icon-base">
-						<AccountAvatar user={session?.user} />
-					</span>
-				</button>
-			</TooltipTrigger>
-			<TooltipContent side="right">
-				{t("shell.signOutWithEmail", {
-					email: session?.user.email ?? "AO Cloud",
-				})}
-			</TooltipContent>
-		</Tooltip>
-	);
-}
 
 /**
  * What the sidebar should act on, derived from the live update status.
