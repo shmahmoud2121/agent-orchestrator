@@ -607,25 +607,24 @@ describe("Sidebar", () => {
 		expect(within(projects).queryAllByTestId("remote-session-row")).toHaveLength(0);
 	});
 
-	it("shows the cloud sign-in entry point while signed out", () => {
+	it("does not offer AO Cloud sign-in while signed out", () => {
 		cloudSessionState.configured = true;
 		renderSidebar();
 
-		const signInControls = screen.getAllByLabelText("Sign in to AO Cloud");
-		expect(signInControls).toHaveLength(2);
-		const activeControl = signInControls.find((control) => control.tabIndex === 0);
-		expect(activeControl).toBeDefined();
-		fireEvent.click(activeControl!);
-		expect(cloudSessionState.signIn).toHaveBeenCalledOnce();
+		expect(screen.getAllByRole("button", { name: "Settings" }).length).toBeGreaterThan(0);
+		expect(screen.queryByLabelText("Sign in to AO Cloud")).not.toBeInTheDocument();
+		expect(cloudSessionState.signIn).not.toHaveBeenCalled();
 	});
 
-	it("keeps cloud account controls visible while signed in", () => {
+	it("does not show cloud account controls while signed in", () => {
 		cloudSessionState.configured = true;
 		cloudSessionState.status = "authenticated";
 		cloudSessionState.session = { user: { email: "user@example.com" } };
 		renderSidebar();
 
-		expect(screen.getAllByLabelText("Signed in as user@example.com")).toHaveLength(2);
+		expect(screen.getAllByRole("button", { name: "Settings" }).length).toBeGreaterThan(0);
+		expect(screen.queryByLabelText("Signed in as user@example.com")).not.toBeInTheDocument();
+		expect(screen.queryByLabelText("Sign in to AO Cloud")).not.toBeInTheDocument();
 	});
 
 	it("hides cloud account controls when the daemon reports the cloud offering off", () => {
@@ -638,13 +637,13 @@ describe("Sidebar", () => {
 		expect(screen.queryByLabelText("Signed in as user@example.com")).not.toBeInTheDocument();
 	});
 
-	it("shows AO sign-in for developer-mode remote hosts when Cloud execution is off", () => {
+	it("does not show AO Cloud sign-in for developer-mode remote hosts when Cloud execution is off", () => {
 		cloudGateState.cloudEnabled = false;
 		cloudSessionState.configured = true;
 		useUiStore.setState({ developerMode: true });
 		renderSidebar();
 
-		expect(screen.getAllByLabelText("Sign in to AO Cloud")).toHaveLength(2);
+		expect(screen.queryByLabelText("Sign in to AO Cloud")).not.toBeInTheDocument();
 	});
 
 	it("shows the Artifacts row under Automations with a count of live artifacts", async () => {
