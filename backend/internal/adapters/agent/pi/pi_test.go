@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -322,6 +323,9 @@ func TestGetRestoreCommandExplicitlyLoadsManagedExtension(t *testing.T) {
 }
 
 func TestGetAgentHooksInstallsManagedActivityExtension(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shebang script stub cannot be executed or found on PATH on Windows")
+	}
 	workspace := t.TempDir()
 	if err := (&Plugin{resolvedBinary: fakePiBinary(t, "0.80.6")}).GetAgentHooks(context.Background(), ports.WorkspaceHookConfig{WorkspacePath: workspace}); err != nil {
 		t.Fatalf("GetAgentHooks err = %v", err)

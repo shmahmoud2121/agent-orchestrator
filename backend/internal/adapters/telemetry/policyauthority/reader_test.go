@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
@@ -22,6 +23,9 @@ func readRaw(t *testing.T, raw string) (ports.AgentSwitchFailureAuthoritySnapsho
 }
 
 func TestReaderTreatsVersionOneAsConsentGivenWhileGated(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX file modes are not enforced on Windows")
+	}
 	got, err := readRaw(t, `{"schema_version":1,"events_enabled":true,"consent_generation":"`+generation+`","updated_at":"2026-08-28T10:15:30.000Z"}`)
 	if err != nil {
 		t.Fatal(err)
@@ -32,6 +36,9 @@ func TestReaderTreatsVersionOneAsConsentGivenWhileGated(t *testing.T) {
 }
 
 func TestReaderReadsVersionTwoConsentProductionState(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX file modes are not enforced on Windows")
+	}
 	for _, want := range []bool{true, false} {
 		value := "false"
 		if want {

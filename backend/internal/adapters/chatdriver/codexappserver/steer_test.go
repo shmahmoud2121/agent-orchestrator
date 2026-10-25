@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -59,6 +60,9 @@ func refuseSteer(srv *scriptedServer, errorJSON string) {
 // hand-written struct: expectedTurnId is a precondition the provider enforces, and
 // sending the wrong field name would make every steer land as "no active turn".
 func TestSteerSendsTheProvidersPreconditionShape(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := steerConversation(t)
 
 	ref, err := conv.Steer(context.Background(), "turn-1", ports.ChatUserMessage{
@@ -107,6 +111,9 @@ func TestSteerSendsTheProvidersPreconditionShape(t *testing.T) {
 // An empty turn id falls back to the turn the conversation last saw, so a caller
 // that has not tracked one is not forced to guess.
 func TestSteerFallsBackToTheKnownActiveTurn(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := steerConversation(t)
 
 	if _, err := conv.Steer(context.Background(), "", ports.ChatUserMessage{Text: "narrow it down"}); err != nil {
@@ -125,6 +132,9 @@ func TestSteerFallsBackToTheKnownActiveTurn(t *testing.T) {
 // With no turn ever started there is nothing to name, and the provider must not be
 // asked to steer the empty string.
 func TestSteerWithoutAnyTurnIsTypedAndNeverReachesTheProvider(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	opened, err := d.Start(context.Background(), ports.ChatStartConfig{WorkspacePath: "/tmp/ws"})
 	if err != nil {
@@ -142,6 +152,9 @@ func TestSteerWithoutAnyTurnIsTypedAndNeverReachesTheProvider(t *testing.T) {
 }
 
 func TestSteerRejectsEmptyText(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := steerConversation(t)
 
 	_, err := conv.Steer(context.Background(), "turn-1", ports.ChatUserMessage{Text: "   \n"})
@@ -157,6 +170,9 @@ func TestSteerRejectsEmptyText(t *testing.T) {
 // app-server: code -32600, message "no active turn to steer", no data. It reaches a
 // user as "there is no turn to steer", never as an internal error.
 func TestSteerTranslatesNoActiveTurnRefusal(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := steerConversation(t)
 	refuseSteer(srv, `{"code":-32600,"message":"no active turn to steer"}`)
 
@@ -170,6 +186,9 @@ func TestSteerTranslatesNoActiveTurnRefusal(t *testing.T) {
 // turn IS running but its kind cannot take guidance. Payload copied from a live
 // app-server refusing a steer during a manual compaction.
 func TestSteerTranslatesNotSteerableRefusalFromItsStructuredPayload(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := steerConversation(t)
 	refuseSteer(srv, `{"code":-32600,"message":"cannot steer a compact turn",`+
 		`"data":{"message":"cannot steer a compact turn",`+
@@ -194,6 +213,9 @@ func TestSteerTranslatesNotSteerableRefusalFromItsStructuredPayload(t *testing.T
 // mistranslated into "nothing to steer", which would tell the user to resend
 // guidance the agent may already have.
 func TestSteerLeavesUnknownProviderErrorsAlone(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := steerConversation(t)
 	refuseSteer(srv, `{"code":-32603,"message":"internal error"}`)
 
@@ -212,6 +234,9 @@ func TestSteerLeavesUnknownProviderErrorsAlone(t *testing.T) {
 // A response with no turn id still has to be attributed somewhere, and the turn the
 // caller asked about is the only honest answer.
 func TestSteerFallsBackToTheRequestedTurnWhenTheProviderNamesNone(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := steerConversation(t)
 	srv.respondTo(codexproto.MethodTurnSteer, `{}`)
 

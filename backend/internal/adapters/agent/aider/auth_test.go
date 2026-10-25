@@ -6,6 +6,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
@@ -43,6 +44,9 @@ func TestAiderLocalAuthStatusAuthorizedWithConfigFile(t *testing.T) {
 }
 
 func TestAiderLocalAuthStatusAuthorizedWithDocumentedAPIKeyList(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows resolves the home directory from USERPROFILE, not HOME")
+	}
 	clearAiderAuthEnv(t)
 	home := t.TempDir()
 	t.Setenv("HOME", home)

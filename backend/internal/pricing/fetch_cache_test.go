@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -191,6 +192,9 @@ func TestFetcherCancellationStopsRequest(t *testing.T) {
 }
 
 func TestCacheInstallsPrivateManifestLastAndLoadsLKG(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod permissions are not enforced on Windows")
+	}
 	dataDir := t.TempDir()
 	fixture := testCandidate(t, testBaseModels("0.1"))
 	catalog, err := ParseCatalog(fixture.manifest, fixture.providers)
@@ -330,6 +334,9 @@ func TestCacheMissingOrCorruptLKGIsUnavailable(t *testing.T) {
 // and fail again, leaving pricing permanently unavailable until the user
 // deleted AO state by hand.
 func TestCacheInstallRepairsCorruptProviderBlob(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod permissions are not enforced on Windows")
+	}
 	dataDir := t.TempDir()
 	fixture := testCandidate(t, testBaseModels("0.1"))
 	catalog, err := ParseCatalog(fixture.manifest, fixture.providers)

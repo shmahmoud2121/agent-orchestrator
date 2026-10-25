@@ -1121,6 +1121,9 @@ func TestDoctorLaunchProbesMirrorLaunchFlags(t *testing.T) {
 // An account home links its sessions folder to the computer's own, so the
 // rollout of a conversation started on another account is visible through it.
 func TestNativeConversationExistsFollowsALinkedSessionsFolder(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires a privilege Windows does not grant by default")
+	}
 	p := &Plugin{}
 	id := "019fc430-1234-7abc-8def-0123456789ab"
 	shared := t.TempDir()

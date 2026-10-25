@@ -2,3 +2,13 @@
 backend/internal/httpd/apispec/openapi.yaml text eol=lf
 frontend/src/api/schema.ts text eol=lf
 frontend/src/renderer/routeTree.gen.ts text eol=lf
+
+# Files the Go binary embeds. Their bytes are hashed (pricing manifest, AO-owned
+# hook digests), so a Windows checkout must not turn them into CRLF.
+pricing/** text eol=lf
+backend/internal/pricing/bundled/** text eol=lf
+backend/internal/adapters/agent/*/assets/** text eol=lf
+backend/internal/adapters/reviewer/*/assets/** text eol=lf
+backend/internal/renderpage/render_bootstrap.js text eol=lf
+backend/internal/skillassets/using-ao/** text eol=lf
+backend/internal/storage/sqlite/migrations/** text eol=lf

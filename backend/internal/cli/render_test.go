@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -162,6 +163,9 @@ func TestRenderCheckWritesTheScreenshotAndPrintsConsole(t *testing.T) {
 // The check, fix, check-again loop reuses one --out path; a symlink or a
 // directory at that path is never replaced.
 func TestRenderCheckReplacesItsEarlierScreenshot(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires a privilege Windows does not grant by default")
+	}
 	t.Setenv("AO_SESSION_ID", "aa-47")
 	cfg := setConfigEnv(t)
 	srv, _ := renderServer(t, http.StatusOK,

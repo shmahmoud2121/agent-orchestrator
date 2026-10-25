@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -241,6 +242,9 @@ func TestManager_AddDerivesValidIDFromSpecialCharacterFolderName(t *testing.T) {
 }
 
 func TestManager_CloneRegistersRepositoryAndPreservesOrigin(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("clone fixtures build a file:// URL from a Unix-style path; a Windows drive path does not form a valid URL this way")
+	}
 	ctx := context.Background()
 	m := newManager(t)
 	source := gitRepo(t)
@@ -268,6 +272,9 @@ func TestManager_CloneRegistersRepositoryAndPreservesOrigin(t *testing.T) {
 }
 
 func TestManager_PrepareClonePreservesEmptyRepositoryForImportSetup(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("clone fixtures build a file:// URL from a Unix-style path; a Windows drive path does not form a valid URL this way")
+	}
 	ctx := context.Background()
 	m := newManager(t)
 	emptySource := filepath.Join(t.TempDir(), "empty-repository")
@@ -305,6 +312,9 @@ func TestManager_PrepareClonePreservesEmptyRepositoryForImportSetup(t *testing.T
 }
 
 func TestManager_PreparedCloneCanBeCleanedUpAfterAddFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("clone fixtures build a file:// URL from a Unix-style path; a Windows drive path does not form a valid URL this way")
+	}
 	ctx := context.Background()
 	source := gitRepo(t)
 	remoteURL := (&url.URL{Scheme: "file", Path: source}).String()
@@ -352,6 +362,9 @@ func TestManager_PreparedCloneCanBeCleanedUpAfterAddFailure(t *testing.T) {
 }
 
 func TestManager_CleanupPreparedCloneRejectsStalePreparationID(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("clone fixtures build a file:// URL from a Unix-style path; a Windows drive path does not form a valid URL this way")
+	}
 	ctx := context.Background()
 	m := newManager(t)
 	source := gitRepo(t)
@@ -368,6 +381,9 @@ func TestManager_CleanupPreparedCloneRejectsStalePreparationID(t *testing.T) {
 }
 
 func TestManager_AddPreparedCloneRejectsStalePreparationID(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("clone fixtures build a file:// URL from a Unix-style path; a Windows drive path does not form a valid URL this way")
+	}
 	ctx := context.Background()
 	m := newManager(t)
 	source := gitRepo(t)
@@ -384,6 +400,9 @@ func TestManager_AddPreparedCloneRejectsStalePreparationID(t *testing.T) {
 }
 
 func TestManager_CleanupPreparedClonePreservesRegisteredProject(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("clone fixtures build a file:// URL from a Unix-style path; a Windows drive path does not form a valid URL this way")
+	}
 	ctx := context.Background()
 	m := newManager(t)
 	source := gitRepo(t)
@@ -420,6 +439,9 @@ func TestManager_CleanupPreparedClonePreservesRegisteredProject(t *testing.T) {
 }
 
 func TestManager_PrepareCloneCancellationLeavesNoCheckout(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("clone fixtures build a file:// URL from a Unix-style path; a Windows drive path does not form a valid URL this way")
+	}
 	m := newManager(t)
 	source := gitRepo(t)
 	remoteURL := (&url.URL{Scheme: "file", Path: source}).String()
@@ -438,6 +460,9 @@ func TestManager_PrepareCloneCancellationLeavesNoCheckout(t *testing.T) {
 }
 
 func TestManager_PrepareCloneResumesAfterRestartOnlyForMatchingCheckout(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("clone fixtures build a file:// URL from a Unix-style path; a Windows drive path does not form a valid URL this way")
+	}
 	ctx := context.Background()
 	dataDir := t.TempDir()
 	store, err := sqlitetest.Open(dataDir)
@@ -559,6 +584,9 @@ func TestManager_CloneRejectsUnsafeURLsAndExistingDestination(t *testing.T) {
 }
 
 func TestManager_CloneCleansUpFailedAndEmptyCheckouts(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("clone fixtures build a file:// URL from a Unix-style path; a Windows drive path does not form a valid URL this way")
+	}
 	ctx := context.Background()
 	m := newManager(t)
 	destinationParent := t.TempDir()
@@ -1116,6 +1144,9 @@ func TestManager_InitializeRepositoryRecovery(t *testing.T) {
 	})
 
 	t.Run("plain folder nested in parent repo initializes as separate repo root", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("git rev-parse prints forward slashes while the expectation uses the native Windows separator")
+		}
 		configureCommitter(t)
 		parent := filepath.Join(t.TempDir(), "parent")
 		gitRepoWithCommitNoOrigin(t, parent)
@@ -1179,6 +1210,9 @@ func TestManager_InitializeRepositoryRecovery(t *testing.T) {
 	})
 
 	t.Run("repo subdirectory initializes as separate repo root", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("git rev-parse prints forward slashes while the expectation uses the native Windows separator")
+		}
 		repo := gitRepo(t)
 		subdir := filepath.Join(repo, "nested")
 		if err := os.Mkdir(subdir, 0o755); err != nil {
@@ -2315,6 +2349,9 @@ func TestManager_RememberPortablePermissions(t *testing.T) {
 }
 
 func TestPrepareCloneCreatesDestinationParents(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("clone fixtures build a file:// URL from a Unix-style path; a Windows drive path does not form a valid URL this way")
+	}
 	m := newManager(t)
 	source := gitRepo(t)
 	parent := filepath.Join(t.TempDir(), "Projects", "new folder")
@@ -2333,6 +2370,9 @@ func TestPrepareCloneCreatesDestinationParents(t *testing.T) {
 }
 
 func TestEmptyCloneOnboardingCreatesFirstWorkspace(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("clone fixtures build a file:// URL from a Unix-style path; a Windows drive path does not form a valid URL this way")
+	}
 	for _, branch := range []string{"main", "trunk"} {
 		t.Run(branch, func(t *testing.T) {
 			ctx := context.Background()

@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -72,6 +73,9 @@ func TestOpenCodeMajorsAreIndependentlySelectable(t *testing.T) {
 // uncovered hook file makes every one of that adapter's session workspaces
 // permanently undeletable (kill/cleanup can never free them).
 func TestGetAgentHooksFootprintIsGitignored(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shebang script stub cannot be executed or found on PATH on Windows")
+	}
 	for _, ha := range Harnessed() {
 		t.Run(string(ha.Harness), func(t *testing.T) {
 			ws := t.TempDir()

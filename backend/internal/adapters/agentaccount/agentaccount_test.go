@@ -44,6 +44,9 @@ func absent(t *testing.T, path string) {
 // a link, the settings copy loses login-picking keys, and the global config
 // carries MCP servers but never the device's own account.
 func TestClaudePrepareSharesHistoryNotLogin(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires a privilege Windows does not grant by default")
+	}
 	device, home := t.TempDir(), filepath.Join(t.TempDir(), "acct")
 	write(t, filepath.Join(device, "projects", "-repo", "s1.jsonl"), "{}\n")
 	write(t, filepath.Join(device, "CLAUDE.md"), "rules\n")
@@ -94,6 +97,9 @@ func TestClaudePrepareSharesHistoryNotLogin(t *testing.T) {
 // key follows the computer until it is changed on the account, and then it is
 // the account's. Entries of env and mcpServers are shared one by one.
 func TestClaudePrepareKeepsChangesMadeOnTheAccount(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires a privilege Windows does not grant by default")
+	}
 	device, home := t.TempDir(), filepath.Join(t.TempDir(), "acct")
 	config := filepath.Join(t.TempDir(), ".claude.json")
 	write(t, filepath.Join(device, "settings.json"), `{"model":"opus","verbose":false,"cleanupPeriodDays":30,"env":{"FOO":"1","BAR":"1"}}`)
@@ -188,6 +194,9 @@ func TestPrepareRefusesWhenItCannotLink(t *testing.T) {
 // is shared except the login and the app-server daemon's control files, so a
 // terminal on one account cannot attach to a daemon running as another.
 func TestCodexPrepareKeepsLoginAndDaemonPrivate(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires a privilege Windows does not grant by default")
+	}
 	device, home := t.TempDir(), filepath.Join(t.TempDir(), "acct")
 	write(t, filepath.Join(device, "auth.json"), `{"secret":true}`)
 	write(t, filepath.Join(device, "config.toml"), "model = \"gpt-5\"\n")
@@ -214,6 +223,9 @@ func TestCodexPrepareKeepsLoginAndDaemonPrivate(t *testing.T) {
 // account's first launch must still share them, and an account that already
 // made its own (before they were shared) gives its copy to the computer.
 func TestCodexPrepareSharesFilesTheComputerDoesNotHaveYet(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires a privilege Windows does not grant by default")
+	}
 	device, home := t.TempDir(), filepath.Join(t.TempDir(), "acct")
 	write(t, filepath.Join(home, "history.jsonl"), "{\"text\":\"asked on the account\"}\n")
 
@@ -232,6 +244,9 @@ func TestCodexPrepareSharesFilesTheComputerDoesNotHaveYet(t *testing.T) {
 // A link to an entry the user deleted from the computer's own folder is
 // removed; a link to an entry AO always shares is restored.
 func TestPrepareDropsLinksToDeletedEntries(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires a privilege Windows does not grant by default")
+	}
 	device, home := t.TempDir(), filepath.Join(t.TempDir(), "acct")
 	write(t, filepath.Join(device, "rules", "r.md"), "x")
 	c := &Codex{DeviceHome: device}

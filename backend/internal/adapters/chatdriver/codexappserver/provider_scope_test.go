@@ -3,6 +3,7 @@ package codexappserver
 import (
 	"context"
 	"encoding/json"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -14,6 +15,9 @@ import (
 )
 
 func TestResumeNamespacesRepeatedNativeHistoryByOwnershipScope(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	ctx := context.Background()
 	st := sqlitetest.MustOpenAt(t, t.TempDir())
 	now := time.Now()
@@ -94,6 +98,9 @@ func TestResumeNamespacesRepeatedNativeHistoryByOwnershipScope(t *testing.T) {
 }
 
 func TestScopedLiveTurnKeepsNativeIDsOnProviderWire(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	ctx := context.Background()
 	provider, err := d.Start(ctx, ports.ChatStartConfig{WorkspacePath: "/tmp/ws", ProviderScopeID: "scope", ProviderIDsScoped: true})
@@ -143,6 +150,9 @@ func TestScopedLiveTurnKeepsNativeIDsOnProviderWire(t *testing.T) {
 }
 
 func TestResumeScopesRequestsBeforeHandshakeCompletes(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	srv.mu.Lock()
 	delete(srv.responses, "thread/resume")
@@ -178,6 +188,9 @@ func TestResumeScopesRequestsBeforeHandshakeCompletes(t *testing.T) {
 }
 
 func TestResumePreservesLegacyProjectionIDs(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	provider, err := d.Resume(context.Background(), ports.ChatResumeConfig{WorkspacePath: "/tmp/ws", ProviderConversationID: "thread-1", ProviderScopeID: "old-root", ProviderIDsScoped: false})
 	if err != nil {
@@ -192,6 +205,9 @@ func TestResumePreservesLegacyProjectionIDs(t *testing.T) {
 }
 
 func TestStartInEmptyLegacyScopeKeepsResumeIDFormat(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, _ := newTestDriver(t)
 	provider, err := d.Start(context.Background(), ports.ChatStartConfig{WorkspacePath: "/tmp/ws", ProviderScopeID: "old-empty-root", ProviderIDsScoped: false})
 	if err != nil {

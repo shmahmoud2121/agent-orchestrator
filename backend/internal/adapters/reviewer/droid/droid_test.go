@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"testing"
 	"time"
@@ -15,6 +16,9 @@ import (
 )
 
 func TestReviewCommandUsesAutonomousInteractiveSettings(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture uses hard-coded Unix paths that are not absolute on Windows")
+	}
 	r := &Reviewer{resolveBinary: func(context.Context) (string, error) { return "/opt/droid", nil }}
 	if r.ReviewProcessReusable() {
 		t.Fatal("Droid reviewer tasks must launch fresh with their initial prompt")
@@ -74,6 +78,9 @@ func TestReviewPromptReadinessHintsDelayInitialInjection(t *testing.T) {
 }
 
 func TestReviewCommandPreflightValidationAndCancel(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture uses hard-coded Unix paths that are not absolute on Windows")
+	}
 	r := &Reviewer{resolveBinary: func(context.Context) (string, error) { return "/opt/droid", nil }}
 	spec, err := r.ReviewCommand(context.Background(), ports.ReviewInvocation{})
 	if err != nil || !slices.Equal(spec.Argv, []string{"/opt/droid"}) {

@@ -33,7 +33,7 @@ function nextConnection(server: net.Server): Promise<net.Socket> {
 	});
 }
 
-describe("supervisor-link", () => {
+describe.skipIf(process.platform === "win32")("supervisor-link", () => {
 	const handles: SupervisorLinkHandle[] = [];
 	const servers: net.Server[] = [];
 

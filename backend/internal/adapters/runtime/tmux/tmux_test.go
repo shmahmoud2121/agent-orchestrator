@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -137,6 +138,9 @@ func TestNewUsesAppOwnedTmuxSocketFromEnv(t *testing.T) {
 }
 
 func TestNewUsesSystemTmuxForLegacyDefaultSocket(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shebang script stub cannot be executed or found on PATH on Windows")
+	}
 	binDir := t.TempDir()
 	systemTmux := filepath.Join(binDir, "tmux")
 	if err := os.WriteFile(systemTmux, []byte("#!/bin/sh\n"), 0o755); err != nil {
@@ -184,6 +188,9 @@ func TestNewLeavesLegacyTmuxUnavailableWithoutSystemTmux(t *testing.T) {
 // execRunner (not the fakeRunner test seam every other test in this file
 // uses), so it is the only test that would catch a regression here.
 func TestExecRunnerRunsFromStableDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX shell: sh and pwd output are not Windows paths")
+	}
 	out, err := (execRunner{}).Run(context.Background(), nil, "sh", "-c", "pwd")
 	if err != nil {
 		t.Fatalf("execRunner.Run: %v", err)
@@ -213,6 +220,9 @@ func TestExecRunnerRunsFromStableDir(t *testing.T) {
 // with "chdir <dir>: no such file or directory" — the same dead-cwd failure
 // #2775 was about, just moved. Run must degrade to a directory that exists.
 func TestExecRunnerFallsBackWhenTempDirMissing(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX shell and TMPDIR semantics; Windows uses TEMP/USERPROFILE")
+	}
 	t.Setenv("TMPDIR", filepath.Join(t.TempDir(), "deleted-by-an-update"))
 	if _, err := os.Stat(os.TempDir()); !os.IsNotExist(err) {
 		t.Fatalf("precondition: os.TempDir() %q should not exist, stat err = %v", os.TempDir(), err)

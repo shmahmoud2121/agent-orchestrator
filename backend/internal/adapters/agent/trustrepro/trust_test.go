@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -17,6 +18,9 @@ import (
 // TestRepositoryHookPreTrustEvidence exercises adapters only, without launching
 // a provider. The manager must gate calls to these intentionally unattended APIs.
 func TestRepositoryHookPreTrustEvidence(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows resolves the home directory from USERPROFILE, not HOME")
+	}
 	home, repo := t.TempDir(), t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("CLAUDE_CONFIG_DIR", "")

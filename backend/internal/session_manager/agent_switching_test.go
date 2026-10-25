@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -1226,6 +1227,9 @@ func TestAgentSwitchChatControllerReadyUsesSourceGenerationCAS(t *testing.T) {
 }
 
 func TestSwitchAgentChatForwardsResolvedCodexEffort(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the fixture uses a hard-coded Unix executable path, which is not absolute on Windows")
+	}
 	manager, store, _ := newSwitchTestManager(t, &fakeRestartRuntime{fakeRuntime: &fakeRuntime{}})
 	rec := store.sessions["proj-1"]
 	rec.Mode = domain.SessionModeChat
@@ -1822,6 +1826,9 @@ func TestSwitchAgentWorkerLaunchRefusalSettlesOrRetainsPreStopGate(t *testing.T)
 }
 
 func TestBuildSourceHandoffRequestUsesCurrentNativeSessionContext(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the continuation quotes paths as Go strings, which double Windows backslashes, so the raw-path substring check cannot match")
+	}
 	sw := domain.AgentSwitch{
 		ID:                 "switch-1",
 		SourceGenerationID: "source-generation",
@@ -2424,6 +2431,9 @@ func TestSwitchAgentAfterStartAcknowledgementCompletesWithoutRecoveryRead(t *tes
 
 func TestSwitchAgentWithRealFXAdapterInBothDirections(t *testing.T) {
 	if !retiredTestAgentsAvailable { t.Skip("fx is retired in this build") }
+	if runtime.GOOS == "windows" {
+		t.Skip("fx does not support native Windows")
+	}
 	binDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(binDir, "fx"), []byte("#!/bin/sh\n"), 0o755); err != nil {
 		t.Fatal(err)
@@ -2575,6 +2585,9 @@ func TestSwitchAgentToFXDeliveryFailureKeepsCommittedTargetAndFailsObservably(t 
 }
 
 func TestSwitchAgentFreshPreservesAOIdentityAndDeliversArtifact(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the continuation quotes paths as Go strings, which double Windows backslashes, so the raw-path substring check cannot match")
+	}
 	runtime := &fakeRestartRuntime{fakeRuntime: &fakeRuntime{}}
 	manager, store, _ := newSwitchTestManager(t, runtime)
 	source := manager.agents.(switchTestAgents)[domain.HarnessClaudeCode].(*switchTestAgent)
@@ -5327,6 +5340,9 @@ func TestSwitchAgentRefreshesLatestAssistantUpdateAfterSourceHandoff(t *testing.
 }
 
 func TestSwitchAgentRefreshesLateSourceNativeIdentityAtStopBoundary(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the continuation quotes paths as Go strings, which double Windows backslashes, so the raw-path substring check cannot match")
+	}
 	runtime := &fakeRestartRuntime{fakeRuntime: &fakeRuntime{}}
 	manager, store, messenger := newSwitchTestManager(t, runtime)
 	rec := store.sessions["proj-1"]

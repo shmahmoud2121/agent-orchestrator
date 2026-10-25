@@ -75,6 +75,7 @@ func TestReadinessInconclusiveCheckHasActionableFallback(t *testing.T) {
 }
 
 func TestCodexDisplayExplainsPendingLocalAccountReconciliation(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	fixture := newCodexLaunchReadinessFixture(t)
 	fixture.manager.reconciliation = domain.CodexDeviceReconciliation{Status: domain.CodexDeviceReconciliationChecking}
 	fixture.manager.deviceAccountID = ""

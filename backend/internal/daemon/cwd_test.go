@@ -3,10 +3,14 @@ package daemon
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
 func TestStabilizeWorkingDirectoryChdirsToDataDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows cannot delete the temp directory while it is still the process working directory")
+	}
 	oldCWD, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)

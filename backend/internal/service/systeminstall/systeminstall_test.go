@@ -7,6 +7,7 @@ import (
 	"io"
 	"os/exec"
 	"reflect"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -1633,6 +1634,9 @@ func TestAutohandWindowsInstallerVerifiesCLIAfterComputerControlFailure(t *testi
 }
 
 func TestKimiUpdateReinstallsAdvisoryReleaseIntoConfirmedDirectory(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the macOS/Homebrew code path under test is exercised with Unix-style paths that do not round-trip through Windows path handling")
+	}
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)

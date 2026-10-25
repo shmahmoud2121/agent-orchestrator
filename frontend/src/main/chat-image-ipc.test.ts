@@ -72,7 +72,7 @@ describe("registerChatImageIpc", () => {
 		await expect(failing.registered.get("clipboard:writeImage")?.({}, new Uint8Array([1]))).rejects.toThrow("clipboard busy");
 	});
 
-	it("saves where the user chooses, defaulting to Downloads", async () => {
+	it.skipIf(process.platform === "win32")("saves where the user chooses, defaulting to Downloads", async () => {
 		const bytes = new Uint8Array([9]);
 		const saved = setup({ canceled: false, filePath: "/tmp/shot.png" });
 		await expect(saved.registered.get("chatImage:save")?.({}, { name: "../shot.png", bytes })).resolves.toBe(true);

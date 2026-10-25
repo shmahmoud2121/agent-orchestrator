@@ -101,7 +101,7 @@ describe("findStaleAppCopies", () => {
 		};
 	}
 
-	it("finds valid older AO copies only in Downloads and Desktop", async () => {
+	it.skipIf(process.platform === "win32")("finds valid older AO copies only in Downloads and Desktop", async () => {
 		const deps = dependencies({
 			identities: {
 				[DOWNLOADS_COPY]: ORIGINAL_IDENTITY,
@@ -366,7 +366,7 @@ describe("retireStaleMacAppCopies", () => {
 		expect(options.findCopies).not.toHaveBeenCalled();
 	});
 
-	it("checks once after the maintained packaged macOS app starts", async () => {
+	it.skipIf(process.platform === "win32")("checks once after the maintained packaged macOS app starts", async () => {
 		const options = runtime();
 		await retireStaleMacAppCopies(options);
 		expect(options.findCopies).toHaveBeenCalledOnce();

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -33,6 +34,9 @@ func TestHeadlessAuthorityTruthTable(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			if runtime.GOOS == "windows" && (tc.file == "on" || tc.file == "off") {
+				t.Skip("the policy authority file permission check relies on POSIX file modes, which Windows does not enforce")
+			}
 			dir := t.TempDir()
 			generation := "7f80c8a9-ec67-4a16-a067-a444ffcc5cca"
 			path := filepath.Join(dir, PolicyFileName)
@@ -73,6 +77,9 @@ func TestHeadlessAuthorityTruthTable(t *testing.T) {
 }
 
 func TestOpenGateDoesNotResumeConsentGivenWhileGated(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the policy authority file permission check relies on POSIX file modes, which Windows does not enforce")
+	}
 	generation := "7f80c8a9-ec67-4a16-a067-a444ffcc5cca"
 	tests := []struct {
 		name        string
@@ -114,6 +121,9 @@ func TestOpenGateDoesNotResumeConsentGivenWhileGated(t *testing.T) {
 }
 
 func TestClosedGateKeepsHonouringTheStoredChoiceAsTheHint(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the policy authority file permission check relies on POSIX file modes, which Windows does not enforce")
+	}
 	generation := "7f80c8a9-ec67-4a16-a067-a444ffcc5cca"
 	path := filepath.Join(t.TempDir(), PolicyFileName)
 	writePolicyRecord(t, path, map[string]any{
@@ -147,6 +157,9 @@ func TestApplyPolicyTreatsBodyAsHintAndCannotForgeEnablement(t *testing.T) {
 }
 
 func TestPrepareDisableLatchesGateUntilDisabledGenerationIsPurged(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the policy authority file permission check relies on POSIX file modes, which Windows does not enforce")
+	}
 	dir := t.TempDir()
 	onGeneration := "7f80c8a9-ec67-4a16-a067-a444ffcc5cca"
 	offGeneration := "19549322-5832-4d4e-9206-7268e0228db3"
@@ -196,6 +209,9 @@ func TestPrepareDisableLatchesGateUntilDisabledGenerationIsPurged(t *testing.T) 
 }
 
 func TestDisabledApplyFailureDoesNotCachePurgeProof(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the policy authority file permission check relies on POSIX file modes, which Windows does not enforce")
+	}
 	dir := t.TempDir()
 	generation := "7f80c8a9-ec67-4a16-a067-a444ffcc5cca"
 	writePolicy(t, filepath.Join(dir, PolicyFileName), false, generation, 0o600)
@@ -229,6 +245,9 @@ func TestDisabledApplyFailureDoesNotCachePurgeProof(t *testing.T) {
 }
 
 func TestDisabledApplyAcknowledgesOnlyAfterAtomicStoreCommit(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the policy authority file permission check relies on POSIX file modes, which Windows does not enforce")
+	}
 	dir := t.TempDir()
 	generation := "7f80c8a9-ec67-4a16-a067-a444ffcc5cca"
 	writePolicy(t, filepath.Join(dir, PolicyFileName), false, generation, 0o600)
@@ -270,6 +289,9 @@ func TestDisabledApplyAcknowledgesOnlyAfterAtomicStoreCommit(t *testing.T) {
 }
 
 func TestDisabledApplyAcknowledgesOnlyAfterProviderDrain(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the policy authority file permission check relies on POSIX file modes, which Windows does not enforce")
+	}
 	dir := t.TempDir()
 	generation := "7f80c8a9-ec67-4a16-a067-a444ffcc5cca"
 	path := filepath.Join(dir, PolicyFileName)
@@ -316,6 +338,9 @@ func TestDisabledApplyAcknowledgesOnlyAfterProviderDrain(t *testing.T) {
 }
 
 func TestPolicyOperationsDoNotOvertakeAtomicApply(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the policy authority file permission check relies on POSIX file modes, which Windows does not enforce")
+	}
 	dir := t.TempDir()
 	generation := "7f80c8a9-ec67-4a16-a067-a444ffcc5cca"
 	writePolicy(t, filepath.Join(dir, PolicyFileName), false, generation, 0o600)
@@ -380,6 +405,9 @@ func TestInvalidAuthorityPurgesBeforeReportingUnavailable(t *testing.T) {
 }
 
 func TestEnrollmentFailureFallsBackToDisabledAtomicPurge(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the policy authority file permission check relies on POSIX file modes, which Windows does not enforce")
+	}
 	dir := t.TempDir()
 	generation := "7f80c8a9-ec67-4a16-a067-a444ffcc5cca"
 	writePolicy(t, filepath.Join(dir, PolicyFileName), true, generation, 0o600)
@@ -403,6 +431,9 @@ func TestEnrollmentFailureFallsBackToDisabledAtomicPurge(t *testing.T) {
 }
 
 func TestGateChangeCancelsAndAwaitsRegisteredDeliveryWithoutInventingGeneration(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the policy authority file permission check relies on POSIX file modes, which Windows does not enforce")
+	}
 	dir := t.TempDir()
 	generation := "7f80c8a9-ec67-4a16-a067-a444ffcc5cca"
 	writePolicy(t, filepath.Join(dir, PolicyFileName), true, generation, 0o600)

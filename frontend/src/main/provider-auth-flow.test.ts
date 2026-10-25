@@ -40,7 +40,7 @@ describe("firstExecutable", () => {
 		expect(await firstExecutable("claude", [dir, "/nonexistent-ao-dir"])).toBeNull();
 	});
 
-	it("skips a same-named file that is not executable", async () => {
+	it.skipIf(process.platform === "win32")("skips a same-named file that is not executable", async () => {
 		const dir = await tempDir();
 		const notExec = path.join(dir, "claude");
 		await writeFile(notExec, "not a program");

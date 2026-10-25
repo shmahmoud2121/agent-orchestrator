@@ -6,6 +6,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -14,6 +15,9 @@ import (
 )
 
 func TestReviewCommandUsesPlanModeAndEmptySkillsDirectory(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture uses hard-coded Unix paths that are not absolute on Windows")
+	}
 	r := &Reviewer{resolveBinary: func(context.Context) (string, error) { return "/opt/kimi", nil }}
 	root := t.TempDir()
 	inv := ports.ReviewInvocation{
@@ -43,6 +47,9 @@ func TestReviewCommandUsesPlanModeAndEmptySkillsDirectory(t *testing.T) {
 }
 
 func TestReviewCommandPreflightValidationAndCancel(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture uses hard-coded Unix paths that are not absolute on Windows")
+	}
 	r := &Reviewer{resolveBinary: func(context.Context) (string, error) { return "/opt/kimi", nil }}
 	spec, err := r.ReviewCommand(context.Background(), ports.ReviewInvocation{})
 	if err != nil || !slices.Equal(spec.Argv, []string{"/opt/kimi", "--plan", "--auto"}) {

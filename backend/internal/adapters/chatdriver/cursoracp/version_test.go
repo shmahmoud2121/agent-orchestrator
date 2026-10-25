@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -50,6 +51,9 @@ func TestParseCursorVersionRejectsUnknownOutput(t *testing.T) {
 }
 
 func TestVersionProbeUsesStandardInstallerSymlinkWithoutLaunchingCLI(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires a privilege Windows does not grant by default")
+	}
 	root := t.TempDir()
 	versionDir := filepath.Join(root, "versions", "2026.08.11-e8db854")
 	if err := os.MkdirAll(versionDir, 0o700); err != nil {

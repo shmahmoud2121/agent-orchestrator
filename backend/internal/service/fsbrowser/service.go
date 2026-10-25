@@ -55,6 +55,9 @@ func (*Service) List(ctx context.Context, path string) (Listing, error) {
 	entries, err := os.ReadDir(path)
 	if err != nil {
 		switch {
+		case errors.Is(err, os.ErrNotExist) && isRegularFile(path):
+			// Windows reports ReadDir on a file as "path not found", not ENOTDIR.
+			return Listing{}, apierr.Invalid("FS_NOT_A_DIRECTORY", "not a directory", nil)
 		case errors.Is(err, os.ErrNotExist):
 			return Listing{}, apierr.NotFound("FS_NOT_FOUND", "no such directory on the daemon host")
 		case errors.Is(err, os.ErrPermission):
@@ -79,4 +82,9 @@ func (*Service) List(ctx context.Context, path string) (Listing, error) {
 		out.Entries = append(out.Entries, Entry{Name: entry.Name(), Path: child, GitRepo: gitErr == nil})
 	}
 	return out, nil
+}
+
+func isRegularFile(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
 }

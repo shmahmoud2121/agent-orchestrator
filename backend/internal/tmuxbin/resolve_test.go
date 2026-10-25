@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 )
 
@@ -69,6 +70,9 @@ func TestResolveWithFindsPackagedTmuxOnMacOSAndLinuxLayouts(t *testing.T) {
 }
 
 func TestResolveWithFollowsExecutableSymlinkIntoBundle(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires a privilege Windows does not grant by default")
+	}
 	daemonDir := filepath.Join(t.TempDir(), "AO.app", "Contents", "Resources", "daemon")
 	if err := os.MkdirAll(daemonDir, 0o755); err != nil {
 		t.Fatal(err)

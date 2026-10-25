@@ -82,7 +82,7 @@ describe("cli link", () => {
 		expect(result).toMatchObject({ ok: false, code: "developer-mode" });
 	});
 
-	it("refuses to inspect a real global bin directory from tests", async () => {
+	it.skipIf(process.platform === "win32")("refuses to inspect a real global bin directory from tests", async () => {
 		await expect(inspectCliLink(nodeCliLinkIo(), request({
 			appCliPath: "/tmp/ao",
 			linkDirectory: CLI_LINK_DIRECTORY,
@@ -103,7 +103,7 @@ describe("cli link", () => {
 		expect(await lstat(path.join(linkDirectory, "ao")).catch(() => null)).toBeNull();
 	});
 
-	it("links a missing command, reports version from a clean environment, and is idempotent", async () => {
+	it.skipIf(process.platform === "win32")("links a missing command, reports version from a clean environment, and is idempotent", async () => {
 		const { linkDirectory, dataDir, apps } = await layout();
 		const appCliPath = await executable(path.join(apps, "current"), "ao", "2.4.0");
 		const io = counting(nodeCliLinkIo());
@@ -133,7 +133,7 @@ describe("cli link", () => {
 		expect(await readFile(foreign, "utf8")).toBe(before);
 	});
 
-	it("requires confirmation before repairing a stale AO link and keeps the old binary", async () => {
+	it.skipIf(process.platform === "win32")("requires confirmation before repairing a stale AO link and keeps the old binary", async () => {
 		const { linkDirectory, dataDir, apps } = await layout();
 		const oldCli = await executable(path.join(apps, "old"), "ao", "1.0.0");
 		const appCliPath = await executable(path.join(apps, "current"), "ao", "4.0.0");
@@ -151,7 +151,7 @@ describe("cli link", () => {
 		expect(await readFile(oldCli, "utf8")).toContain("1.0.0");
 	});
 
-	it("repairs a dangling AO link and unlinks only that symlink", async () => {
+	it.skipIf(process.platform === "win32")("repairs a dangling AO link and unlinks only that symlink", async () => {
 		const { linkDirectory, dataDir, apps } = await layout();
 		const appCliPath = await executable(path.join(apps, "current"), "ao", "5.0.0");
 		const linkPath = path.join(linkDirectory, "ao");
@@ -167,7 +167,7 @@ describe("cli link", () => {
 		expect(await readFile(path.join(dataDir, CLI_LINK_MARKER_FILE), "utf8").catch(() => null)).toBeNull();
 	});
 
-	it("reports a permission failure and leaves the directory untouched", async () => {
+	it.skipIf(process.platform === "win32")("reports a permission failure and leaves the directory untouched", async () => {
 		if (typeof process.getuid === "function" && process.getuid() === 0) return;
 		const { linkDirectory, dataDir, apps } = await layout();
 		const appCliPath = await executable(path.join(apps, "current"), "ao", "6.0.0");
@@ -192,7 +192,7 @@ describe("cli link", () => {
 		expect(result).toMatchObject({ ok: false, code: "missing-app" });
 	});
 
-	it("never claims a user made symlink to the app CLI", async () => {
+	it.skipIf(process.platform === "win32")("never claims a user made symlink to the app CLI", async () => {
 		const { linkDirectory, dataDir, apps } = await layout();
 		const appCliPath = await executable(apps, "ao", "1.0.0");
 		const linkPath = path.join(linkDirectory, "ao");
@@ -204,7 +204,7 @@ describe("cli link", () => {
 		expect(await readFile(path.join(dataDir, CLI_LINK_MARKER_FILE)).catch(() => null)).toBeNull();
 	});
 
-	it("refuses a link replaced by the user after AO wrote its marker", async () => {
+	it.skipIf(process.platform === "win32")("refuses a link replaced by the user after AO wrote its marker", async () => {
 		const { linkDirectory, dataDir, apps } = await layout();
 		const appCliPath = await executable(path.join(apps, "current"), "ao", "1.0.0");
 		const userCli = await executable(path.join(apps, "user"), "ao", "2.0.0");
@@ -220,7 +220,7 @@ describe("cli link", () => {
 		expect(await readlink(linkPath)).toBe(userCli);
 	});
 
-	it("keeps the old link and marker when replacement fails", async () => {
+	it.skipIf(process.platform === "win32")("keeps the old link and marker when replacement fails", async () => {
 		const { linkDirectory, dataDir, apps } = await layout();
 		const oldCli = await executable(path.join(apps, "old"), "ao", "1.0.0");
 		const appCliPath = await executable(path.join(apps, "new"), "ao", "2.0.0");
@@ -248,7 +248,7 @@ describe("cli link", () => {
 		expect(await lstat(path.join(linkDirectory, "ao")).catch(() => null)).toBeNull();
 	});
 
-	it("does not create a link when writing its marker fails", async () => {
+	it.skipIf(process.platform === "win32")("does not create a link when writing its marker fails", async () => {
 		const { linkDirectory, dataDir, apps } = await layout();
 		const appCliPath = await executable(apps, "ao", "1.0.0");
 		const io = nodeCliLinkIo();
@@ -264,7 +264,7 @@ describe("cli link", () => {
 		}
 	});
 
-	it("reports the executable a fresh login shell finds first", async () => {
+	it.skipIf(process.platform === "win32")("reports the executable a fresh login shell finds first", async () => {
 		const { root, linkDirectory, dataDir, apps } = await layout();
 		const appCliPath = await executable(apps, "ao", "1.0.0");
 		const earlier = path.join(root, "earlier");
@@ -279,7 +279,7 @@ describe("cli link", () => {
 		expect(await lstat(path.join(linkDirectory, "ao")).catch(() => null)).toBeNull();
 	});
 
-	it("selects a writable supported directory on the login PATH without changing the protected directory", async () => {
+	it.skipIf(process.platform === "win32")("selects a writable supported directory on the login PATH without changing the protected directory", async () => {
 		const { root, linkDirectory, dataDir, apps } = await layout();
 		const protectedDirectory = path.join(root, "protected");
 		await mkdir(protectedDirectory);
@@ -292,7 +292,7 @@ describe("cli link", () => {
 		expect(await lstat(path.join(protectedDirectory, "ao")).catch(() => null)).toBeNull();
 	});
 
-	it("keeps an existing AO managed link in its original directory for repair and unlink", async () => {
+	it.skipIf(process.platform === "win32")("keeps an existing AO managed link in its original directory for repair and unlink", async () => {
 		const { root, linkDirectory, dataDir, apps } = await layout();
 		const alternative = path.join(root, "alternative");
 		await mkdir(alternative);
@@ -305,7 +305,7 @@ describe("cli link", () => {
 		expect(await lstat(path.join(alternative, "ao")).catch(() => null)).toBeNull();
 	});
 
-	it("refuses to link when the selected directory is absent from the login PATH", async () => {
+	it.skipIf(process.platform === "win32")("refuses to link when the selected directory is absent from the login PATH", async () => {
 		const { root, linkDirectory, dataDir, apps } = await layout();
 		const appCliPath = await executable(apps, "ao", "1.0.0");
 		const req = request({ appCliPath, linkDirectory, dataDir, shellPath: path.join(root, "other") });
@@ -313,7 +313,7 @@ describe("cli link", () => {
 		expect(await lstat(path.join(linkDirectory, "ao")).catch(() => null)).toBeNull();
 	});
 
-	it("rejects a stale target changed since the confirmation dialog opened", async () => {
+	it.skipIf(process.platform === "win32")("rejects a stale target changed since the confirmation dialog opened", async () => {
 		const { linkDirectory, dataDir, apps } = await layout();
 		const oldCli = await executable(path.join(apps, "old"), "ao", "1.0.0");
 		const appCliPath = await executable(path.join(apps, "new"), "ao", "2.0.0");
@@ -327,7 +327,7 @@ describe("cli link", () => {
 		expect(await readlink(linkPath)).toBe(oldCli);
 	});
 
-	it("reports a missing link directory as IO instead of permission denial", async () => {
+	it.skipIf(process.platform === "win32")("reports a missing link directory as IO instead of permission denial", async () => {
 		const { root, dataDir, apps } = await layout();
 		const appCliPath = await executable(apps, "ao", "1.0.0");
 		const result = await linkCli(nodeCliLinkIo(), request({ appCliPath, dataDir, linkDirectory: path.join(root, "absent") }));

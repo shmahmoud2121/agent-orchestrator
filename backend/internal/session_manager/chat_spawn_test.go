@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -1438,6 +1439,9 @@ func TestChatSpawnPersistsBrowserCapabilityBeforeControllerStart(t *testing.T) {
 }
 
 func TestChatStartsPassTheAOToolServerWithOnlyDaemonCoordinates(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the fixture uses a hard-coded Unix executable path, which is not absolute on Windows")
+	}
 	launcher := &recordingLauncher{}
 	mgr, store, _ := newChatManager(launcher)
 	mgr.executable = func() (string, error) { return "/opt/ao/bin/ao", nil }
