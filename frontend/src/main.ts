@@ -49,7 +49,7 @@ import { DesktopTelemetryController } from "./main/desktop-telemetry-controller"
 import { AgentSwitchVisibilityController } from "./main/agent-switch-observability";
 import { readUpdateSettings, updateUpdateSettings, type UpdateSettings, type UpdateStatus } from "./main/update-settings";
 import { LOCAL_ONLY_BUILD } from "./shared/local-only";
-import { installLocalOnlyCloudIpc, installLocalOnlyRemotesIpc, installLocalOnlyUpdateIpc } from "./main/local-only-ipc";
+import { installLocalOnlyUpdateIpc } from "./main/local-only-ipc";
 import { readKeybindingOverrides, writeKeybindingOverrides } from "./main/keybinding-settings";
 import { readEditorSettings, writeEditorPreference } from "./main/editor-settings";
 import { createEditorHandoff } from "./main/editor-handoff";
@@ -91,7 +91,6 @@ import { toggleAppDevTools } from "./main/app-devtools";
 import { attachAppShortcuts } from "./main/app-shortcuts";
 import {
 	KEYBOARD_SHORTCUTS_HELP_CHANNEL,
-	OPEN_SETTINGS_SHORTCUT_CHANNEL,
 	SET_CLOSE_SHELL_TERMINAL_SHORTCUT_ENABLED_CHANNEL,
 	SET_TERMINAL_FOCUSED_CHANNEL,
 	type KeybindingOverrides,
@@ -132,16 +131,6 @@ import {
 } from "./shared/shell-env";
 import { DEFAULT_TERMINAL_SHELL, type TerminalShellPreference } from "./shared/ui-locale";
 import { bundledTmuxBinaryPath, stableBundledTmuxBinaryPath } from "./shared/bundled-tmux";
-import {
-	handleCloudDeepLink,
-	getCloudSession,
-	installCloudIPC,
-	registerCloudProtocol,
-	showCloudSignInFailure,
-} from "./main/cloud-auth";
-import { installCloudLocalAuthIPC } from "./main/cloud-auth-local";
-import { createCloudAgentProxy } from "./main/cloud-agent-proxy";
-import { installCloudCpProxy } from "./main/cloud-cp-proxy";
 import { buildTelemetryBootstrap, rendererTelemetryEnabled } from "./shared/telemetry";
 import {
 	TELEMETRY_CLEAR_RENDERER_QUEUES_CHANNEL,
@@ -203,10 +192,6 @@ import {
 import { buildLinuxAppMenuTemplate, buildMacAppMenuTemplate, buildWindowsAppMenuTemplate } from "./main/menu";
 import { ancestorRepositorySetupWarning, resolveCheckedOutBranch, scanImportFolder } from "./main/import-folder-scan";
 import { parseOpenFolderPathArg } from "./main/open-folder-arg";
-import { registerRemotesIpc, remotesFilePath } from "./main/remotes-main";
-import { createLocalHostIdentity } from "./main/remote-request";
-import { RemoteRegistry } from "./main/remote-registry";
-import { startRemoteProxy } from "./main/remote-proxy";
 import { AGENT_SWITCH_VISIBILITY_IPC_CHANNEL } from "./shared/agent-switch-observability";
 
 // Globals injected at compile time by @electron-forge/plugin-vite.
@@ -523,10 +508,6 @@ protocol.registerSchemesAsPrivileged([
 	},
 ]);
 
-// Register ao-app:// as the deep-link protocol for WorkOS auth callbacks.
-// Must run before app.whenReady(). The local-only build has no AO Cloud, so it
-// does not claim the protocol.
-if (!LOCAL_ONLY_BUILD) registerCloudProtocol();
 if (!app.requestSingleInstanceLock()) {
 	app.exit(0);
 }
@@ -1018,9 +999,7 @@ async function createWindowInternal(): Promise<void> {
 
 	browserViewHost = createBrowserViewHost({
 		onTabCloseFailure: createBrowserCloseDiagnostics(browserProfileStateDir(), app.getVersion()),
-		// Agent tabs: only a connected host's or a cloud session's own
-		// agent-browser viewer may report the remote page a Browser tab shows.
-		isAgentBrowserUrl: (url) => remoteRegistry.isAgentBrowserUrl(url) || cloudAgentProxy.isAgentBrowserUrl(url),
+		isAgentBrowserUrl: () => false,
 		mainWindow,
 		shellWebContents,
 		ipcMain,
@@ -1501,11 +1480,6 @@ function daemonEnv(forceKeep = keepDaemonAlive(process.env)): NodeJS.ProcessEnv 
 				? path.join(process.resourcesPath, "acp-runtime")
 				: path.join(app.getAppPath(), "resources", "acp-runtime")),
 		...(bundledTmuxBinary ? { AO_TMUX_BINARY: bundledTmuxBinary, AO_TMUX_SOCKET_NAME: "ao" } : {}),
-		// The packaged macOS app ships cloudflared, so turning on remote access
-		// never waits for an install. An explicit AO_CLOUDFLARED_PATH still wins.
-		...(app.isPackaged && process.platform === "darwin"
-			? { AO_CLOUDFLARED_PATH: process.env.AO_CLOUDFLARED_PATH ?? path.join(process.resourcesPath, "cloudflared", "cloudflared") }
-			: {}),
 	};
 	// In dev mode, inject isolation defaults so the dev daemon never collides with
 	// the installed app. User-set env vars take priority (checked first).
@@ -2749,30 +2723,6 @@ async function chooseDirectory(title: string, defaultPath?: string): Promise<str
 	return result.filePaths[0] ?? null;
 }
 
-const remoteRegistry = new RemoteRegistry((entry) => {
-	// Node reports "null" for the custom app:// origin; only Vite's HTTP URL
-	// needs parsing. Never reflect an arbitrary request Origin here.
-	const devUrl = typeof MAIN_WINDOW_VITE_DEV_SERVER_URL === "undefined" ? undefined : MAIN_WINDOW_VITE_DEV_SERVER_URL;
-	return startRemoteProxy(entry, devUrl ? new URL(devUrl).origin : RENDERER_ORIGIN);
-});
-// Local-only build: no remote hosts. The stubs answer the renderer's
-// remote-host calls with an empty list instead of connecting anywhere.
-if (LOCAL_ONLY_BUILD) {
-	installLocalOnlyRemotesIpc(ipcMain);
-} else {
-	registerRemotesIpc(ipcMain, {
-		file: remotesFilePath(),
-		registry: remoteRegistry,
-		requireAccount: async () => {
-			if (!await getCloudSession(cloudDataDir())) throw new Error("Sign in to AO Cloud to use remote hosts.");
-		},
-		getAccountId: async () => (await getCloudSession(cloudDataDir()))?.user.id ?? "",
-		localIdentity: createLocalHostIdentity(() => daemonStatus.state === "ready" && daemonStatus.port
-			? { port: daemonStatus.port, pid: daemonStatus.pid, generation: daemonAttachmentGeneration }
-			: null),
-	});
-}
-
 ipcMain.handle("app:chooseDirectory", async (_event, input?: string | { title?: string; defaultPath?: string }) => {
 	const title = typeof input === "string"
 		? input
@@ -3209,103 +3159,7 @@ ipcMain.on(TRAY_RENDERER_READY_CHANNEL, (event) => {
 	}
 });
 
-// Cloud auth IPC — cloud:getSession, cloud:signIn, cloud:signOut.
-// Data dir resolves to ~/.ao (prod) or ~/.ao/dev (dev) matching daemon conventions.
-function cloudDataDir(): string {
-	return isDev
-		? path.join(os.homedir(), ".ao", DEV_STATE_SUBDIR)
-		: path.join(os.homedir(), ".ao");
-}
-
-// Cloud sessions' agent browsers, served to the Browser panel's agent tabs.
-const cloudAgentProxy: ReturnType<typeof createCloudAgentProxy> = LOCAL_ONLY_BUILD
-	? { agentBrowserUrl: async () => "", isAgentBrowserUrl: () => false, close: async () => undefined }
-	: createCloudAgentProxy(cloudDataDir);
-
-function notifyRenderersOfCloudSession(account: import("./shared/cloud-account").CloudAccount | null): void {
-	if (!account) {
-		void remoteRegistry.disconnectAll();
-		void cloudAgentProxy.close();
-	}
-	const contents = getShellWebContents();
-	if (!contents || contents.isDestroyed()) return;
-	contents.send("cloud:sessionChanged", account);
-}
-
-// Local-only build: no AO Cloud. The stubs keep the renderer signed out and
-// refuse control-plane requests; none of them touches the network.
-if (LOCAL_ONLY_BUILD) {
-	installLocalOnlyCloudIpc(ipcMain);
-} else {
-	installCloudIPC(cloudDataDir, notifyRenderersOfCloudSession);
-}
-
-// Dev-only local (email/password) sign-in against a loopback Docker control
-// plane running AO_CLOUD_LOCAL_AUTH. Gated to unpackaged/dev builds + loopback
-// CP inside the handlers; a no-op surface for production/WorkOS users.
-if (!LOCAL_ONLY_BUILD) installCloudLocalAuthIPC(cloudDataDir, notifyRenderersOfCloudSession);
-
-// Cloud control-plane proxy IPC — cloudCp:request/openStream/closeStream.
-// CP calls go through main so the WorkOS bearer token never reaches a renderer.
-if (!LOCAL_ONLY_BUILD) {
-	installCloudCpProxy(cloudDataDir);
-	ipcMain.handle("cloudCp:agentBrowserUrl", (_event, baseUrl: unknown, orgId: unknown, sessionId: unknown) =>
-		cloudAgentProxy.agentBrowserUrl(baseUrl, orgId, sessionId));
-}
-
-function focusCloudWindow(): void {
-	const window = BaseWindow.getAllWindows()[0];
-	if (!window) return;
-	if (window.isMinimized()) window.restore();
-	window.show();
-	window.focus();
-}
-
-async function handleCloudDeepLinkAndFocus(url: string): Promise<void> {
-	focusCloudWindow();
-	// Local-only build: an ao-app:// link (sign-in callback, billing return)
-	// only focuses the window; it never exchanges a token with AO Cloud.
-	if (LOCAL_ONLY_BUILD) return;
-	// Stripe Checkout and the Customer Portal return here (via the control
-	// plane's /billing/return page): open Settings on Billing, which re-reads
-	// the plan when it mounts.
-	if (isBillingDeepLink(url)) {
-		getShellWebContents()?.send(OPEN_SETTINGS_SHORTCUT_CHANNEL, "billing");
-		return;
-	}
-	try {
-		const session = await handleCloudDeepLink(url, cloudDataDir());
-		if (!session) return;
-		notifyRenderersOfCloudSession(session);
-	} catch (error) {
-		console.error("WorkOS callback failed:", error);
-		await showCloudSignInFailure(error);
-	}
-}
-
-function isBillingDeepLink(raw: string): boolean {
-	try {
-		const url = new URL(raw);
-		return url.protocol === "ao-app:" && url.hostname === "billing";
-	} catch {
-		return false;
-	}
-}
-
-// macOS: the OS sends the ao-app:// URL via the open-url event when the app is
-// already running. If the app is not running, the URL is passed in process.argv
-// on first launch (handled in app.whenReady below).
-app.on("open-url", (event, url) => {
-	event.preventDefault();
-	void handleCloudDeepLinkAndFocus(url);
-});
-
 app.on("second-instance", (_event, argv) => {
-	const deepLink = argv.find((value) => value.startsWith("ao-app://"));
-	if (deepLink) {
-		void handleCloudDeepLinkAndFocus(deepLink);
-		return;
-	}
 	// A folder dropped on the taskbar icon/shortcut while already running.
 	// Usually the renderer is already mounted and listening, so send directly
 	// — but this can still fire while the first instance is early in
@@ -3403,12 +3257,6 @@ app.whenReady().then(async () => {
 	// Local-only build: no desktop version-floor fetch at startup, and GitHub
 	// owners are loaded only when the UI asks (app:refreshGitHubOwners), not
 	// on launch.
-	if (app.isPackaged && !LOCAL_ONLY_BUILD) {
-		const { checkDesktopVersionFloor } = await import("./main/desktop-version-floor");
-		await checkDesktopVersionFloor().catch((err) =>
-			console.warn("desktop version floor check failed:", err),
-		);
-	}
 	if (!LOCAL_ONLY_BUILD) void refreshGitHubOwners();
 	const visibilityKillSwitched = (process.env.AO_TELEMETRY_DISABLED_EVENTS ?? "").split(",").some((name) => name.trim() === "ao.agent_switch.visibility_failure");
 	// The approved release gate is intentionally closed. Tests inject the
@@ -3562,13 +3410,6 @@ app.whenReady().then(async () => {
 	if (!daemonStartsWithWindow) void startDaemon();
 	if (!LOCAL_ONLY_BUILD) initAutoUpdates();
 
-	// Windows/Linux: on first launch, the deep-link URL may arrive as a
-	// process.argv entry (e.g. ao-app://callback?token=...).
-	const deepLinkArg = process.argv.find((a) => a.startsWith("ao-app://"));
-	if (deepLinkArg) {
-		void handleCloudDeepLinkAndFocus(deepLinkArg);
-	}
-
 	// Windows/Linux: a folder dropped on the taskbar icon/shortcut while the
 	// app was not running launches it with the folder's path in argv. The
 	// renderer isn't mounted yet — queue it, flushed on TRAY_RENDERER_READY_CHANNEL.
@@ -3631,8 +3472,6 @@ app.on("before-quit", (event) => {
 			};
 			const cleanup = Promise.all([
 				disposeAllBrowserViewHosts(),
-				remoteRegistry.closeAll(),
-				cloudAgentProxy.close(),
 				telemetryPolicyController?.close() ?? Promise.resolve(),
 				retireSides(),
 			]);

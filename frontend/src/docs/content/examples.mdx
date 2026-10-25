@@ -1,6 +1,6 @@
 ---
 title: Examples
-description: Practical workflows for desktop sessions, Chat and TUI, pull requests, reviews, previews, and mobile.
+description: Practical workflows for desktop sessions, Chat and TUI, pull requests, reviews, and previews.
 ---
 
 These examples use capabilities shipped in the current Go daemon and Electron desktop app. They do not rely on the retired TypeScript plugin configuration or an `examples/` directory.
@@ -101,15 +101,6 @@ ao browser screenshot
 ```
 
 Temporary network-metadata capture must be started explicitly and expires automatically. It omits request and response bodies plus sensitive values.
-
-## Pair the mobile app
-
-1. Open desktop settings and choose **Connect Mobile**.
-2. Scan the pairing QR from the mobile app; it fills the host, port, connection password, and any secure transport mode automatically.
-3. Treat the QR as a bearer credential and do not share it or screenshots of it. Rotate the connection password in desktop settings if it is exposed.
-4. Create or open a session from the phone.
-
-Use direct LAN access only on a trusted network. Wait for a ready QR; available secure remote endpoints can be added to its offer as setup completes. See [Connect Mobile](/configuration/remote-access). Turning it off closes the authenticated listener.
 
 ## Useful CLI checks
 

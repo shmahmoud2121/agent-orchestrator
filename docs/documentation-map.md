@@ -28,7 +28,6 @@ being listed in the contract layer does not make their prose drift-proof.
 | [docs/backend-code-structure.md](backend-code-structure.md) | Package ownership rules for the Go backend.                                  |
 | [docs/development.md](development.md)                       | Prerequisites, build, test, and troubleshooting for local development.       |
 | [docs/STATUS.md](STATUS.md)                                 | What ships on `main` today and what is in flight.                            |
-| [docs/documentation-coverage.md](documentation-coverage.md) | Public-manual coverage, release baseline, and unverified hands-on paths.     |
 | [docs/adr/](adr/)                                           | Architecture decision records: why a boundary exists, not just what it is.   |
 | https://docs.orchestrator.inc                                          | Published product documentation for end users.                               |
 | [frontend/src/docs/content/](../frontend/src/docs/content/)  | MDX sources for the public manual; `meta.json` files preserve navigation and order. |
@@ -42,10 +41,7 @@ separately. For user flows, check the renderer and daemon wiring as well as
 DTOs. The public manual uses the latest stable desktop release as its user
 baseline: **v0.13.3, published 1 October 2026 UTC** at the time of this review.
 Contributor docs such as `docs/STATUS.md` describe the checked-out revision of
-`main`, which can be ahead of that release. Gated Cloud behavior needs a
-separate deployed-environment check; source and a healthy public endpoint do
-not prove an authenticated user journey. The [coverage checklist](documentation-coverage.md)
-records those limits and any post-release differences.
+`main`, which can be ahead of that release.
 
 ## Machine-readable contract layer
 
@@ -56,7 +52,6 @@ records those limits and any post-release differences.
 | `backend/internal/storage/sqlite/gen/`                                 | Query/DTO code for SQLite storage                                       | `backend/internal/storage/sqlite/queries/*` + migrations via `npm run sqlc`                                            | `sqlc-drift` job in `.github/workflows/go.yml`                                                                                                                           |
 | [AGENTS.md](../AGENTS.md)                                              | Agent operating contract: repo layout, commands, hard rules, PR hygiene | Hand-written; `CLAUDE.md` is a pointer to it                                                                           | Not machine-checked. The hard rules it names are enforced by tests (for example loopback-only routing, status derivation) rather than by a doc gate.                     |
 | `backend/internal/skillassets/using-ao/`                               | The `ao` CLI catalog installed into agent workspaces                    | Hand-written Markdown with YAML frontmatter, embedded in the binary                                                    | `TestEmbeddedSkillFrontmatterIsValidYAML` and sibling tests in `backend/internal/skillassets`                                                                            |
-| `MobileAPIVersion` in `backend/internal/httpd/controllers/identity.go` | Contract version negotiated by the mobile client                        | Go constant                                                                                                            | Bump rule documented in the constant's comment and `docs/adr/0003-unauthenticated-identity-probe.md`                                                                     |
 | `ao <command> --help`                                                  | Authoritative flag list for every CLI command                           | Cobra command definitions in `backend/internal/cli/`                                                                   | Table tests in `backend/internal/cli/*_test.go`                                                                                                                          |
 
 The CLI's hand-mirrored DTOs (`backend/internal/cli/`) are a deliberate manual

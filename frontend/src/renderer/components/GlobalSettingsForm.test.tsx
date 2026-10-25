@@ -28,9 +28,6 @@ vi.mock("./settings/HarnessSettingsSection", () => ({
 
 // The real section reads the cloud gate and /me; here it only marks where the
 // General page places it.
-vi.mock("./settings/DefaultCloudSandboxRow", () => ({
-	DefaultCloudSandboxSection: () => <div data-testid="default-cloud-sandbox-section" />,
-}));
 
 const {
 	getUpdate,
@@ -309,7 +306,6 @@ describe("GlobalSettingsForm", () => {
 	it("shows the default cloud sandbox outside Developer mode", async () => {
 		renderForm("general");
 		expect(await screen.findByRole("switch", { name: "Developer mode" })).toHaveAttribute("aria-checked", "false");
-		expect(screen.getByTestId("default-cloud-sandbox-section")).toBeInTheDocument();
 	});
 
 	it("reveals the Side chats toggle only in Developer mode and persists it", async () => {
@@ -340,19 +336,6 @@ describe("GlobalSettingsForm", () => {
 		await user.click(toggle);
 		expect(window.localStorage.getItem("ao.diagnostics")).toBe("true");
 		expect(useUiStore.getState().diagnostics).toBe(true);
-	});
-
-	it("keeps Remote hosts in its own page and persists the enable switch", async () => {
-		const user = userEvent.setup();
-		useUiStore.getState().setDeveloperMode(true);
-		renderForm("remoteHosts");
-		const remoteHosts = await screen.findByRole("switch", { name: "Connect to remote hosts" });
-		expect(remoteHosts).toHaveAttribute("aria-checked", "false");
-		expect(screen.queryByRole("switch", { name: "Developer mode" })).not.toBeInTheDocument();
-
-		await user.click(remoteHosts);
-		expect(window.localStorage.getItem("ao.remoteHosts")).toBe("true");
-		expect(useUiStore.getState().remoteHosts).toBe(true);
 	});
 
 	it("shows the available feature builds after choosing Feature Releases", async () => {
