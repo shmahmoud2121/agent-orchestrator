@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/google/uuid"
@@ -36,7 +37,10 @@ func (r *Reader) ReadAgentSwitchFailureAuthority(ctx context.Context) (ports.Age
 		}
 		return ports.AgentSwitchFailureAuthoritySnapshot{}, fmt.Errorf("inspect telemetry policy authority: %w", err)
 	}
-	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Mode().Perm()&0o077 != 0 {
+	// Go reports 0666 for every writable file on Windows, where access is set by
+	// ACLs rather than mode bits, so the owner-only check would refuse every
+	// policy file there.
+	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || (runtime.GOOS != "windows" && info.Mode().Perm()&0o077 != 0) {
 		return ports.AgentSwitchFailureAuthoritySnapshot{}, errors.New("telemetry policy authority is unsafe")
 	}
 	file, err := os.Open(r.path)
