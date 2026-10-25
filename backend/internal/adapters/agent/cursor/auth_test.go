@@ -1,5 +1,3 @@
-//go:build retired
-
 package cursor
 
 import (

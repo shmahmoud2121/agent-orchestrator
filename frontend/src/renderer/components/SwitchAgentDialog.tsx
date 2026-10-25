@@ -151,7 +151,7 @@ function SwitchTargetPicker({
 	value: SwitchAgentHarness;
 }) {
 	const { t } = useTranslation();
-	const registered = new Set(useAgentReadinessQuery(true, hostId).data?.agents.map((agent) => agent.id) ?? []);
+	const registered = new Set(useAgentReadinessQuery(true, hostId).data?.agents?.map((agent) => agent.id) ?? []);
 	const options = ALL_SWITCH_AGENT_OPTIONS.filter((option) => registered.has(option.value)).map((option) => ({
 		...option,
 		disabled: !canSwitchAgentHarness(option.value, mode) || option.value === currentHarness,

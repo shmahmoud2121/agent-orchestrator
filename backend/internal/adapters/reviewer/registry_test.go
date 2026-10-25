@@ -125,8 +125,8 @@ func TestResolverInvalidatesOneReviewersBinary(t *testing.T) {
 
 // Every reviewer built on a caching worker plugin forwards the invalidation.
 func TestCachingReviewersForwardBinaryInvalidation(t *testing.T) {
-	cached := []domain.ReviewerHarness{domain.ReviewerClaudeCode, domain.ReviewerCodex, domain.ReviewerOpenCode}
-	if retiredReviewersEnabled { cached = append(cached, domain.ReviewerCopilot, domain.ReviewerCursor,
+	cached := []domain.ReviewerHarness{domain.ReviewerClaudeCode, domain.ReviewerCodex, domain.ReviewerOpenCode, domain.ReviewerCursor}
+	if retiredReviewersEnabled { cached = append(cached, domain.ReviewerCopilot,
 		domain.ReviewerKimchi, domain.ReviewerKiloCode, domain.ReviewerOpenCodeV2) }
 	for _, harness := range cached {
 		resolver, err := NewResolver()

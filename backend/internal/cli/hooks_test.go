@@ -27,6 +27,13 @@ type activityCapture struct {
 	hits int
 }
 
+func skipRetiredAgent(t *testing.T) {
+	t.Helper()
+	if !retiredTestAgentsAvailable {
+		t.Skip("agent is retired in this build")
+	}
+}
+
 func TestClaudeSubmissionContextMatchesDurableNonce(t *testing.T) {
 	t.Setenv("AO_SESSION_ID", "qa-1")
 	t.Setenv("AO_RUNTIME_LAUNCH_ID", "launch-1")
@@ -402,6 +409,7 @@ func TestHooks_ReviewerActivityOmitsToolCorrelationFields(t *testing.T) {
 }
 
 func TestHooks_MemcodeReportsSessionChangesAfterRestore(t *testing.T) {
+	skipRetiredAgent(t)
 	t.Setenv("AO_SESSION_ID", "ao-7")
 	t.Setenv("AO_MEMCODE_INTERACTIVE_RESTORE", "1")
 	t.Setenv("AO_MEMCODE_RESTORE_TARGET", "sess_a0a0a0a0")
@@ -500,6 +508,7 @@ func TestHooks_NotificationReportsBlocked(t *testing.T) {
 }
 
 func TestHooks_AiderNotificationDoesNotReadInheritedStdin(t *testing.T) {
+	skipRetiredAgent(t)
 	t.Setenv("AO_SESSION_ID", "ao-7")
 	cfg := setConfigEnv(t)
 	srv, capture := activityServer(t, http.StatusOK, `{"ok":true}`)
@@ -862,6 +871,7 @@ func TestHooks_StopReportsOnlyMainAssistantCheckpoint(t *testing.T) {
 }
 
 func TestHooks_ContinueStopReportsClaudeCompatibleConversationFacts(t *testing.T) {
+	skipRetiredAgent(t)
 	t.Setenv("AO_SESSION_ID", "ao-7")
 	cfg := setConfigEnv(t)
 	srv, capture := activityServer(t, http.StatusOK, `{"ok":true}`)
@@ -1164,6 +1174,7 @@ func TestHookAgentSessionIDPrefersClineDurableRootSession(t *testing.T) {
 }
 
 func TestHooksClineReportsDurableRootSession(t *testing.T) {
+	skipRetiredAgent(t)
 	t.Setenv("AO_SESSION_ID", "ao-7")
 	cfg := setConfigEnv(t)
 	srv, capture := activityServer(t, http.StatusOK, `{"ok":true}`)
@@ -1198,6 +1209,7 @@ func TestHookAgentSessionIDReadsClineTaskID(t *testing.T) {
 }
 
 func TestHooks_ClineSessionStartReportsTaskID(t *testing.T) {
+	skipRetiredAgent(t)
 	t.Setenv("AO_SESSION_ID", "ao-7")
 	cfg := setConfigEnv(t)
 	srv, capture := activityServer(t, http.StatusOK, `{"ok":true}`)
@@ -1451,6 +1463,9 @@ func TestHooks_ClaudeCodeBlankSessionIDIsIgnored(t *testing.T) {
 func TestHooks_ClaudeCompatibleSessionStartReportsAgentSessionID(t *testing.T) {
 	for _, agent := range []string{"grok", "muse"} {
 		t.Run(agent, func(t *testing.T) {
+			if agent == "muse" {
+				skipRetiredAgent(t)
+			}
 			t.Setenv("AO_SESSION_ID", "ao-7")
 			cfg := setConfigEnv(t)
 			srv, capture := activityServer(t, http.StatusOK, `{"ok":true}`)
@@ -1477,6 +1492,7 @@ func TestHooks_ClaudeCompatibleSessionStartReportsAgentSessionID(t *testing.T) {
 }
 
 func TestHooks_MuseUserPromptReportsActive(t *testing.T) {
+	skipRetiredAgent(t)
 	t.Setenv("AO_SESSION_ID", "ao-7")
 	cfg := setConfigEnv(t)
 	srv, capture := activityServer(t, http.StatusOK, `{"ok":true}`)
@@ -1509,6 +1525,9 @@ func TestHooks_RegisteredHarnessSessionStartReportsAgentSessionID(t *testing.T) 
 	}
 	for agent, wantState := range sessionStartState {
 		t.Run(agent, func(t *testing.T) {
+			if agent != "opencode" && agent != "gemini" {
+				skipRetiredAgent(t)
+			}
 			t.Setenv("AO_SESSION_ID", "ao-7")
 			cfg := setConfigEnv(t)
 			srv, capture := activityServer(t, http.StatusOK, `{"ok":true}`)
@@ -1567,6 +1586,7 @@ func TestHooks_GeminiBeforeAgentReturnsStandingInstructions(t *testing.T) {
 }
 
 func TestHooks_CommandCodeSessionStartInjectsSystemPromptContext(t *testing.T) {
+	skipRetiredAgent(t)
 	t.Setenv("AO_SESSION_ID", "ao-7")
 	cfg := setConfigEnv(t)
 	promptDir := filepath.Join(cfg.dataDir, "prompts", "ao-7")
@@ -1610,6 +1630,7 @@ func TestHooks_CommandCodeSessionStartInjectsSystemPromptContext(t *testing.T) {
 }
 
 func TestHooks_VibePostAgentReportsSessionIDAndIdle(t *testing.T) {
+	skipRetiredAgent(t)
 	t.Setenv("AO_SESSION_ID", "ao-7")
 	cfg := setConfigEnv(t)
 	srv, capture := activityServer(t, http.StatusOK, `{"ok":true}`)
@@ -1634,6 +1655,7 @@ func TestHooks_VibePostAgentReportsSessionIDAndIdle(t *testing.T) {
 }
 
 func TestHooks_AgySessionStartReportsConversationID(t *testing.T) {
+	skipRetiredAgent(t)
 	t.Setenv("AO_SESSION_ID", "ao-7")
 	cfg := setConfigEnv(t)
 	promptDir := filepath.Join(cfg.dataDir, "prompts", "ao-7")
@@ -1671,6 +1693,7 @@ func TestHooks_AgySessionStartReportsConversationID(t *testing.T) {
 // conversation id as session_id, and its executor reads additionalContext from
 // the top level of stdout; hookSpecificOutput is ignored.
 func TestHooks_OpenHandsUserPromptSubmitInjectsInstructions(t *testing.T) {
+	skipRetiredAgent(t)
 	t.Setenv("AO_SESSION_ID", "ao-7")
 	cfg := setConfigEnv(t)
 	promptDir := filepath.Join(cfg.dataDir, "prompts", "ao-7")
@@ -1710,6 +1733,7 @@ func TestHooks_OpenHandsUserPromptSubmitInjectsInstructions(t *testing.T) {
 }
 
 func TestHooks_OpenHandsSessionStartAndStopEmitNoOutput(t *testing.T) {
+	skipRetiredAgent(t)
 	for _, tc := range []struct {
 		event string
 		state string
@@ -1745,6 +1769,7 @@ func TestHooks_OpenHandsSessionStartAndStopEmitNoOutput(t *testing.T) {
 }
 
 func TestHooks_AgyModernEventsReturnValidJSON(t *testing.T) {
+	skipRetiredAgent(t)
 	for _, event := range []string{"pre-invocation", "post-tool-use", "stop"} {
 		t.Run(event, func(t *testing.T) {
 			t.Setenv("AO_SESSION_ID", "ao-7")
@@ -1789,6 +1814,7 @@ func TestHooks_AgyModernEventsReturnValidJSON(t *testing.T) {
 }
 
 func TestHooks_CopilotSessionStartReportsSessionID(t *testing.T) {
+	skipRetiredAgent(t)
 	t.Setenv("AO_SESSION_ID", "ao-7")
 	cfg := setConfigEnv(t)
 	srv, capture := activityServer(t, http.StatusOK, `{"ok":true}`)
@@ -1813,6 +1839,7 @@ func TestHooks_CopilotSessionStartReportsSessionID(t *testing.T) {
 }
 
 func TestHooks_DevinSessionStartInjectsSystemPromptContext(t *testing.T) {
+	skipRetiredAgent(t)
 	t.Setenv("AO_SESSION_ID", "ao-7")
 	cfg := setConfigEnv(t)
 	promptDir := filepath.Join(cfg.dataDir, "prompts", "ao-7")
@@ -1853,6 +1880,7 @@ func TestHooks_DevinSessionStartInjectsSystemPromptContext(t *testing.T) {
 }
 
 func TestHooks_AgySessionStartInjectsSystemPromptContext(t *testing.T) {
+	skipRetiredAgent(t)
 	t.Setenv("AO_SESSION_ID", "ao-7")
 	cfg := setConfigEnv(t)
 	promptDir := filepath.Join(cfg.dataDir, "prompts", "ao-7")

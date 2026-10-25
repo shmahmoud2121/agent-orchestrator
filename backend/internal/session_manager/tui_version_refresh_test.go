@@ -8,6 +8,9 @@ import (
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/codex"
+	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/cursor"
+	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/gemini"
+	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/grok"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/opencode"
 	agentregistry "github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/registry"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
@@ -116,7 +119,8 @@ func TestTerminalRestartAfterInputThatChangedNothing(t *testing.T) {
 func TestTerminalRefreshCapabilities(t *testing.T) {
 	agents := map[domain.AgentHarness]ports.Agent{
 		domain.HarnessClaudeCode: claudecode.New(), domain.HarnessCodex: codex.New(),
-		domain.HarnessOpenCode: opencode.New(),
+		domain.HarnessOpenCode: opencode.New(), domain.HarnessGrok: grok.New(),
+		domain.HarnessCursor: cursor.New(), domain.HarnessGemini: gemini.New(),
 	}
 	for harness, agent := range retiredTerminalRefreshAgents() { agents[harness] = agent }
 	for harness, agent := range agents {
@@ -389,23 +393,39 @@ func TestRefreshCapableHarnessLaunchesAreSupervised(t *testing.T) {
 }
 
 func TestTerminalRefreshSupportMatrix(t *testing.T) {
-	supported := map[string]bool{}
-	for _, harness := range domain.AllHarnesses {
-		supported[string(harness)] = true
+	noRefresh := map[string]bool{
+		"aider": true, "continue": true, "deepseek-harness": true, "memcode": true, "unreal-agent": true,
 	}
-	for _, name := range []string{"aider", "continue", "deepseek-harness", "memcode", "unreal-agent"} {
-		supported[name] = false
+	active := map[string]bool{
+		"claude-code": true, "codex": true, "opencode": true,
+		"cursor": true, "grok": true, "gemini": true,
 	}
+	registered := map[string]bool{}
 	for _, adapter := range agentregistry.Constructors() {
 		name := adapter.Manifest().ID
+		registered[name] = true
 		capability, ok := adapter.(ports.AgentTerminalVersionRefresher)
 		got := ok && capability.SupportsTerminalVersionRefresh()
-		if got != supported[name] {
-			t.Errorf("%s refresh capability = %t, want %t", name, got, supported[name])
+		if got == noRefresh[name] {
+			t.Errorf("%s refresh capability = %t, want %t", name, got, !noRefresh[name])
 		}
-		delete(supported, name)
 	}
-	if len(supported) != 0 {
-		t.Fatalf("supported harnesses missing from registry: %v", supported)
+	for name := range active {
+		if !registered[name] {
+			t.Errorf("active harness %s missing from registry", name)
+		}
+	}
+	if retiredTestAgentsAvailable {
+		for _, harness := range domain.AllHarnesses {
+			if !registered[string(harness)] {
+				t.Errorf("retired build missing harness %s", harness)
+			}
+		}
+		return
+	}
+	for name := range registered {
+		if !active[name] {
+			t.Errorf("%s is registered in the default build", name)
+		}
 	}
 }

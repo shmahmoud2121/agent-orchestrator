@@ -144,6 +144,13 @@ beforeEach(() => {
 				response: { status: 200 },
 			};
 		}
+		if (path === "/api/v1/agents/readiness") {
+			return {
+				data: { agents: AGENT_OPTIONS.map((id) => ({ id })) },
+				error: undefined,
+				response: { status: 200 },
+			};
+		}
 		return { data: { switches: [] }, error: undefined, response: { status: 200 } };
 	});
 	postMock.mockReset();
@@ -174,10 +181,10 @@ describe("TerminalSwitchAgentButton", () => {
 		expect(screen.queryByRole("button", { name: "Switch agent" })).not.toBeInTheDocument();
 	});
 
-	it("renders for an fx TUI worker", async () => {
+	it("does not render for a retired fx TUI worker", () => {
 		renderControl({ ...worker, mode: "tui", provider: "fx" });
 
-		expect(await screen.findByRole("button", { name: "Switch agent" })).toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "Switch agent" })).not.toBeInTheDocument();
 	});
 
 	it("does not expose switching from an fx Chat worker", () => {

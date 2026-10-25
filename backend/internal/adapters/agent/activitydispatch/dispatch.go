@@ -11,7 +11,9 @@ package activitydispatch
 import (
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/codex"
+	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/cursor"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/fake"
+	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/gemini"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/opencode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 )
@@ -26,6 +28,9 @@ var Derivers = map[string]DeriveFunc{
 	"claude-code": claudecode.DeriveActivityState,
 	"codex":       codex.DeriveActivityState,
 	"opencode":    opencode.DeriveActivityState,
+	"cursor":      cursor.DeriveActivityState,
+	"grok":        claudecode.DeriveActivityState,
+	"gemini":      gemini.DeriveActivityState,
 	"fake":        fake.DeriveActivityState,
 }
 

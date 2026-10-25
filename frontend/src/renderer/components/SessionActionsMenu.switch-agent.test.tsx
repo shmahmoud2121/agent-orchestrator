@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AGENT_OPTIONS } from "../lib/agent-options";
 import type { WorkspaceSession } from "../types/workspace";
 import { SessionActionsMenu } from "./SessionActionsMenu";
 import { SwitchAgentDialog } from "./SwitchAgentDialog";
@@ -105,6 +106,13 @@ beforeEach(() => {
 					source: "test",
 					stale: false,
 				},
+				error: undefined,
+				response: { status: 200 },
+			};
+		}
+		if (path === "/api/v1/agents/readiness") {
+			return {
+				data: { agents: AGENT_OPTIONS.map((id) => ({ id })) },
 				error: undefined,
 				response: { status: 200 },
 			};

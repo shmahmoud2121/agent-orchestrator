@@ -209,40 +209,49 @@ func TestWiring_AgentResolverResolvesRealAdapters(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, tc := range []struct {
+	cases := []struct {
 		harness domain.AgentHarness
 		wantID  string
 	}{
 		{domain.HarnessClaudeCode, "claude-code"},
 		{domain.HarnessCodex, "codex"},
 		{domain.HarnessOpenCode, "opencode"},
-		{domain.HarnessGrok, "grok"},
 		{domain.HarnessCursor, "cursor"},
-		{domain.HarnessQwen, "qwen"},
-		{domain.HarnessCopilot, "copilot"},
-		{domain.HarnessKimi, "kimi"},
-		{domain.HarnessMuse, "muse"},
-		{domain.HarnessDroid, "droid"},
-		{domain.HarnessAmp, "amp"},
-		{domain.HarnessAgy, "agy"},
-		{domain.HarnessCrush, "crush"},
-		{domain.HarnessAider, "aider"},
-		{domain.HarnessGoose, "goose"},
-		{domain.HarnessAuggie, "auggie"},
-		{domain.HarnessContinue, "continue"},
-		{domain.HarnessDevin, "devin"},
-		{domain.HarnessCline, "cline"},
-		{domain.HarnessKiro, "kiro"},
-		{domain.HarnessKilocode, "kilocode"},
-		{domain.HarnessVibe, "vibe"},
-		{domain.HarnessPi, "pi"},
-		{domain.HarnessPrimeAgent, "prime-agent"},
-		{domain.HarnessAutohand, "autohand"},
-		{domain.HarnessFX, "fx"},
-		{domain.HarnessUnreal, "unreal-agent"},
-		{domain.HarnessCommandCode, "command-code"},
-		{domain.HarnessMemcode, "memcode"},
-	} {
+		{domain.HarnessGrok, "grok"},
+		{domain.HarnessGemini, "gemini"},
+	}
+	if retiredTestAgentsAvailable {
+		cases = append(cases, []struct {
+			harness domain.AgentHarness
+			wantID  string
+		}{
+			{domain.HarnessQwen, "qwen"},
+			{domain.HarnessCopilot, "copilot"},
+			{domain.HarnessKimi, "kimi"},
+			{domain.HarnessMuse, "muse"},
+			{domain.HarnessDroid, "droid"},
+			{domain.HarnessAmp, "amp"},
+			{domain.HarnessAgy, "agy"},
+			{domain.HarnessCrush, "crush"},
+			{domain.HarnessAider, "aider"},
+			{domain.HarnessGoose, "goose"},
+			{domain.HarnessAuggie, "auggie"},
+			{domain.HarnessContinue, "continue"},
+			{domain.HarnessDevin, "devin"},
+			{domain.HarnessCline, "cline"},
+			{domain.HarnessKiro, "kiro"},
+			{domain.HarnessKilocode, "kilocode"},
+			{domain.HarnessVibe, "vibe"},
+			{domain.HarnessPi, "pi"},
+			{domain.HarnessPrimeAgent, "prime-agent"},
+			{domain.HarnessAutohand, "autohand"},
+			{domain.HarnessFX, "fx"},
+			{domain.HarnessUnreal, "unreal-agent"},
+			{domain.HarnessCommandCode, "command-code"},
+			{domain.HarnessMemcode, "memcode"},
+		}...)
+	}
+	for _, tc := range cases {
 		agent, ok := resolver.Agent(tc.harness)
 		if !ok {
 			t.Fatalf("resolver has no agent for harness %q", tc.harness)
@@ -280,7 +289,7 @@ func TestWiring_ActiveTurnSteeringComesFromAdapters(t *testing.T) {
 	if !steers(domain.HarnessCodex) {
 		t.Error("codex declares SteersActiveTurn; want true from the adapter-backed policy")
 	}
-	if !steers(domain.HarnessPrimeAgent) {
+	if retiredTestAgentsAvailable && !steers(domain.HarnessPrimeAgent) {
 		t.Error("prime-agent declares SteersActiveTurn; want true from the adapter-backed policy")
 	}
 	for _, harness := range []domain.AgentHarness{domain.HarnessClaudeCode, domain.HarnessAider, "definitely-not-an-agent", ""} {
@@ -329,7 +338,11 @@ func TestWiring_UrgentNudgeGateComesFromAdapters(t *testing.T) {
 	}
 	safe := urgentNudgeWaitingInputSafe(agents)
 
-	for _, harness := range []domain.AgentHarness{domain.HarnessClaudeCode, domain.HarnessKimchi} {
+	positive := []domain.AgentHarness{domain.HarnessClaudeCode}
+	if retiredTestAgentsAvailable {
+		positive = append(positive, domain.HarnessKimchi)
+	}
+	for _, harness := range positive {
 		if !safe(harness) {
 			t.Errorf("harness %q reports permission dialogs as blocked; urgent nudge must be allowed at waiting_input", harness)
 		}

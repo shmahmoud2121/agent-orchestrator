@@ -1,5 +1,3 @@
-//go:build retired
-
 package grok
 
 import "context"

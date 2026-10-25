@@ -16,17 +16,19 @@ func TestDeriverTokensAreKnownHarnesses(t *testing.T) {
 }
 
 func TestSupportsHarness(t *testing.T) {
-	for _, h := range []domain.AgentHarness{domain.HarnessCodex, domain.HarnessClaudeCode, domain.HarnessOpenCode, domain.HarnessFake} {
+	for _, h := range []domain.AgentHarness{domain.HarnessCodex, domain.HarnessClaudeCode, domain.HarnessOpenCode, domain.HarnessCursor, domain.HarnessGrok, domain.HarnessGemini, domain.HarnessFake} {
 		if !SupportsHarness(h) { t.Errorf("SupportsHarness(%q) = false, want true", h) }
 	}
-	for _, h := range []domain.AgentHarness{domain.HarnessCrush, domain.HarnessOpenCodeV2, domain.HarnessCursor, ""} {
+	for _, h := range []domain.AgentHarness{domain.HarnessCrush, domain.HarnessOpenCodeV2, domain.HarnessAider, ""} {
 		if SupportsHarness(h) { t.Errorf("SupportsHarness(%q) = true, want false", h) }
 	}
 }
 
 func TestSignalCoverageForHarness(t *testing.T) {
-	if got := CoverageForHarness(domain.HarnessClaudeCode); got != SignalCoverageComplete {
-		t.Fatalf("Claude coverage = %v, want complete", got)
+	for _, h := range []domain.AgentHarness{domain.HarnessClaudeCode, domain.HarnessCursor, domain.HarnessGrok, domain.HarnessGemini} {
+		if got := CoverageForHarness(h); got != SignalCoverageComplete {
+			t.Errorf("%s coverage = %v, want complete", h, got)
+		}
 	}
 	for _, h := range []domain.AgentHarness{domain.HarnessContinue, domain.HarnessAider, domain.HarnessCommandCode, domain.HarnessMemcode} {
 		if got := CoverageForHarness(h); got != SignalCoverageNone { t.Errorf("retired %q coverage = %v, want none", h, got) }
@@ -34,7 +36,9 @@ func TestSignalCoverageForHarness(t *testing.T) {
 }
 
 func TestFullySupportsHarnessRequiresCompleteCoverage(t *testing.T) {
-	if !FullySupportsHarness(domain.HarnessClaudeCode) { t.Fatal("Claude Code needs complete coverage") }
+	for _, h := range []domain.AgentHarness{domain.HarnessClaudeCode, domain.HarnessCursor, domain.HarnessGrok, domain.HarnessGemini} {
+		if !FullySupportsHarness(h) { t.Errorf("%s needs complete coverage", h) }
+	}
 	if FullySupportsHarness(domain.HarnessContinue) || FullySupportsHarness(domain.HarnessAider) {
 		t.Fatal("retired adapters must not report full coverage")
 	}

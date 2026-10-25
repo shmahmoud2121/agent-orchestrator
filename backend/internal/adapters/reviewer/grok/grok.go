@@ -1,5 +1,3 @@
-//go:build retired
-
 // Package grok adapts Grok Build as an experimental user-approved AO reviewer.
 package grok
 

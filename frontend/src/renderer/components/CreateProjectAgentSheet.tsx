@@ -464,7 +464,7 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 	const manageLabel = managementLabelOverride ?? (manageView === "cloud" ? t("agentSelector.manageCloud") : t("agentSelector.manage"));
 	const managementAction = manageAgents ? { label: manageLabel, onSelect: management.requestManagement } : undefined;
 	const setupHint = retiredSelection
-		? <span className="text-xs text-warning" role="status">this agent is retired in this build</span>
+		? <span className="text-xs text-warning" role="status">{t("agentSelector.retired")}</span>
 		: needsSetup ? <span className="text-xs text-muted-foreground">{t("agentSelector.needsSetup")}</span> : null;
 
 	if (variant === "settings-row" || variant === "settings-control") {

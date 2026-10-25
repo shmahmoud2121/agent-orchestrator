@@ -8,7 +8,6 @@ import (
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/agy"
 	commandcodeagent "github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/commandcode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/copilot"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/cursor"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/deepseekharness"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/droid"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/kimchi"
@@ -21,7 +20,6 @@ import (
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/chatdriver/agyacp"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/chatdriver/commandcodeacp"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/chatdriver/copilotacp"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/chatdriver/cursoracp"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/chatdriver/deepseekharnessacp"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/chatdriver/droidacp"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/chatdriver/kimchiacp"
@@ -42,7 +40,6 @@ func addRetiredDrivers(r *Registry, log *slog.Logger) {
 	kimiPlugin := kimi.New(); r.add(kimiacp.New(kimiPlugin, log), kimiPlugin)
 	kimchiPlugin := kimchi.New(); r.add(kimchiacp.New(kimchiPlugin, log), kimchiPlugin)
 	piPlugin := pi.New(); r.add(piacp.New(piPlugin, log), piPlugin)
-	cursorPlugin := cursor.New(); r.add(cursoracp.New(cursorPlugin, log), cursorPlugin)
 	ompPlugin := omp.New(); r.add(ompacp.New(ompPlugin, log), ompPlugin)
 	qwenPlugin := qwen.New(); r.add(qwenacp.New(qwenPlugin, log), qwenPlugin)
 	unrealPlugin := unrealagent.New(); r.add(unrealchat.New(unrealPlugin, log), unrealPlugin)

@@ -1,5 +1,3 @@
-//go:build retired
-
 // Package grok implements the Grok Build (xAI) agent adapter.
 //
 // Grok Build is xAI's terminal coding agent (binary "grok"). It supports

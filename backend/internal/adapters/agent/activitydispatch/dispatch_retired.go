@@ -8,13 +8,10 @@ import (
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/aider"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/amp"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/auggie"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/cline"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/commandcode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/continueagent"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/cursor"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/droid"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/gemini"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/kimchi"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/kiro"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/memcode"
@@ -30,7 +27,6 @@ import (
 
 func registerRetiredDerivers(d map[string]DeriveFunc) {
 	d["command-code"] = commandcode.DeriveActivityState
-	d["grok"] = claudecode.DeriveActivityState
 	d["muse"] = muse.DeriveActivityState
 	d["omp"] = omp.DeriveActivityState
 	d["continue"] = continueagent.DeriveActivityState
@@ -48,9 +44,7 @@ func registerRetiredDerivers(d map[string]DeriveFunc) {
 	d["goose"] = activitystate.StandardDeriveActivityState
 	d["openhands"] = activitystate.StandardDeriveActivityState
 	d["devin"] = activitystate.StandardDeriveActivityState
-	d["cursor"] = cursor.DeriveActivityState
 	d["qwen"] = activitystate.StandardDeriveActivityState
-	d["gemini"] = gemini.DeriveActivityState
 	d["copilot"] = activitystate.StandardDeriveActivityState
 	d["kimi"] = activitystate.StandardDeriveActivityState
 	d["cline"] = cline.DeriveActivityState

@@ -8,10 +8,7 @@ import (
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/agy"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/amp"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/commandcode"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/cursor"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/fx"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/gemini"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/grok"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/memcode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/pi"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
@@ -32,8 +29,5 @@ func testMemcodeAfterStart(ctx context.Context, cfg ports.LaunchConfig) error {
 }
 func testMemcodeReadinessAgent() interface{ ports.Agent; ports.AgentPromptReadinessProvider } { return memcode.New() }
 func retiredTerminalRefreshAgents() map[domain.AgentHarness]ports.Agent {
-	return map[domain.AgentHarness]ports.Agent{
-		domain.HarnessPi: pi.New(), domain.HarnessGrok: grok.New(),
-		domain.HarnessCursor: cursor.New(), domain.HarnessGemini: gemini.New(),
-	}
+	return map[domain.AgentHarness]ports.Agent{domain.HarnessPi: pi.New()}
 }

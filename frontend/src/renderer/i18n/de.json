@@ -182,6 +182,7 @@
 	"agentSelector.manageCloud": "Harness-Verbindungen verwalten…",
 	"agentSelector.noneReady": "Keine Agenten bereit",
 	"agentSelector.needsSetup": "Einrichtung erforderlich",
+	"agentSelector.retired": "dieser Agent ist in diesem Build eingestellt",
 	"session.statusChecking": "Wird geprüft…",
 	"session.statusUnavailable": "Status nicht überprüfbar",
 	"artifactLink.unavailable": "Artefakt nicht verfügbar",

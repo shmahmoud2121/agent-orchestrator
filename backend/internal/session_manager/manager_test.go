@@ -7840,7 +7840,7 @@ func TestSpawn_RejectsUnknownHarness(t *testing.T) {
 func TestSpawn_StoredRetiredAgentExplainsHowToRecover(t *testing.T) {
 	st := newFakeStore()
 	st.projects["mer"] = domain.ProjectRecord{ID: "mer", Config: domain.ProjectConfig{
-		Worker: domain.RoleOverride{Harness: domain.HarnessCursor},
+		Worker: domain.RoleOverride{Harness: domain.HarnessAider},
 	}}
 	rt := &fakeRuntime{}
 	ws := &fakeWorkspace{}

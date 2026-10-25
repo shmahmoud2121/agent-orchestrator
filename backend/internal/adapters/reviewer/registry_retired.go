@@ -11,10 +11,8 @@ import (
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/cline"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/copilot"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/crush"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/cursor"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/devin"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/droid"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/grok"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/kilocode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/kimchi"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/kimi"
@@ -30,7 +28,7 @@ const retiredReviewersEnabled = true
 func retiredConstructors() []Adapter {
 	return []Adapter{
 		agy.New(), aider.New(), amp.New(), auggie.New(), autohand.New(), cline.New(),
-		copilot.New(), crush.New(), cursor.New(), devin.New(), droid.New(), grok.New(),
+		copilot.New(), crush.New(), devin.New(), droid.New(),
 		kilocode.New(), kimchi.New(), kimi.New(), kiro.New(), muse.New(), opencodev2.New(), pi.New(),
 	}
 }

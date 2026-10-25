@@ -13,5 +13,7 @@ func registeredReviewerHarnesses() []domain.ReviewerHarness {
 		domain.ReviewerClaudeCode,
 		domain.ReviewerCodex,
 		domain.ReviewerOpenCode,
+		domain.ReviewerCursor,
+		domain.ReviewerGrok,
 	}
 }

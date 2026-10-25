@@ -276,12 +276,12 @@ describe("CreateProjectAgentSheet", () => {
 
 	it("explains a stored retired agent and lets the user choose a registered one", async () => {
 		const onChange = vi.fn();
-		render(<RequiredAgentField id="agent" label="Agent" placeholder="Choose agent" value="cursor" variant="settings-row"
+		render(<RequiredAgentField id="agent" label="Agent" placeholder="Choose agent" value="aider" variant="settings-row"
 			onChange={onChange} agents={[agentReadiness("claude-code", "Claude Code")]} />);
 		const trigger = screen.getByRole("button", { name: "Agent" });
 		expect(trigger).toHaveTextContent("this agent is retired in this build");
 		await userEvent.click(trigger);
-		expect(screen.queryByRole("menuitem", { name: /Cursor/ })).not.toBeInTheDocument();
+		expect(screen.queryByRole("menuitem", { name: /Aider/ })).not.toBeInTheDocument();
 		await userEvent.click(screen.getByRole("menuitem", { name: /Claude Code/ }));
 		expect(onChange).toHaveBeenCalledWith("claude-code");
 	});

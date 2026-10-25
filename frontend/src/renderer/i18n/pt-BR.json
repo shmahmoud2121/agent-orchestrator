@@ -182,6 +182,7 @@
 	"agentSelector.manageCloud": "Gerenciar conexões de harnesses…",
 	"agentSelector.noneReady": "Nenhum agente pronto",
 	"agentSelector.needsSetup": "Requer configuração",
+	"agentSelector.retired": "este agente foi descontinuado nesta versão",
 	"session.statusChecking": "Verificando…",
 	"session.statusUnavailable": "Não foi possível verificar",
 	"artifactLink.unavailable": "Artefato indisponível",
