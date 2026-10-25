@@ -3,8 +3,6 @@ package agentauth
 import (
 	"strings"
 
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/copilot"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/kimi"
 	"github.com/aoagents/agent-orchestrator/backend/internal/service/shellterm"
 )
 
@@ -92,7 +90,7 @@ func kimiLoginPlan() Plan {
 	p := plan("kimi", ActionLogin, "Log in to Kimi", []string{"kimi"}, "Kimi opens its login picker automatically", "https://moonshotai.github.io/kimi-code/en/")
 	p.initialInput = "/login"
 	p.initialInputReadyStates = []shellterm.InitialInputReadyState{{Text: "Run /login or /provider to get started."}}
-	p.prepareWorkspace = kimi.EnsureWorkspaceTrusted
+	p.prepareWorkspace = prepareRetiredKimiWorkspace
 	return p
 }
 
@@ -127,7 +125,7 @@ func copilotLoginPlan() Plan {
 	p.initialInput = "/login"
 	p.initialInputReadyStates = []shellterm.InitialInputReadyState{{Text: "/ commands"}}
 	p.sendInitialInputOnReadyTimeout = true
-	p.prepareWorkspace = copilot.EnsureWorkspaceTrusted
+	p.prepareWorkspace = prepareRetiredCopilotWorkspace
 	return p
 }
 

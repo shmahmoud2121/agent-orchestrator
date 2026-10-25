@@ -182,6 +182,7 @@
 	"agentSelector.manageCloud": "Manage harness connections…",
 	"agentSelector.noneReady": "No agents ready",
 	"agentSelector.needsSetup": "Needs setup",
+	"agentSelector.retired": "this agent is retired in this build",
 	"session.statusChecking": "Checking…",
 	"session.statusUnavailable": "Unable to verify",
 	"artifactLink.unavailable": "Artifact unavailable",

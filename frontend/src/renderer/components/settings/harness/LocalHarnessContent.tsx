@@ -194,9 +194,10 @@ export function LocalHarnessContent({ focusAgentId, hostId, search, onDetailChan
 	};
 	const needsAuthentication = (agentId: AgentId): boolean => needsHarnessLogin(agentAuthPlans.get(agentId), readinessAgents.get(agentId)?.authentication.state);
 	const normalizedSearch = search.trim().toLowerCase();
-	const targetAgentId = AGENT_OPTIONS.find((agentId) => agentId === focusAgentId) ?? null;
+	const registered = new Set(readinessAgents.keys());
+	const targetAgentId = AGENT_OPTIONS.find((agentId) => agentId === focusAgentId && registered.has(agentId)) ?? null;
 	const rows = AGENT_OPTIONS
-		.filter((agentId) => agentId === targetAgentId || agentId === authWorkflow?.agentId || agentLabel(agentId).toLowerCase().includes(normalizedSearch))
+		.filter((agentId) => registered.has(agentId) && (agentId === targetAgentId || agentId === authWorkflow?.agentId || agentLabel(agentId).toLowerCase().includes(normalizedSearch)))
 		.sort((left, right) => {
 			const leftAgent = readinessAgents.get(left);
 			const rightAgent = readinessAgents.get(right);

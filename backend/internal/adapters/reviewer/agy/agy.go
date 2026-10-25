@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package agy defines AO's experimental host-trusted Antigravity reviewer.
 package agy
 

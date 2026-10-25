@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/authprobe"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/opencodev2"
+	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/opencode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 	aoprocess "github.com/aoagents/agent-orchestrator/backend/internal/process"
 	"github.com/aoagents/agent-orchestrator/backend/pkg/agentcreds"
@@ -320,7 +320,7 @@ func (d Discoverer) discover(ctx context.Context, request ports.AgentModelDiscov
 	}
 	env := request.Env
 	if request.AgentID == "opencode-v2" {
-		dataHome, err := opencodev2.DataHome(ctx)
+		dataHome, err := opencode.PrepareV2DataHome(ctx)
 		if err != nil {
 			return ports.AgentModelCatalog{}, fmt.Errorf("opencode-v2 model catalog: prepare data home: %w", err)
 		}

@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package codewhale implements the Codewhale terminal adapter.
 package codewhale
 

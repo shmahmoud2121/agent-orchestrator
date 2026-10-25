@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package aider implements the Aider agent adapter: launching interactive Aider
 // worker sessions.
 //

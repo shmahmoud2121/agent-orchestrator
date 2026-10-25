@@ -10,12 +10,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/kimi"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/omp"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/opencode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/chatdriver/claudeacp"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/chatdriver/kimiacp"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/chatdriver/ompacp"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/chatdriver/persistenthost"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
@@ -30,8 +26,6 @@ func TestLiveNativeACPForks(t *testing.T) {
 	drivers := []ports.ChatDriver{
 		claudeacp.New(claudecode.New(), nil, nil),
 		New(opencode.New(), nil),
-		kimiacp.New(kimi.New(), nil),
-		ompacp.New(omp.New(), nil),
 	}
 	for _, driver := range drivers {
 		t.Run(string(driver.Harness()), func(t *testing.T) {

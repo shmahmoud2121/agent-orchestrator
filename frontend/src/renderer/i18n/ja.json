@@ -182,6 +182,7 @@
 	"agentSelector.manageCloud": "ハーネスの接続を管理…",
 	"agentSelector.noneReady": "利用可能なエージェントがありません",
 	"agentSelector.needsSetup": "設定が必要",
+	"agentSelector.retired": "このエージェントは現在のビルドでは廃止されています",
 	"session.statusChecking": "確認中…",
 	"session.statusUnavailable": "確認できません",
 	"artifactLink.unavailable": "アーティファクトを利用できません",

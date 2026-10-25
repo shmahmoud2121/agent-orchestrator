@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package amp adapts Amp's normal interactive TUI for AO reviews.
 package amp
 

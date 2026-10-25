@@ -6,28 +6,11 @@ package reviewer
 import (
 	"fmt"
 
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/agy"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/aider"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/amp"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/auggie"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/autohand"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/claudecode"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/cline"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/codex"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/copilot"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/crush"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/cursor"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/devin"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/droid"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/grok"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/kilocode"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/kimchi"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/kimi"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/kiro"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/muse"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/opencode"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/opencodev2"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/reviewer/pi"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 )
@@ -41,30 +24,13 @@ type Adapter interface {
 // Constructors returns every reviewer adapter the daemon ships. Add a reviewer
 // here (and to domain.AllReviewerHarnesses) to register it.
 func Constructors() []Adapter {
-	return []Adapter{
-		aider.New(),
-		agy.New(),
-		amp.New(),
-		auggie.New(),
-		autohand.New(),
+	return append([]Adapter{
 		claudecode.New(),
-		cline.New(),
 		codex.New(),
-		copilot.New(),
-		cursor.New(),
-		devin.New(),
-		droid.New(),
-		crush.New(),
-		grok.New(),
-		kimchi.New(),
-		kilocode.New(),
-		kiro.New(),
-		kimi.New(),
-		muse.New(),
 		opencode.New(),
-		opencodev2.New(),
-		pi.New(),
-	}
+		cursor.New(),
+		grok.New(),
+	}, retiredConstructors()...)
 }
 
 // Resolver maps a reviewer harness onto its adapter.
@@ -89,7 +55,7 @@ func NewResolver() (*Resolver, error) {
 		}
 		m[h] = a
 	}
-	for _, harness := range domain.AllReviewerHarnesses {
+	for _, harness := range registeredReviewerHarnesses() {
 		if _, ok := m[harness]; !ok {
 			return nil, fmt.Errorf("reviewer harness %q has no registered adapter", harness)
 		}

@@ -12,7 +12,7 @@ import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "reac
 import type { components } from "../../api/schema";
 import { useAgentReadinessQuery, useEnsureAgentReadiness } from "../hooks/useAgentReadinessQuery";
 import { workspaceQueryOptions } from "../hooks/useWorkspaceQuery";
-import { AGENT_OPTIONS, agentLabel } from "../lib/agent-options";
+import { agentLabel } from "../lib/agent-options";
 import {
 	buildRankedAgentOptions,
 	isLaunchableAgent,
@@ -445,7 +445,9 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 	variant?: "stacked" | "settings-row" | "settings-control" | "chip";
 }) {
 	const { t } = useTranslation();
-	const fallbackAgents: AgentInfo[] = AGENT_OPTIONS.map((agent) => unknownAgentReadiness(agent, agentLabel(agent)));
+	// The daemon's readiness response is the registration list. An absent
+	// snapshot must not turn every historical frontend label into a picker row.
+	const fallbackAgents: AgentInfo[] = [];
 	const options = buildRankedAgentOptions({
 		agents,
 		priorityRank: DEFAULT_AGENT_PRIORITY_RANK,
@@ -454,13 +456,16 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 
 	const selectedOption = options.find((agent) => agent.id === value) ?? (value ? unknownAgentReadiness(value, agentLabel(value)) : undefined);
 	const hasReadinessSnapshot = agents !== undefined;
-	const needsSetup = manageAgents && hasReadinessSnapshot && Boolean(selectedOption && !isLaunchableAgent(selectedOption));
+	const retiredSelection = hasReadinessSnapshot && value !== "" && !options.some((agent) => agent.id === value);
+	const needsSetup = manageAgents && hasReadinessSnapshot && !retiredSelection && Boolean(selectedOption && !isLaunchableAgent(selectedOption));
 	const visibleOptions = manageAgents && hasReadinessSnapshot ? options.filter(isLaunchableAgent) : options;
 	// Local is Harness settings' default view, so only cloud needs to ask for one.
 	const management = useAgentManagementMenu(needsSetup ? value : undefined, hostId, manageView === "cloud" ? "cloud" : undefined);
 	const manageLabel = managementLabelOverride ?? (manageView === "cloud" ? t("agentSelector.manageCloud") : t("agentSelector.manage"));
 	const managementAction = manageAgents ? { label: manageLabel, onSelect: management.requestManagement } : undefined;
-	const setupHint = needsSetup ? <span className="text-xs text-muted-foreground">{t("agentSelector.needsSetup")}</span> : null;
+	const setupHint = retiredSelection
+		? <span className="text-xs text-warning" role="status">{t("agentSelector.retired")}</span>
+		: needsSetup ? <span className="text-xs text-muted-foreground">{t("agentSelector.needsSetup")}</span> : null;
 
 	if (variant === "settings-row" || variant === "settings-control") {
 		const menuOptions = visibleOptions.map((agent) => ({

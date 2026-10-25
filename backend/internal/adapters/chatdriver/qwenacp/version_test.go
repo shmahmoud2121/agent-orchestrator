@@ -1,3 +1,5 @@
+//go:build retired
+
 package qwenacp
 
 import "testing"

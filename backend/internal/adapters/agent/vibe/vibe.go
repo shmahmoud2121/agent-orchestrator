@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package vibe implements the Mistral Vibe agent adapter: launching interactive
 // Vibe sessions and resuming sessions when a native Vibe session id is known.
 //

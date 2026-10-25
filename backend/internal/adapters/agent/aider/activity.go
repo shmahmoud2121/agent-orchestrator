@@ -1,3 +1,5 @@
+//go:build retired
+
 package aider
 
 import "github.com/aoagents/agent-orchestrator/backend/internal/domain"

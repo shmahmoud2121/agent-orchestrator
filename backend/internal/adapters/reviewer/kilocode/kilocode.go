@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package kilocode adapts the Kilo Code worker agent for code-review sessions.
 package kilocode
 

@@ -1,4 +1,4 @@
-//go:build unix
+//go:build retired && (unix)
 
 package kimchi
 

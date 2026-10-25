@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package pi implements the interactive Pi code-review adapter.
 package pi
 

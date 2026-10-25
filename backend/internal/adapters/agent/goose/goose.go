@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package goose implements the Goose (Block) agent adapter: launching new
 // interactive sessions, resuming hook-tracked sessions, installing
 // workspace-local lifecycle hooks, and reading hook-derived session info.

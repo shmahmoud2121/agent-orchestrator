@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package kiro implements the Kiro (AWS) agent adapter: launching interactive
 // sessions, resuming hook-tracked sessions, installing workspace-local hooks,
 // and reading hook-derived session info.

@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package aider adapts Aider's normal interactive chat TUI for AO reviews.
 package aider
 

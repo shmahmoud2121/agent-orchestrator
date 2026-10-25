@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package mimocode implements the MiMo Code terminal-agent adapter.
 package mimocode
 

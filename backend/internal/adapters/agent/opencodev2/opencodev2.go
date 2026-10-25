@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package opencodev2 implements the official OpenCode 2 TUI contract. The
 // executable name is still opencode; the registry identity is opencode-v2.
 package opencodev2

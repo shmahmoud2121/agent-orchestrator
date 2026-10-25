@@ -18,10 +18,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/amp"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/codex"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/memcode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/workspace/gitworktree"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/workspace/scratch"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
@@ -1934,6 +1932,7 @@ func TestSpawnModelValidation(t *testing.T) {
 // a spawn model override for Amp ends up as `--mode <value>` in the actual
 // launch argv instead of silently being dropped because Amp reads Config.Mode.
 func TestSpawnAmpModelOverrideLaunchArgv(t *testing.T) {
+	if !retiredTestAgentsAvailable { t.Skip("Amp is retired in this build") }
 	if runtime.GOOS == "windows" {
 		t.Skip("PATH setup differs on windows")
 	}
@@ -1953,7 +1952,7 @@ func TestSpawnAmpModelOverrideLaunchArgv(t *testing.T) {
 	rt := &fakeRuntime{}
 	ws := &fakeWorkspace{path: wsDir}
 	lookPath := func(string) (string, error) { return fakeAmp, nil }
-	m := New(Deps{Runtime: rt, Agents: singleAgent{agent: amp.New()}, Workspace: ws, Store: st, Messenger: &fakeMessenger{}, Lifecycle: &fakeLCM{store: st}, LookPath: lookPath,
+	m := New(Deps{Runtime: rt, Agents: singleAgent{agent: testAmpAgent()}, Workspace: ws, Store: st, Messenger: &fakeMessenger{}, Lifecycle: &fakeLCM{store: st}, LookPath: lookPath,
 		Executable: func() (string, error) { return "/opt/ao", nil }, NewLaunchID: func() string { return "amp-launch" },
 	})
 
@@ -1985,6 +1984,7 @@ func TestSpawnAmpModelOverrideLaunchArgv(t *testing.T) {
 // resolved value is still reported as metadata.Model instead of appearing as
 // the agent default.
 func TestSpawnAmpProjectDefaultModePersistsAsModel(t *testing.T) {
+	if !retiredTestAgentsAvailable { t.Skip("Amp is retired in this build") }
 	if runtime.GOOS == "windows" {
 		t.Skip("PATH setup differs on windows")
 	}
@@ -2007,7 +2007,7 @@ func TestSpawnAmpProjectDefaultModePersistsAsModel(t *testing.T) {
 	rt := &fakeRuntime{}
 	ws := &fakeWorkspace{path: wsDir}
 	lookPath := func(string) (string, error) { return fakeAmp, nil }
-	m := New(Deps{Runtime: rt, Agents: singleAgent{agent: amp.New()}, Workspace: ws, Store: st, Messenger: &fakeMessenger{}, Lifecycle: &fakeLCM{store: st}, LookPath: lookPath,
+	m := New(Deps{Runtime: rt, Agents: singleAgent{agent: testAmpAgent()}, Workspace: ws, Store: st, Messenger: &fakeMessenger{}, Lifecycle: &fakeLCM{store: st}, LookPath: lookPath,
 		Executable: func() (string, error) { return "/opt/ao", nil }, NewLaunchID: func() string { return "amp-launch" },
 	})
 
@@ -3078,18 +3078,19 @@ type modelCheckingMemcodeAgent struct {
 
 func (a *modelCheckingMemcodeAgent) GetAgentHooks(ctx context.Context, cfg ports.WorkspaceHookConfig) error {
 	a.hookModel = cfg.Config.Model
-	return memcode.New().GetAgentHooks(ctx, cfg)
+	return testMemcodeHooks(ctx, cfg)
 }
 
 func (a *modelCheckingMemcodeAgent) GetLaunchCommand(ctx context.Context, cfg ports.LaunchConfig) ([]string, error) {
 	// Exercise Memcode's real launch validation without requiring its executable.
-	if _, err := memcode.New().AfterStartCommand(ctx, cfg); err != nil {
+	if err := testMemcodeAfterStart(ctx, cfg); err != nil {
 		return nil, err
 	}
 	return a.recordingAgent.GetLaunchCommand(ctx, cfg)
 }
 
 func TestRestoreMemcodeModelFollowsNativeEndpointConfiguration(t *testing.T) {
+	if !retiredTestAgentsAvailable { t.Skip("memcode is retired in this build") }
 	for _, test := range []struct {
 		name            string
 		model           string
@@ -3162,6 +3163,7 @@ func TestRestoreMemcodeModelFollowsNativeEndpointConfiguration(t *testing.T) {
 }
 
 func TestSpawnMemcodeCustomEndpointClearsOnlyInheritedModels(t *testing.T) {
+	if !retiredTestAgentsAvailable { t.Skip("memcode is retired in this build") }
 	for _, source := range []string{"project environment", "daemon environment", "global settings", "workspace settings", "no endpoint", "malformed settings"} {
 		for _, modelSource := range []string{"project default", "role default", "explicit override"} {
 			t.Run(source+"/"+modelSource, func(t *testing.T) {
@@ -3242,7 +3244,8 @@ func TestSpawnMemcodeCustomEndpointClearsOnlyInheritedModels(t *testing.T) {
 }
 
 func TestMemcodeWithoutPromptOrModelSkipsReadiness(t *testing.T) {
-	agent := memcode.New()
+	if !retiredTestAgentsAvailable { t.Skip("memcode is retired in this build") }
+	agent := testMemcodeReadinessAgent()
 	cfg := ports.LaunchConfig{}
 	hints, err := agent.PromptReadinessHints(ctx, cfg)
 	if err != nil {
@@ -7831,6 +7834,31 @@ func TestSpawn_RejectsUnknownHarness(t *testing.T) {
 	}
 	if rt.created != 0 {
 		t.Fatal("runtime must not be created for an unknown harness")
+	}
+}
+
+func TestSpawn_StoredRetiredAgentExplainsHowToRecover(t *testing.T) {
+	st := newFakeStore()
+	st.projects["mer"] = domain.ProjectRecord{ID: "mer", Config: domain.ProjectConfig{
+		Worker: domain.RoleOverride{Harness: domain.HarnessAider},
+	}}
+	rt := &fakeRuntime{}
+	ws := &fakeWorkspace{}
+	m := New(Deps{Runtime: rt, Agents: missingAgents{}, Workspace: ws, Store: st,
+		Messenger: &fakeMessenger{}, Lifecycle: &fakeLCM{store: st},
+		LookPath: func(string) (string, error) { return "/bin/true", nil }})
+	_, _, _, err := m.Spawn(ctx, ports.SpawnConfig{ProjectID: "mer", Kind: domain.KindWorker})
+	if !errors.Is(err, ErrUnknownHarness) || !strings.Contains(err.Error(), "this agent is retired in this build") {
+		t.Fatalf("stored retired agent error = %v", err)
+	}
+	if len(st.sessions) != 0 || rt.created != 0 || ws.lastCfg.SessionID != "" {
+		t.Fatal("retired agent created a session, runtime, or workspace")
+	}
+	st.projects["mer"] = domain.ProjectRecord{ID: "mer", Config: domain.ProjectConfig{
+		Worker: domain.RoleOverride{Harness: domain.HarnessClaudeCode},
+	}}
+	if err := st.projects["mer"].Config.Validate(); err != nil {
+		t.Fatalf("selecting kept Claude Code agent: %v", err)
 	}
 }
 

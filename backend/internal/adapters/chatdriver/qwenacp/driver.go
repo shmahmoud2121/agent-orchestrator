@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package qwenacp binds the user's own Qwen Code installation to AO's reusable
 // ACP Chat transport.
 package qwenacp

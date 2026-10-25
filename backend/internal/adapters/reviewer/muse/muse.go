@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package muse adapts the Muse Code worker agent for code-review sessions.
 package muse
 

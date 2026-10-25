@@ -1,3 +1,5 @@
+//go:build retired
+
 package kimchi
 
 // SupportsTerminalVersionRefresh declares unattended exact-conversation resume.

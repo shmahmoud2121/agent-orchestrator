@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package ompacp binds the user's own OMP installation to AO's reusable ACP
 // Chat transport.
 package ompacp

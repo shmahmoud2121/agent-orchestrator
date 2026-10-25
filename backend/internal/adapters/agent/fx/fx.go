@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package fx implements AO's adapter for Vercel Labs' fx coding agent.
 //
 // Interactive fx has no per-session system-prompt flag. TUI launches therefore

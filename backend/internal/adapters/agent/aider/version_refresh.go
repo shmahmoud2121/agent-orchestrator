@@ -1,3 +1,5 @@
+//go:build retired
+
 package aider
 
 // SupportsTerminalVersionRefresh declares unattended exact-conversation resume.

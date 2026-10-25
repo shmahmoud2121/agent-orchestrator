@@ -1,3 +1,5 @@
+//go:build retired
+
 package crush
 
 // SupportsTerminalVersionRefresh declares unattended exact-conversation resume.

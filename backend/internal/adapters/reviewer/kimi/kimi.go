@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package kimi adapts Kimi Code CLI as an experimental host-trusted AO
 // reviewer. It always runs Kimi's visible, long-lived interactive TUI.
 package kimi

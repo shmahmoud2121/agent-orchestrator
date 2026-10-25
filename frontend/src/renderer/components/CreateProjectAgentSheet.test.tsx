@@ -263,16 +263,27 @@ describe("CreateProjectAgentSheet", () => {
 		await waitFor(() => expect(useUiStore.getState().settingsModal).toEqual({ scope: "global", section: "harness", focusAgentId: "codex", hostId: "box-a" }));
 	});
 
-	it("keeps fallback agents usable until a readiness snapshot arrives", async () => {
+	it("does not offer historical agents until the daemon reports its registry", async () => {
 		render(<RequiredAgentField id="agent" label="Agent" placeholder="Choose agent" value="codex" variant="settings-row" onChange={() => undefined} />);
 
 		const trigger = screen.getByRole("button", { name: "Agent" });
 		expect(trigger).toHaveTextContent("Codex");
 		expect(trigger).not.toHaveTextContent("Needs setup");
 		await userEvent.click(trigger);
-		expect(screen.getByRole("menuitem", { name: /Claude Code/ })).toBeInTheDocument();
-		expect(screen.getByRole("menuitem", { name: /Codex/ })).toBeInTheDocument();
-		expect(screen.queryByText("No agents ready")).not.toBeInTheDocument();
+		expect(screen.queryByRole("menuitem", { name: /Claude Code/ })).not.toBeInTheDocument();
+		expect(screen.queryByRole("menuitem", { name: /Codex/ })).not.toBeInTheDocument();
+	});
+
+	it("explains a stored retired agent and lets the user choose a registered one", async () => {
+		const onChange = vi.fn();
+		render(<RequiredAgentField id="agent" label="Agent" placeholder="Choose agent" value="aider" variant="settings-row"
+			onChange={onChange} agents={[agentReadiness("claude-code", "Claude Code")]} />);
+		const trigger = screen.getByRole("button", { name: "Agent" });
+		expect(trigger).toHaveTextContent("this agent is retired in this build");
+		await userEvent.click(trigger);
+		expect(screen.queryByRole("menuitem", { name: /Aider/ })).not.toBeInTheDocument();
+		await userEvent.click(screen.getByRole("menuitem", { name: /Claude Code/ }));
+		expect(onChange).toHaveBeenCalledWith("claude-code");
 	});
 
 	it("opens management for a selected create-project agent without losing the selection", async () => {

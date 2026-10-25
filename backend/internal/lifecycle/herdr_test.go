@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/fx/herdr"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 )
@@ -41,6 +40,7 @@ func TestActivitySignalExpectedHarnessFencesStateAndMetadata(t *testing.T) {
 }
 
 func TestHerdrSocketPersistsNativeMetadataAndFencesRuntimeGenerations(t *testing.T) {
+	if !testHerdrAvailable { t.Skip("fx is retired in this build") }
 	if runtime.GOOS == "windows" {
 		t.Skip("fx has no native Windows support")
 	}
@@ -55,7 +55,7 @@ func TestHerdrSocketPersistsNativeMetadataAndFencesRuntimeGenerations(t *testing
 	store.setSession(domain.SessionRecord{ID: "mer-2", Harness: domain.HarnessFX,
 		Activity: domain.Activity{State: domain.ActivityIdle}, Metadata: domain.SessionMetadata{RuntimeLaunchID: "other-launch"}})
 	m := New(store, nil)
-	server, err := herdr.Start(context.Background(), dir, m, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	server, err := startTestHerdr(context.Background(), dir, m, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,12 +63,12 @@ func TestHerdrSocketPersistsNativeMetadataAndFencesRuntimeGenerations(t *testing
 	report := func(session domain.SessionID, launch, method, key, value string) {
 		t.Helper()
 		line, err := json.Marshal(map[string]any{"id": "7", "method": method, "params": map[string]string{
-			"pane_id": herdr.PaneID(session, launch), "source": "custom:fx", "agent": "fx", key: value,
+			"pane_id": testHerdrPaneID(session, launch), "source": "custom:fx", "agent": "fx", key: value,
 		}})
 		if err != nil {
 			t.Fatal(err)
 		}
-		conn, err := net.Dial("unix", herdr.SocketPath(dir))
+		conn, err := net.Dial("unix", testHerdrSocketPath(dir))
 		if err != nil {
 			t.Fatal(err)
 		}

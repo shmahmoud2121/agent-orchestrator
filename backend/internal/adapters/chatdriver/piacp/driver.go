@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package piacp binds AO's Pi harness to a user-installed pi-acp adapter.
 //
 // AO does not package or download pi-acp. The adapter embeds Pi itself, while

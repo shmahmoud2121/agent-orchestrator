@@ -153,17 +153,14 @@ func TestDoctorChecksHarnessVersions(t *testing.T) {
 		"git":    "/bin/git",
 		"claude": "/bin/claude",
 		"codex":  "/bin/codex",
-		"muse":   "/bin/muse",
+		"grok":   "/bin/grok",
 	}
 	c := doctorContext(t, cmdPath, func(_ context.Context, name string, args ...string) ([]byte, error) {
 		switch name {
 		case "/bin/git":
 			return []byte("git version 2.43.0\n"), nil
-		case "/bin/claude", "/bin/codex", "/bin/muse":
+		case "/bin/claude", "/bin/codex", "/bin/grok":
 			if len(args) == 1 && args[0] == "--version" {
-				if name == "/bin/muse" {
-					return []byte("Muse Code 0.1.0 (0.1.0-R708.1)\n"), nil
-				}
 				return []byte(strings.TrimPrefix(name, "/bin/") + " 1.2.3\n"), nil
 			}
 			// The codex launch-flag canary probes the same binary.
@@ -179,7 +176,7 @@ func TestDoctorChecksHarnessVersions(t *testing.T) {
 	})
 
 	checks := c.runDoctor(context.Background())
-	for _, name := range []string{"claude-code", "codex", "muse"} {
+	for _, name := range []string{"claude-code", "codex", "grok"} {
 		check := findDoctorCheck(t, checks, name)
 		if check.Level != doctorPass || !strings.Contains(check.Message, "resolves to") {
 			t.Fatalf("%s check = %+v, want PASS with path/version", name, check)
@@ -188,6 +185,9 @@ func TestDoctorChecksHarnessVersions(t *testing.T) {
 }
 
 func TestDoctorRejectsUnrelatedMuseBinary(t *testing.T) {
+	if !retiredTestAgentsAvailable {
+		t.Skip("muse is retired in this build")
+	}
 	setConfigEnv(t)
 	c := doctorContext(t, map[string]string{"git": "/bin/git", "muse": "/bin/muse"}, func(_ context.Context, name string, _ ...string) ([]byte, error) {
 		if name == "/bin/git" {
@@ -452,23 +452,30 @@ func TestDoctorTextOutputIsGrouped(t *testing.T) {
 	if err != nil {
 		t.Fatalf("doctor failed: %v\nstderr=%s\nstdout=%s", err, errOut, out)
 	}
-	for _, want := range []string{
+	wantLines := []string{
 		"Core:\nPASS config:",
 		"Tools:\nPASS git:",
-		// Agent harnesses section — spot-check original three plus new additions.
+		// Agent harnesses section — the default build's registered harnesses.
 		"Agent harnesses:\nWARN claude-code:",
 		"WARN codex:",
 		"WARN opencode:",
-		"WARN muse:",
-		"WARN aider:",
-		"WARN goose:",
 		"WARN cursor:",
-		"WARN agy:",
-		"WARN continue:",
-		"WARN prime-agent:",
+		"WARN grok:",
+		"WARN gemini:",
 		"GitHub:\nWARN github-token:",
 		"GitLab:\nWARN gitlab-token:",
-	} {
+	}
+	if retiredTestAgentsAvailable {
+		wantLines = append(wantLines,
+			"WARN muse:",
+			"WARN aider:",
+			"WARN goose:",
+			"WARN agy:",
+			"WARN continue:",
+			"WARN prime-agent:",
+		)
+	}
+	for _, want := range wantLines {
 		if !strings.Contains(out, want) {
 			t.Fatalf("doctor output missing %q:\n%s", want, out)
 		}

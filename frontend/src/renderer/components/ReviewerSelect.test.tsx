@@ -49,7 +49,7 @@ describe("ReviewerSelect", () => {
 		expect(screen.getByRole("menuitem", { name: "Manage agents…" })).toBeInTheDocument();
 	});
 
-	it("keeps fallback reviewers usable until a readiness snapshot arrives", async () => {
+	it("does not offer reviewers before the daemon reports registered agents", async () => {
 		const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 		render(<QueryClientProvider client={client}><ReviewerSelect
 			ariaLabel="Reviewer" value="codex" defaultHarness="claude-code" onChange={() => undefined}
@@ -58,8 +58,8 @@ describe("ReviewerSelect", () => {
 		const trigger = screen.getByRole("button", { name: "Reviewer" });
 		expect(trigger).not.toHaveTextContent("Needs setup");
 		await userEvent.click(trigger);
-		expect(screen.getByRole("menuitem", { name: /Claude Code/ })).toBeInTheDocument();
-		expect(screen.getByRole("menuitem", { name: /Codex/ })).toBeInTheDocument();
+		expect(screen.queryByRole("menuitem", { name: /Claude Code/ })).not.toBeInTheDocument();
+		expect(screen.queryByRole("menuitem", { name: /Codex/ })).not.toBeInTheDocument();
 	});
 
 	it("shows the catalog's concrete model for an inherited reviewer", () => {
@@ -71,6 +71,7 @@ describe("ReviewerSelect", () => {
 		});
 		render(<QueryClientProvider client={client}><ReviewerSelect
 			ariaLabel="Reviewer" value="" defaultHarness="codex" onChange={() => undefined}
+			agents={[agentReadiness("codex", "Codex")]}
 		/></QueryClientProvider>);
 		expect(screen.getByRole("button", { name: "Reviewer" })).toHaveTextContent("Codex · GPT Test");
 	});
@@ -86,6 +87,7 @@ describe("ReviewerSelect", () => {
 		const onConfigChange = vi.fn();
 		render(<QueryClientProvider client={client}><ReviewerSelect
 			ariaLabel="Reviewer" value="codex" model="gpt-other" defaultHarness="claude-code"
+			agents={[agentReadiness("claude-code", "Claude Code"), agentReadiness("codex", "Codex")]}
 			onChange={() => undefined} onConfigChange={onConfigChange}
 		/></QueryClientProvider>);
 		await userEvent.click(screen.getByRole("button", { name: "Reviewer" }));
@@ -127,6 +129,7 @@ describe("ReviewerSelect", () => {
 		});
 		render(<QueryClientProvider client={client}><ReviewerSelect
 			ariaLabel="Reviewer" value="codex" defaultHarness="claude-code"
+			agents={[agentReadiness("claude-code", "Claude Code"), agentReadiness("codex", "Codex")]}
 			onChange={() => undefined} onConfigChange={() => undefined}
 		/></QueryClientProvider>);
 		await userEvent.click(screen.getByRole("button", { name: "Reviewer" }));
@@ -143,6 +146,7 @@ describe("ReviewerSelect", () => {
 		});
 		render(<QueryClientProvider client={client}><ReviewerSelect
 			ariaLabel="Reviewer" value="codex" model="gpt-test" defaultHarness="claude-code"
+			agents={[agentReadiness("claude-code", "Claude Code"), agentReadiness("codex", "Codex")]}
 			onChange={() => undefined} onConfigChange={() => undefined}
 		/></QueryClientProvider>);
 		await userEvent.click(screen.getByRole("button", { name: "Reviewer" }));
@@ -158,6 +162,7 @@ describe("ReviewerSelect", () => {
 		const onConfigChange = vi.fn();
 		render(<QueryClientProvider client={client}><ReviewerSelect
 			ariaLabel="Reviewer" value="codex" model="gpt-test" defaultHarness="claude-code"
+			agents={[agentReadiness("claude-code", "Claude Code"), agentReadiness("codex", "Codex")]}
 			onChange={() => undefined} onConfigChange={onConfigChange}
 		/></QueryClientProvider>);
 		await userEvent.click(screen.getByRole("button", { name: "Reviewer" }));
@@ -174,6 +179,7 @@ describe("ReviewerSelect", () => {
 		const onConfigChange = vi.fn();
 		render(<QueryClientProvider client={client}><ReviewerSelect
 			ariaLabel="Reviewer" value="codex" defaultHarness="claude-code" onChange={() => undefined} onConfigChange={onConfigChange}
+			agents={[agentReadiness("claude-code", "Claude Code"), agentReadiness("codex", "Codex")]}
 		/></QueryClientProvider>);
 
 		const trigger = screen.getByRole("button", { name: "Reviewer" });

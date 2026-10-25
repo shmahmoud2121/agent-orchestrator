@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package autohand implements the Autohand Code agent adapter: launching new
 // command-mode sessions, resuming native sessions by id, installing AO's
 // lifecycle hooks into Autohand's config, and reading hook-derived session info.

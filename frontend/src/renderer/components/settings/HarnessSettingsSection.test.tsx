@@ -1980,7 +1980,7 @@ describe("HarnessSettingsSection", () => {
 		expect(within(row).queryByRole("button", { name: "Install" })).not.toBeInTheDocument();
 	});
 
-	it("falls back to installer plans when readiness cannot be loaded", async () => {
+	it("does not invent registered agents from installer plans when readiness cannot be loaded", async () => {
 		vi.mocked(apiClient.GET).mockImplementation(async (path) => {
 			if (path === "/api/v1/agents/readiness") return { error: { message: "readiness unavailable" } } as never;
 			if (path === "/api/v1/agents/installers") return { data: plans } as never;
@@ -1990,10 +1990,9 @@ describe("HarnessSettingsSection", () => {
 		});
 
 		renderSection();
-		const row = await findAgentRow("codex");
-		// The readiness query retries once before surfacing its error.
-		expect(await within(row).findByRole("button", { name: "Install" }, { timeout: 5_000 })).toBeInTheDocument();
-		expect(within(row).queryByText("Installation status unknown")).not.toBeInTheDocument();
+		// Installer plans alone cannot establish which agents this daemon registered.
+		await waitFor(() => expect(apiClient.GET).toHaveBeenCalledWith("/api/v1/agents/installers"));
+		expect(screen.queryByText("Codex")).not.toBeInTheDocument();
 	});
 
 	it("falls back to ensuring readiness when the page-open refresh fails", async () => {
@@ -2374,21 +2373,21 @@ describe("HarnessSettingsSection", () => {
 		await waitFor(() => expect(within(codexPage).getByRole("button", { name: "Install" })).toBeEnabled());
 		await user.click(within(codexPage).getByRole("button", { name: "Install" }));
 		expect(await within(codexPage).findByRole("status")).toHaveTextContent("Installing…");
-		const aiderPage = await findAgentRow("aider");
-		await user.click(within(aiderPage).getByRole("button", { name: "Install" }));
-		expect(await within(aiderPage).findByRole("status")).toHaveTextContent("Installing…");
+		const cursorPage = await findAgentRow("cursor");
+		await user.click(within(cursorPage).getByRole("button", { name: "Install" }));
+		expect(await within(cursorPage).findByRole("status")).toHaveTextContent("Installing…");
 		backToList();
 
 		const codexRow = await findListRow("codex");
-		const aiderRow = await findListRow("aider");
+		const cursorRow = await findListRow("cursor");
 		const codexStatus = within(codexRow).getByRole("status");
-		const aiderStatus = within(aiderRow).getByRole("status");
+		const cursorStatus = within(cursorRow).getByRole("status");
 		expect(codexStatus.querySelector("svg.animate-spin")).not.toBeNull();
-		expect(aiderStatus.querySelector("svg.animate-spin")).not.toBeNull();
+		expect(cursorStatus.querySelector("svg.animate-spin")).not.toBeNull();
 		expect(within(codexRow).queryByRole("progressbar")).not.toBeInTheDocument();
-		expect(within(aiderRow).queryByRole("progressbar")).not.toBeInTheDocument();
+		expect(within(cursorRow).queryByRole("progressbar")).not.toBeInTheDocument();
 		expect(within(codexRow).getAllByText("Installing…")).toHaveLength(1);
-		expect(within(aiderRow).getAllByText("Installing…")).toHaveLength(1);
+		expect(within(cursorRow).getAllByText("Installing…")).toHaveLength(1);
 	});
 
 	it("hydrates interrupted jobs and offers verification", async () => {

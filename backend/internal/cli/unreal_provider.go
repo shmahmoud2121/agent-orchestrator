@@ -1,3 +1,5 @@
+//go:build retired
+
 package cli
 
 import (
@@ -24,3 +26,5 @@ func newUnrealProviderCommand() *cobra.Command {
 		},
 	}
 }
+
+func addRetiredCommands(root *cobra.Command) { root.AddCommand(newUnrealProviderCommand()) }

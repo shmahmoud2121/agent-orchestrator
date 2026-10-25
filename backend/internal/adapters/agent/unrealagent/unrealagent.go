@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package unrealagent exposes AO's built-in Unreal Agent harness.
 package unrealagent
 

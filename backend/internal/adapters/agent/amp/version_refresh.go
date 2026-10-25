@@ -1,3 +1,5 @@
+//go:build retired
+
 package amp
 
 // SupportsTerminalVersionRefresh declares unattended exact-conversation resume.

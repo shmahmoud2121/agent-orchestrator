@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/memcode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 	"github.com/aoagents/agent-orchestrator/backend/internal/sessionguard"
@@ -106,12 +105,13 @@ func interactiveManager(t *testing.T, terminated bool, a *interactiveTestAgent) 
 }
 
 func TestMemcodeNativeLaunchUsesProcessSupervisor(t *testing.T) {
+	if !retiredTestAgentsAvailable { t.Skip("memcode is retired in this build") }
 	m := New(Deps{
 		DataDir:    "/ao-data",
 		Executable: func() (string, error) { return "/opt/ao", nil },
 	})
 	env := map[string]string{}
-	argv, err := m.wrapAgentProcessWithLaunchID(memcode.New(), "mer-1", env, []string{"memcode", "run"}, "launch-1", false)
+	argv, err := m.wrapAgentProcessWithLaunchID(testMemcodeAgent(), "mer-1", env, []string{"memcode", "run"}, "launch-1", false)
 	if err != nil {
 		t.Fatal(err)
 	}

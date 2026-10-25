@@ -20,10 +20,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/activitydispatch"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/cursor"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/memcode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
-	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 	"github.com/aoagents/agent-orchestrator/backend/internal/pricing"
 )
 
@@ -597,23 +594,7 @@ func (c *commandContext) runHook(ctx context.Context, agent, event string) error
 		// without a piped payload can't block on EOF.
 		return nil
 	}
-	if agent == "memcode" && strings.HasPrefix(event, "context-chunk-") {
-		if err := memcode.EmitInstructionChunk(c.deps.Out, event); err != nil {
-			c.reportHookFailure(agent, event, sessionID, err)
-		}
-		return nil
-	}
-	if agent == "memcode" && event == "session-start" {
-		reportAfterRestore, err := memcode.EmitStartWitness(c.deps.Out)
-		if err != nil {
-			c.reportHookFailure(agent, event, sessionID, err)
-			return nil
-		}
-		if os.Getenv("AO_MEMCODE_INTERACTIVE_RESTORE") == "1" && !reportAfterRestore {
-			return nil
-		}
-	}
-	if agent == "memcode" && event == "session-end" {
+	if c.handleRetiredMemcodeHook(agent, event, sessionID) {
 		return nil
 	}
 	var payload []byte
@@ -669,7 +650,7 @@ func (c *commandContext) runHook(ctx context.Context, agent, event string) error
 
 	toolName, toolUseID := activityMeta(payload)
 	if domain.AgentHarness(agent) == domain.HarnessCursor && event == "post-tool-use-failure" {
-		if failureEvent, failureTool, ok := cursor.TerminalFailureCorrelation(payload); ok {
+		if failureEvent, failureTool, ok := retiredCursorTerminalFailureCorrelation(payload); ok {
 			event = failureEvent
 			toolName = failureTool
 		}
@@ -791,34 +772,7 @@ func isCursorPermissionHook(agent, event string) bool {
 }
 
 func (c *commandContext) runCursorPermissionHook(ctx context.Context, agent, event, sessionID string, payload []byte) error {
-	mode := ports.PermissionMode(strings.TrimSpace(os.Getenv(cursor.EnvPermissionMode)))
-	decision := cursor.EvaluatePermission(mode, event, payload)
-
-	launchID := validLaunchID(os.Getenv("AO_RUNTIME_LAUNCH_ID"))
-	if launchID == "" {
-		launchID = validLaunchID(hookLaunchID(payload))
-	}
-
-	path := "sessions/" + url.PathEscape(sessionID) + "/activity"
-	req := setActivityAPIRequest{
-		State:          string(decision.State),
-		Event:          event,
-		ToolName:       cursor.HookToolName(event, payload),
-		AgentSessionID: hookAgentSessionID(payload),
-		LaunchID:       launchID,
-	}
-	if err := c.postActivityHook(ctx, path, req); err != nil {
-		c.reportHookFailure(agent, event, sessionID, err)
-		if decision.Permission == "ask" {
-			return fmt.Errorf("persist blocked Cursor activity: %w", err)
-		}
-	}
-
-	out := cursorPermissionHookOutput{Permission: decision.Permission}
-	if err := json.NewEncoder(c.deps.Out).Encode(out); err != nil {
-		c.reportHookFailure(agent, event, sessionID, fmt.Errorf("write permission response: %w", err))
-	}
-	return nil
+	return c.runRetiredCursorPermissionHook(ctx, agent, event, sessionID, payload)
 }
 
 func isAgyModernHookEvent(agent, event string) bool {

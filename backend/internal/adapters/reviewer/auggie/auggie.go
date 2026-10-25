@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package auggie adapts Auggie's one-shot review mode for AO reviews.
 package auggie
 

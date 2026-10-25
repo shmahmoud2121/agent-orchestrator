@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package openhands integrates the user's OpenHands CLI (binary "openhands")
 // with AO's terminal sessions.
 //

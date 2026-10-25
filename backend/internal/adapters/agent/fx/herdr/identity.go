@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package herdr receives fx's native lifecycle reports over AO's local socket.
 package herdr
 

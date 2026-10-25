@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package copilot implements the GitHub Copilot CLI agent adapter: launching new
 // headless sessions, resuming hook-tracked sessions, installing workspace-local
 // hooks, and reading hook-derived session info.

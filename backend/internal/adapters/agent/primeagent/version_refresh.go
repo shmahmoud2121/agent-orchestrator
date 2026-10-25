@@ -1,3 +1,5 @@
+//go:build retired
+
 package primeagent
 
 // SupportsTerminalVersionRefresh declares unattended exact-conversation resume.

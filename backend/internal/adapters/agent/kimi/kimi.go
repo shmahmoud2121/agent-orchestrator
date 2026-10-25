@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package kimi implements the Kimi CLI (Moonshot AI) agent adapter: launching
 // new interactive sessions and resuming sessions when a native Kimi session id
 // is known.

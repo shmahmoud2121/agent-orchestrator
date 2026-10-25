@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package auggie implements the Auggie (Augment Code) agent adapter: launching
 // new headless Auggie sessions and resuming sessions when a native Auggie
 // session id is known.

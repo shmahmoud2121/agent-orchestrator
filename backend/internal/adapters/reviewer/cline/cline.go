@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package cline adapts Cline as an experimental user-approved AO reviewer.
 package cline
 

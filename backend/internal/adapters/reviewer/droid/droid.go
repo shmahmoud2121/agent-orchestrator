@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package droid adapts Factory Droid as an experimental host-trusted AO
 // reviewer. It always runs Droid's visible, long-lived interactive TUI.
 package droid

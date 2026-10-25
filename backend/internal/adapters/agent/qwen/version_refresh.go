@@ -1,3 +1,5 @@
+//go:build retired
+
 package qwen
 
 // SupportsTerminalVersionRefresh declares unattended exact-conversation resume.

@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package pi implements the Pi agent adapter: launching new interactive Pi
 // sessions and resuming sessions when a native Pi session id is known.
 //

@@ -81,7 +81,7 @@ function renderDialog(
 		);
 	}
 	const catalogProjectId = session.workspaceId === STANDALONE_WORKSPACE_ID ? "" : session.workspaceId;
-	for (const agentId of ["claude-code", "codex", "fx"]) {
+	for (const agentId of ["claude-code", "codex"]) {
 		queryClient.setQueryData(agentModelsQueryKey(agentId, catalogProjectId, session.hostId), {
 			agentId,
 			allowCustom: false,
@@ -183,36 +183,21 @@ describe("SwitchAgentDialog", () => {
 		expect(onOpenChange).toHaveBeenCalledWith(false);
 	});
 
-	it("offers fx as a switch target", async () => {
+	it("does not offer an unregistered agent as a TUI switch target", async () => {
 		const tuiWorker = { ...worker, mode: "tui" as const };
 		renderDialog(tuiWorker);
 		const dialog = screen.getByRole("dialog", { name: "Switch agent" });
 		await userEvent.click(within(dialog).getByRole("button", { name: "Target agent" }));
 
-		const fxOption = screen.getByRole("menuitem", { name: "fx" });
-		expect(fxOption).not.toHaveAttribute("data-disabled");
-		await userEvent.click(fxOption);
-		await userEvent.click(within(dialog).getByRole("button", { name: "Switch" }));
-
-		expect(switchMocks.mutate).toHaveBeenCalledWith(
-			{
-				idempotencyKey: "idempotency-1",
-				model: "",
-				session: tuiWorker,
-				targetHarness: "fx",
-			},
-			{ onSuccess: expect.any(Function) },
-		);
+		expect(screen.queryByRole("menuitem", { name: /fx/ })).not.toBeInTheDocument();
 	});
 
-	it("keeps fx unavailable as a Chat switch target", async () => {
+	it("does not offer an unregistered agent as a Chat switch target", async () => {
 		renderDialog({ ...worker, mode: "chat" });
 		const dialog = screen.getByRole("dialog", { name: "Switch agent" });
 		await userEvent.click(within(dialog).getByRole("button", { name: "Target agent" }));
 
-		expect(screen.getByRole("menuitem", { name: /fx,\s*Coming soon/ })).toHaveAttribute(
-			"data-disabled",
-		);
+		expect(screen.queryByRole("menuitem", { name: /fx/ })).not.toBeInTheDocument();
 	});
 
 	it("keeps direct model IDs in the same searchable model picker", async () => {
@@ -295,11 +280,11 @@ describe("SwitchAgentDialog", () => {
 		expect(within(dialog).queryByRole("alert")).not.toBeInTheDocument();
 		expect(within(dialog).getByRole("button", { name: "Model" })).toHaveTextContent("GPT-5.4");
 		// Global settings and background catalog reads do not look up a project.
-		expect((getSpy.mock.calls as unknown[][]).map((call) => call[0]).filter((path) => path !== "/api/v1/settings" && path !== "/api/v1/agents/{agent}/models")).toEqual([]);
+		expect((getSpy.mock.calls as unknown[][]).map((call) => call[0]).filter((path) => path !== "/api/v1/settings" && path !== "/api/v1/agents/{agent}/models" && path !== "/api/v1/agents/readiness")).toEqual([]);
 
 		await userEvent.click(within(dialog).getByRole("button", { name: "Switch" }));
 
-		expect((getSpy.mock.calls as unknown[][]).map((call) => call[0]).filter((path) => path !== "/api/v1/settings" && path !== "/api/v1/agents/{agent}/models")).toEqual([]);
+		expect((getSpy.mock.calls as unknown[][]).map((call) => call[0]).filter((path) => path !== "/api/v1/settings" && path !== "/api/v1/agents/{agent}/models" && path !== "/api/v1/agents/readiness")).toEqual([]);
 		expect(switchMocks.mutate).toHaveBeenCalledWith(
 			{
 				idempotencyKey: "idempotency-1",

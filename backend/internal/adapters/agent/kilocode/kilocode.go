@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package kilocode implements the Kilo Code CLI agent adapter: launching new
 // TUI sessions, resuming sessions by native id, installing a workspace-local
 // activity plugin, and reading plugin-derived session info.

@@ -1,3 +1,5 @@
+//go:build retired
+
 package auggie
 
 import "context"

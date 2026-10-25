@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package deepseek implements the DeepSeek Harness (dsh) agent adapter: running
 // one-shot terminal tasks and rebuilding the argv that continues a persisted
 // Harness session.

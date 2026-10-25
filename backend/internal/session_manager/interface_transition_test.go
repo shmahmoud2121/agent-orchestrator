@@ -16,7 +16,6 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	agyagent "github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/agy"
 
 	codexagent "github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/codex"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
@@ -3336,6 +3335,7 @@ func (c *transitionChat) DrainChatQueue(_ context.Context, _ domain.SessionID) e
 }
 
 func TestAgyAdapterEnablesInterfaceTransitionStatusInBothDirections(t *testing.T) {
+	if !retiredTestAgentsAvailable { t.Skip("Agy is retired in this build") }
 	for _, mode := range []domain.SessionMode{domain.SessionModeChat, domain.SessionModeTUI} {
 		t.Run(string(mode), func(t *testing.T) {
 			manager, store, _, _, _ := newTransitionManager(t, mode)
@@ -3365,7 +3365,7 @@ func TestAgyAdapterEnablesInterfaceTransitionStatusInBothDirections(t *testing.T
 			rec := store.sessions["session-1"]
 			rec.Harness = domain.HarnessAgy
 			store.sessions["session-1"] = rec
-			manager.agents = singleAgent{agent: agyagent.New()}
+			manager.agents = singleAgent{agent: testAgyAgent()}
 
 			status, err := manager.InterfaceTransitionStatus(context.Background(), "session-1")
 			if err != nil {
@@ -3379,6 +3379,7 @@ func TestAgyAdapterEnablesInterfaceTransitionStatusInBothDirections(t *testing.T
 }
 
 func TestInterfaceTransitionAgyFailsWhenSourceDatabaseMissing(t *testing.T) {
+	if !retiredTestAgentsAvailable { t.Skip("Agy is retired in this build") }
 	// A TUI session with an older ACP DB but missing CLI DB must fail interface transition.
 	manager, store, _, _, _ := newTransitionManager(t, domain.SessionModeTUI)
 	geminiHome := t.TempDir()
@@ -3403,7 +3404,7 @@ func TestInterfaceTransitionAgyFailsWhenSourceDatabaseMissing(t *testing.T) {
 	rec := store.sessions["session-1"]
 	rec.Harness = domain.HarnessAgy
 	store.sessions["session-1"] = rec
-	manager.agents = singleAgent{agent: agyagent.New()}
+	manager.agents = singleAgent{agent: testAgyAgent()}
 
 	status, err := manager.InterfaceTransitionStatus(context.Background(), "session-1")
 	if err != nil {

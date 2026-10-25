@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package devin adapts Devin for Terminal as an experimental host-trusted AO
 // reviewer. It always runs Devin's visible, long-lived interactive TUI.
 package devin

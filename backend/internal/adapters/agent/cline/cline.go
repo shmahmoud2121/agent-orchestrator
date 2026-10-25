@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package cline implements the Cline CLI agent adapter: launching terminal
 // sessions, resuming sessions by native session id, installing workspace-local
 // Cline hooks, and reading hook-derived session info.

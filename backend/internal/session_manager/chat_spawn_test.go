@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/commandcode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 	browsersvc "github.com/aoagents/agent-orchestrator/backend/internal/service/browser"
@@ -1948,6 +1947,7 @@ func TestChatSpawnFailsWhenHookInstallFails(t *testing.T) {
 // the first prompt preamble instead, so this asserts hook installation — not
 // Chat delivery.
 func TestChatSpawnWritesCommandCodeSessionStartHook(t *testing.T) {
+	if !retiredTestAgentsAvailable { t.Skip("Command Code is retired in this build") }
 	dataDir := t.TempDir()
 	wsDir := t.TempDir()
 	launcher := &recordingLauncher{}
@@ -1955,7 +1955,7 @@ func TestChatSpawnWritesCommandCodeSessionStartHook(t *testing.T) {
 	st.projects["mer"] = domain.ProjectRecord{ID: "mer", Config: testRoleAgents()}
 	mgr := New(Deps{
 		Runtime:   &fakeRuntime{},
-		Agents:    switchTestAgents{domain.HarnessCommandCode: commandcode.New()},
+		Agents:    switchTestAgents{domain.HarnessCommandCode: testCommandCodeAgent()},
 		Workspace: &fakeWorkspace{path: wsDir},
 		Store:     st,
 		Messenger: &fakeMessenger{},

@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package opencodev2 adapts the OpenCode 2 worker for read-only code reviews.
 package opencodev2
 

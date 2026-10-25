@@ -1,3 +1,5 @@
+//go:build retired
+
 // Package droid implements the Droid (Factory) agent adapter: launching new
 // interactive sessions, resuming hook-tracked sessions, installing
 // workspace-local hooks, and reading hook-derived session info.

@@ -1,3 +1,5 @@
+//go:build retired
+
 package muse
 
 // SupportsTerminalVersionRefresh declares unattended exact-conversation resume.
