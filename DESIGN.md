@@ -312,6 +312,61 @@ When several peer objects are primarily chosen or scanned—projects, settings s
 - Never layer translucent UI or decorative gradients over live terminal content.
 - Chat and TUI are alternate interfaces for the same session. Their surrounding orientation and actions must remain coherent across mode changes.
 
+### Manager-first conversation
+
+The manager chat is home for a project. The person talks to one manager. Workers are visible, but they never compete with the manager for attention. This direction was approved on 2026-10-23 and is not yet built; build new work toward it.
+
+**Layout**
+- One centered conversation column, `max-w-[760px]`, with generous side space. Nothing sits beside it except the collapsible inspector.
+- User messages sit on the right in a quiet filled bubble (`bg-card`, modest radius, no border). Manager replies are plain text on the page background, with no bubble, using short sentence-case headings, bullets, and inline code.
+- Code blocks use one filled surface with a hairline edge and mono text. No syntax-colored chrome around them.
+
+**Collapsed work line**
+- All tool calls, file reads, and intermediate steps of a turn fold into one muted line above the reply: `Worked for 2m 10s ›`. While the turn is running it reads `Working · 40s` with the standard working spinner.
+- Expanding it shows the step list inline. It is collapsed by default and remembers its state per turn.
+- The reply text is the result. The steps are evidence on demand.
+
+**Team card (workers inline)**
+- When the manager delegates, one compact card appears in the manager reply. Its header is a status dot plus "Team working" or "Team complete", with "View workers ›" on the right.
+- The card holds one row per worker: agent avatar, then the task or worker name on the first line and `harness · model` muted on the second line, then a status word on the right (Working, Needs you, Completed, Failed) in its semantic color, then a chevron.
+- Clicking a row opens that worker's conversation read-only, inside the inspector or a session tab. The worker chat has no composer by default; a "Take over" action, if it exists later, is deliberate and secondary.
+- A worker that needs approval does not raise its own prompt. The manager surfaces it (see the approval bar).
+
+**Changed-files card**
+- When a turn changes files, show one collapsible card: `3 changed files +6 −2`, with an "Open diff" ghost button on the right.
+- Expanded, it shows a compact file tree with per-file `+n −n` in tabular figures and a muted status letter (M, A, D). Additions and deletions use the semantic success and danger tokens. Nothing else in the card is colored.
+- Diffs never render inline in the chat. "Open diff" goes to the diff viewer.
+
+**Composer**
+- A context strip sits directly above the input, attached to it: project, where it runs (local worktree or main checkout), and a branch chip with a dropdown. It's mono for the branch and muted for everything else.
+- The input is one composed surface: placeholder "Describe a task…", then a single row of controls under the text: `+` (attach), model picker, permission mode, Team toggle, and the send button on the right. Nothing else goes in it.
+- Context size ("200K context") sits as muted text under the right edge of the composer, shown only when known.
+- `Enter` sends. While the manager is working, `Enter` queues the message, and `Ctrl/⌘ Enter` interrupts and steers. The send button's icon and tooltip reflect which one will happen.
+
+**Approval bar**
+- Pending approvals appear in a slim bar directly above the context strip, one line per request: who is asking (manager or worker name), what (a short command or file summary), and Approve and Deny.
+- With two or more requests, they group under one header line with "Approve all". Approve all never covers a destructive or out-of-sandbox request; those stay individual.
+- Only the manager conversation shows the approval bar. Worker conversations show the pending state read-only.
+
+**Sidebar for this model**
+- At the top: "New task" and "Search", each with its shortcut right-aligned in muted text.
+- Projects, then their tasks underneath: agent avatar, title (single line, truncated), and a relative time on the right ("5m", "3h"). An unread or needs-you dot goes before the time. "Show N more" collapses long lists.
+- Global utilities (help, usage, archive, settings) are icon buttons at the bottom with tooltips.
+
+**Keyboard**
+- `Ctrl/⌘ N` new task, `Ctrl/⌘ K` search, `Ctrl/⌘ B` toggle sidebar, `Ctrl/⌘ J` toggle terminal, `Ctrl/⌘ F` find in this conversation, `Ctrl/⌘ +/−/0` scale the interface.
+
+**Motion**
+- Conversation content appears at once, with no typing animations, slide-ins, or staggered reveals. Streaming text appends in place. The motion rules in §10 still apply to hover and panel changes.
+
+### Permissions and approvals
+
+**One vocabulary.** The permission picker shows the same four labels for every agent, in this order: Ask, Accept edits, Auto, Bypass. Each agent's connector maps them to its native setting, so per-agent wording (for example "Full access" or "Approve for me") never appears in the UI. The default is Ask for every agent. In a worker's settings, Bypass is shown disabled with a tooltip: "Workers can't bypass permissions."
+
+**Manager-routed approvals.** Worker approval requests appear only in the manager's approval bar, labeled with the worker's name. Requests the manager auto-approved under the person's allowlist show as one muted line in the team card ("Approved 3 routine actions ›"), never silently. Risky or out-of-sandbox requests always need the person's click, and Approve all never covers them.
+
+**Sandbox state is visible.** Each worker row in the team card shows a small lock glyph when its sandbox is active. A worker running without a sandbox (for example on a platform where none is available) shows a caution-colored "Not sandboxed" label instead of the lock. The person never has to guess.
+
 ## 10. Motion, transitions, and feedback
 
 Motion is functional and modest.
@@ -374,6 +429,11 @@ Reject these patterns in renderer work unless a specific exception is approved:
 - Tiny low-contrast explanatory copy that conceals an important system state.
 - Fake terminal screenshots, fake progress, or generic “AI” illustration.
 - Moving controls on hover, layout shifts on data refresh, or shortcut behavior that changes routes unexpectedly.
+- Wallpapers, scenery, or photographic backgrounds behind the working UI.
+- Rendering diffs, full tool output, or every tool call inline in the conversation by default.
+- A worker conversation with its own live composer or approval prompt in the default view.
+- An "Approve all" that includes destructive or sandbox-escaping requests.
+- More than one row of controls inside the composer.
 
 ## 14. Implementation rules
 
@@ -429,3 +489,10 @@ Approve only when the answer to every applicable check is yes. Otherwise classif
 | 2026-10-09 | Home: with Developer Mode and Cloud on, Clone to the cloud replaces the standalone cell; card labels use verb + source; cards rest on `bg-card` and hover to `bg-accent`; recent rows sit under the grid with no heading of their own, one 40px line each (no path), hover pill on `bg-card` | A fifth full-width row broke the 2×2 grid; the old translucent hover made cards darker instead of lifting them; the separate recent-projects title and two-line rows made home taller than it needs to be. |
 | 2026-10-14 | Installed agent rows show muted "Installed" text; install is one ghost "Install · <method>" with a borderless chevron menu | A disabled filled button read as a control, and the bordered split pill broke the settings rule that only inputs, selects and switches carry an edge or fill. Supersedes the 2026-09-04 disabled-button row. |
 | 2026-10-14 | Settings cards: no outline, filled background groups them, hairline dividers between items, rows fit their content with 10px vertical padding | The person asked for borders only between items, not around containers. Rows sit 16px in from the card edge and the page title and section headings follow that inset. |
+| 2026-10-23 | The manager chat is project home; workers appear as one inline team card with read-only drill-in | One conversation to supervise; worker detail is on demand. The layout is inspired by PandaCode's architect/worker view, and no code or assets were copied. |
+| 2026-10-23 | Turn steps collapse into one "Worked for …" line; changed files collapse into one card with Open diff | It keeps the conversation readable during long runs without hiding evidence. |
+| 2026-10-23 | Composer is one surface with a context strip above it and one control row; approvals are a slim bar above it, shown only in the manager chat | It puts the next action and the pending human decisions in one place. |
+| 2026-10-23 | No wallpapers or decorative backgrounds, even though the reference app has them | They conflict with "no stock imagery or decorative textures" (§2) and hurt legibility. |
+| 2026-10-23 | One permission vocabulary (Ask, Accept edits, Auto, Bypass) for every agent, defaulting to Ask; workers can never bypass | Claude's model is the project standard; per-agent labels were confusing, and Codex defaulted to full access. |
+| 2026-10-23 | Worker approvals route to the manager; the manager auto-approves only allowlisted actions, and risky requests always go to the person | The manager reads worker output and can be misled, so code-enforced rules and the person stay the final gate. |
+| 2026-10-23 | Sandbox status is shown per worker; unsandboxed workers are labeled | The global sandbox is weaker on Windows, so honest state matters more than a uniform look. |
