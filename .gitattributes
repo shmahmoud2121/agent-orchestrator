@@ -12,3 +12,6 @@ backend/internal/adapters/reviewer/*/assets/** text eol=lf
 backend/internal/renderpage/render_bootstrap.js text eol=lf
 backend/internal/skillassets/using-ao/** text eol=lf
 backend/internal/storage/sqlite/migrations/** text eol=lf
+# Vitest writes snapshots with LF; a CRLF checkout would show every rewritten
+# snapshot as modified.
+*.snap text eol=lf
