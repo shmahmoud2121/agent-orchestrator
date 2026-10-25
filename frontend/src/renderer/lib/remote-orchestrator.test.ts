@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { beforeEach, expect, it, vi } from "vitest";
 import { openRemoteOrchestrator } from "./remote-orchestrator";
 import type { WorkspaceSession } from "../types/workspace";

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { appI18n } from "../i18n";
 import type { PullRequestFacts, WorkspaceSession } from "../types/workspace";

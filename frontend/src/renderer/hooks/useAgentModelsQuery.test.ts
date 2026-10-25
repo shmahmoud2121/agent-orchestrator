@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiClient } from "../lib/api-client";

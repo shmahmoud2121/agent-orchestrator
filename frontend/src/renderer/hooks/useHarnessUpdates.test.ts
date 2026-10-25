@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { hasConfirmedHarnessUpdate, maintenanceMethodId, harnessUpdateNoticeKey, isActiveInstallJob, isFailedInstallJob, needsHarnessLogin, updateAdvisoryRefreshInterval } from "./useHarnessUpdates";
 

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { formatCPU, formatMemory } from "./useSessionMemory";
 import { formatDuration, processKind } from "../components/SessionMemoryPanel";

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { PostHog } from "posthog-js/dist/module.full.no-external";
 import {

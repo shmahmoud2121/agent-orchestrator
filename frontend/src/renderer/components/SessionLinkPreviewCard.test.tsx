@@ -6,6 +6,7 @@ import { appI18n } from "../i18n";
 import type { SessionLinkSource } from "../lib/use-session-link-navigation";
 import type { PullRequestFacts, SessionArtifact, WorkspaceSession, WorkspaceSummary } from "../types/workspace";
 import { ArtifactLinkPreviewCard, SessionLinkPreviewCard, artifactExcerpt, markdownPreviewSource } from "./SessionLinkPreviewCard";
+import "../test/all-catalogs";
 
 const mocks = vi.hoisted(() => ({ restore: vi.fn(), source: vi.fn(), artifactFile: vi.fn() }));
 
