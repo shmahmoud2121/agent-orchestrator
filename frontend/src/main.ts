@@ -91,7 +91,6 @@ import { toggleAppDevTools } from "./main/app-devtools";
 import { attachAppShortcuts } from "./main/app-shortcuts";
 import {
 	KEYBOARD_SHORTCUTS_HELP_CHANNEL,
-	OPEN_SETTINGS_SHORTCUT_CHANNEL,
 	SET_CLOSE_SHELL_TERMINAL_SHORTCUT_ENABLED_CHANNEL,
 	SET_TERMINAL_FOCUSED_CHANNEL,
 	type KeybindingOverrides,
