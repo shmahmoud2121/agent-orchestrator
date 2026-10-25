@@ -157,14 +157,24 @@ func configuredProviders(ctx context.Context, agentID string, env map[string]str
 	return providers
 }
 
+// readOnlySQLiteDSN returns a read-only SQLite URI for path. A Windows drive
+// path needs a leading slash (file:///C:/...); without it SQLite reads the
+// drive letter as the URI authority and refuses to open the file.
+func readOnlySQLiteDSN(path string) string {
+	p := filepath.ToSlash(path)
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	return (&url.URL{Scheme: "file", Path: p, RawQuery: "mode=ro"}).String()
+}
+
 func ompConfiguredProviders(ctx context.Context, path string) ([]string, bool) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return nil, false
 	} else if err != nil {
 		return nil, true
 	}
-	dsn := (&url.URL{Scheme: "file", Path: filepath.ToSlash(path), RawQuery: "mode=ro"}).String()
-	db, err := sql.Open("sqlite", dsn)
+	db, err := sql.Open("sqlite", readOnlySQLiteDSN(path))
 	if err != nil {
 		return nil, true
 	}
