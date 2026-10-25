@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -160,6 +161,9 @@ func TestIgnoredConfigAndHarmlessSettings(t *testing.T) {
 }
 
 func TestConfigurationSymlinksCannotReadOutsideCheckout(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires a privilege Windows does not grant by default")
+	}
 	for _, dir := range []bool{false, true} {
 		t.Run(map[bool]string{false: "file", true: "directory"}[dir], func(t *testing.T) {
 			root := repo(t)

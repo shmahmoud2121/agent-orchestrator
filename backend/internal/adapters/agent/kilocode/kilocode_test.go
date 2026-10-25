@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -24,6 +25,9 @@ func TestManifestIDIsKilocode(t *testing.T) {
 }
 
 func TestResolveKilocodeBinaryFindsOfficialKiloCommand(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shebang script stub cannot be executed or found on PATH on Windows")
+	}
 	dir := t.TempDir()
 	path := filepath.Join(dir, "kilo")
 	if err := os.WriteFile(path, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {

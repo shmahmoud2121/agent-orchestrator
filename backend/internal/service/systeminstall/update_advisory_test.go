@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -442,6 +443,9 @@ func fixedManagedVersion(latest string, err error) managedVersionChecker {
 }
 
 func TestManagerOwnsBinaryTracesSymlinkIntoNPMPackage(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires a privilege Windows does not grant by default")
+	}
 	root := t.TempDir()
 	packageDir := filepath.Join(root, "node_modules", "@openai", "codex", "bin")
 	if err := os.MkdirAll(packageDir, 0o755); err != nil {

@@ -158,7 +158,8 @@ async function runDownload(arch, failure = "none", disabled = false, cycle = {})
 	} finally { await new Promise(resolve => server.close(resolve)); }
 }
 
-describe("MacUpdater reconstruction and full fallback", () => {
+// cross-zip needs the POSIX `zip` command, which Windows does not ship.
+describe.skipIf(process.platform === "win32")("MacUpdater reconstruction and full fallback", () => {
 	it.each(["arm64", "x64"])("reconstructs the %s ZIP before native handoff", async arch => {
 		const result = await runDownload(arch);
 		expect(result.error).toBeUndefined();

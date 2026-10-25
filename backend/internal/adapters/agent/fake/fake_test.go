@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -37,6 +38,9 @@ func TestManifestReportsFakeHarness(t *testing.T) {
 }
 
 func TestGetLaunchCommandIsScriptedTimeline(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX shell path assertion assumes / separators and an sh binary")
+	}
 	// Fixed speedup so the emitted sleep is deterministic in the assertions.
 	t.Setenv(SpeedupEnv, "4")
 	cmd, err := New().GetLaunchCommand(context.Background(), ports.LaunchConfig{
@@ -82,6 +86,9 @@ func TestGetLaunchCommandIsScriptedTimeline(t *testing.T) {
 }
 
 func TestResolveBinaryReturnsResolvedShellPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX shell path assertion assumes / separators and an sh binary")
+	}
 	got, err := New().ResolveBinary(context.Background())
 	if err != nil {
 		t.Fatalf("ResolveBinary: unexpected error: %v", err)

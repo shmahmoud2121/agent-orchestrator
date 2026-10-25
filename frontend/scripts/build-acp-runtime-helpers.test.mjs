@@ -574,7 +574,7 @@ function onMessage(message) {
 });
 
 describe("pruneNodeDistribution", () => {
-	it("removes Unix package-manager links before deleting their targets", () => {
+	it.skipIf(process.platform === "win32")("removes Unix package-manager links before deleting their targets", () => {
 		const nodeRoot = temporaryDirectory();
 		const bin = join(nodeRoot, "bin");
 		const npmBin = join(nodeRoot, "lib", "node_modules", "npm", "bin");

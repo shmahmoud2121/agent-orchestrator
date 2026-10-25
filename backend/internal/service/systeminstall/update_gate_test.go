@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"sync"
 	"testing"
@@ -345,6 +346,9 @@ func TestAdvisoryUsesManagedUpdatePlan(t *testing.T) {
 }
 
 func TestLaunchDropsAdvisoryForBinaryReplacedOutsideAO(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires a privilege Windows does not grant by default")
+	}
 	dir := t.TempDir()
 	versions := filepath.Join(dir, "versions")
 	if err := os.MkdirAll(versions, 0o755); err != nil {

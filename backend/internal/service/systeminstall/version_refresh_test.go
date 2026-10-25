@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -75,6 +76,9 @@ func TestFailedUpdateMarksNothing(t *testing.T) {
 }
 
 func TestKeptKegIsCleanedUpOnceSessionsMove(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the macOS/Homebrew code path under test is exercised with Unix-style paths that do not round-trip through Windows path handling")
+	}
 	s, ran := updateWhileRunningService(t, []domain.SessionRecord{{ID: "kimi-1", Harness: domain.AgentHarness(TargetKimi)}})
 	observer := &updateObserverStub{stale: map[domain.AgentHarness]int64{domain.AgentHarness(TargetKimi): 1}}
 	s.SetHarnessUpdateObserver(observer)

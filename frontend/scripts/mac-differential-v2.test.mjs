@@ -11,7 +11,8 @@ const dirs = [];
 afterEach(() => { for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true }); });
 async function fixture() { const f = await macV2Fixture(); dirs.push(f.dir); return f; }
 
-describe("isolated macOS differential v2 release contract", () => {
+// cross-zip needs the POSIX `zip` command, which Windows does not ship.
+describe.skipIf(process.platform === "win32")("isolated macOS differential v2 release contract", () => {
   it("signs both architectures and keeps every legacy feed free of v2 references", async () => {
     const f = await fixture();
     expect(verifyMacV2Assets({ allow: true, dir: f.dir, candidate: f.candidate, channel: "nightly", trustedKeys: f.trustedKeys })).toHaveLength(5);

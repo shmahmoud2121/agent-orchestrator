@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
+	"runtime"
 	"testing"
 	"time"
 
@@ -27,6 +28,9 @@ func (r handoffDriverRegistry) Driver(domain.AgentHarness) (ports.ChatDriver, er
 }
 
 func TestNativeForkHandoffRetainsEachExchangeOnce(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	for _, tc := range []struct {
 		name, parent, firstAnswer string
 		wantCopies                int

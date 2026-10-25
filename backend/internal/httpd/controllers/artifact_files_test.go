@@ -127,6 +127,9 @@ func TestArtifactFileRouteServesTheFilesNextToAPage(t *testing.T) {
 }
 
 func TestArtifactFileRouteServesOnlyRegularFilesInsideTheDirectory(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires a privilege Windows does not grant by default")
+	}
 	outside := filepath.Join(t.TempDir(), "secret.html")
 	if err := os.WriteFile(outside, []byte("<p>secret</p>"), 0o600); err != nil {
 		t.Fatal(err)

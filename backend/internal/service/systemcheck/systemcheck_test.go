@@ -192,6 +192,9 @@ func TestCheck_GitMissing(t *testing.T) {
 }
 
 func TestCheck_TmuxMissing(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("tmux is not required on Windows")
+	}
 	catalog := &fakeHarnessCatalog{inventory: agentsvc.Inventory{
 		Installed: []agentsvc.Info{{ID: "claude-code", Label: "Claude Code"}},
 	}}

@@ -3490,7 +3490,7 @@ describe("quitAndInstallUpdate", () => {
     }
   });
 
-  it("rejects a translocated installation without quitting", async () => {
+  it.skipIf(process.platform === "win32")("rejects a translocated installation without quitting", async () => {
     const restore = stubProcess("darwin", TRANSLOCATED_EXEC_PATH);
     try {
       const { module, autoUpdater } = await importAutoUpdater(undefined, { nativeReadyManually: true });
@@ -3499,7 +3499,7 @@ describe("quitAndInstallUpdate", () => {
     } finally { restore(); }
   });
 
-  it.each(["bundle", "parent"])("rejects an unwritable %s without quitting", async (location) => {
+  it.skipIf(process.platform === "win32").each(["bundle", "parent"])("rejects an unwritable %s without quitting", async (location) => {
     const { root, bundle, execPath } = makeBundle();
     chmodSync(location === "bundle" ? bundle : root, 0o555);
     const restore = stubProcess("darwin", execPath);
@@ -3753,7 +3753,7 @@ describe("install-on-quit policy", () => {
     vi.resetModules();
   });
 
-  it("disables install-on-quit when the location cannot be installed to", async () => {
+  it.skipIf(process.platform === "win32")("disables install-on-quit when the location cannot be installed to", async () => {
     const restore = stubProcess("darwin", TRANSLOCATED_EXEC_PATH);
     try {
       const { module, autoUpdater } = await importAutoUpdater();
@@ -3813,7 +3813,7 @@ describe("install-on-quit policy", () => {
     expect(autoUpdater.autoInstallOnAppQuit).toBe(true);
   });
 
-  it("keeps install-on-quit off for an uninstallable location even once replaced", async () => {
+  it.skipIf(process.platform === "win32")("keeps install-on-quit off for an uninstallable location even once replaced", async () => {
     const restore = stubProcess("darwin", TRANSLOCATED_EXEC_PATH);
     try {
       const { module, autoUpdater, updaterEvents } = await importAutoUpdater({

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -512,6 +513,9 @@ func TestNPMPlanUsesTargetSpecificNodeFloors(t *testing.T) {
 }
 
 func TestNPMPlanRequiresWritableGlobalPrefix(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the macOS/Homebrew code path under test is exercised with Unix-style paths that do not round-trip through Windows path handling")
+	}
 	tests := []struct {
 		name       string
 		caps       installCapabilitiesStub

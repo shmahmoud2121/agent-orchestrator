@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -50,6 +51,9 @@ func continuationBindingIDs(t *testing.T, store *sqlite.Store, sessionID domain.
 }
 
 func TestCollectorDiscoversClaudeContinuationInWorkspaceDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the fixture embeds a Windows workspace path in JSON without escaping backslashes")
+	}
 	ctx := context.Background()
 	now := time.Unix(1700000000, 0).UTC()
 	store := collectorTestStore(t)
@@ -75,6 +79,9 @@ func TestCollectorDiscoversClaudeContinuationInWorkspaceDir(t *testing.T) {
 }
 
 func TestCollectorContinuationDiscoveryIsIdempotent(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the fixture embeds a Windows workspace path in JSON without escaping backslashes")
+	}
 	ctx := context.Background()
 	now := time.Unix(1700000000, 0).UTC()
 	store := collectorTestStore(t)

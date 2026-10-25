@@ -3,6 +3,7 @@ package reviewgateway
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -28,6 +29,9 @@ func testManifest(t *testing.T) Manifest {
 }
 
 func TestPrepareEnvironmentUsesPrivateAOOwnedDirectoriesAndImmutableManifest(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod permissions are not enforced on Windows")
+	}
 	dataDir := t.TempDir()
 	manifest := testManifest(t)
 	env, err := PrepareEnvironment(dataDir, manifest)
@@ -64,6 +68,9 @@ func TestPrepareEnvironmentUsesPrivateAOOwnedDirectoriesAndImmutableManifest(t *
 }
 
 func TestPrepareHostTrustedEnvironmentUsesPrivateAOOwnedDirectories(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod permissions are not enforced on Windows")
+	}
 	dataDir := t.TempDir()
 	env, err := PrepareHostTrustedEnvironment(dataDir, "review-worker-1")
 	if err != nil {

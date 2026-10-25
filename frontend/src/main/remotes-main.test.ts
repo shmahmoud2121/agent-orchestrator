@@ -42,7 +42,7 @@ async function tempFile(): Promise<string> {
 }
 
 describe("remotesFilePath", () => {
-	it("keeps an isolated AO_DATA_DIR out of the real home credentials", () => {
+	it.skipIf(process.platform === "win32")("keeps an isolated AO_DATA_DIR out of the real home credentials", () => {
 		vi.stubEnv("AO_DATA_DIR", "/tmp/ao-remote-proof");
 		try {
 			expect(remotesFilePath()).toBe("/tmp/ao-remote-proof/remotes.json");

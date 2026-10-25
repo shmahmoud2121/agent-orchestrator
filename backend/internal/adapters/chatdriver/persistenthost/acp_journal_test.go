@@ -6,10 +6,14 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
 func TestACPPromptJournalReplaysResetsAndEnforcesQuota(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod permissions are not enforced on Windows")
+	}
 	path := filepath.Join(t.TempDir(), "prompt.journal")
 	journal, err := openACPPromptJournal(context.Background(), path)
 	if err != nil {

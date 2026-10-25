@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -335,6 +336,9 @@ func TestUninstallHooksRemovesOnlyAOHooks(t *testing.T) {
 }
 
 func TestResolveBinaryFindsCommandCodeOnPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shebang script stub cannot be executed or found on PATH on Windows")
+	}
 	dir := t.TempDir()
 	binPath := filepath.Join(dir, "command-code")
 	if err := os.WriteFile(binPath, []byte("#!/bin/sh\nexit 0\n"), 0755); err != nil {

@@ -3,6 +3,7 @@ package codexappserver
 import (
 	"context"
 	"encoding/json"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -141,6 +142,9 @@ func TestCitationFormatterLeavesOrdinaryMarkdownAlone(t *testing.T) {
 }
 
 func TestLiveCodexCitationEventsBecomeMarkdown(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := openConversation(t)
 	marker := citationStart + "cite" + citationField + "turn0search0" + citationStop
 	srv.push(`{"method":"item/completed","params":{"threadId":"thread-1","turnId":"turn-1","item":` +
@@ -177,6 +181,9 @@ func TestLiveCodexCitationEventsBecomeMarkdown(t *testing.T) {
 }
 
 func TestReadHistoryResolvesCodexCitationSources(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	conv, srv := openConversation(t)
 	marker := citationStart + "cite" + citationField + "turn0search0" + citationStop
 	srv.reply("thread/read", `{"thread":{"id":"thread-1","turns":[{"id":"turn-1","status":"completed","items":[`+

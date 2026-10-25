@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -111,6 +112,9 @@ func TestInterfaceTransitionReservedTranscriptRequiresUntouchedTerminal(t *testi
 		"user prompt", "assistant response", "unknown surface", "chat",
 	} {
 		t.Run(name, func(t *testing.T) {
+			if runtime.GOOS == "windows" && name == "lookup error" {
+				t.Skip("Windows reports a path under a regular file as not existing instead of ENOTDIR, so this lookup error cannot be reproduced")
+			}
 			manager, store, runtime, _, log := newTransitionManager(t, domain.SessionModeTUI)
 			useFastInterfaceTransitionTimings(manager)
 			manager.agents = singleAgent{agent: untouchedEmptyTransitionAgent{}}

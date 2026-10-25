@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -267,6 +268,9 @@ func TestStartPrefersAdapterResolvedBinaryOverGenericPATHMatch(t *testing.T) {
 }
 
 func TestStartPreparesKimiAuthWorkspaceWithSeededTrust(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows resolves the home directory from USERPROFILE, so setting HOME does not isolate the seeded trust files")
+	}
 	// Not parallel: isolates HOME/KIMI_CODE_HOME so the kimi adapter's trust
 	// seed lands in a throwaway home instead of the developer's real one.
 	home := t.TempDir()
@@ -307,6 +311,9 @@ func TestStartPreparesKimiAuthWorkspaceWithSeededTrust(t *testing.T) {
 }
 
 func TestStartPreparesCopilotAuthWorkspaceWithSeededTrust(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows resolves the home directory from USERPROFILE, so setting HOME does not isolate the seeded trust files")
+	}
 	// Not parallel: isolates HOME/COPILOT_HOME so the copilot adapter's trust
 	// seed lands in a throwaway home instead of the developer's real one.
 	home := t.TempDir()

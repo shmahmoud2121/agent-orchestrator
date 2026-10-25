@@ -214,6 +214,9 @@ func TestLauncherSpawnWarnsWhenPATHPinAndShimFail(t *testing.T) {
 }
 
 func TestLauncherSpawnPrependsNodeRuntimeForNodeShimReviewer(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shebang node shims and HOME-based node discovery are POSIX only")
+	}
 	emptyPath := t.TempDir()
 	home := t.TempDir()
 	binDir := filepath.Join(home, "reviewer", "bin")

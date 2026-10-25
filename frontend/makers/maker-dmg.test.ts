@@ -86,7 +86,7 @@ describe("MakerDMG", () => {
 	// Forge's package directory here nests the whole directory under that name and
 	// yields "Agent Orchestrator.app/Agent Orchestrator.app", an outer bundle with
 	// no Contents that cannot launch. Verified against app-builder-lib 26.15.3.
-	it("hands buildForge the .app inside the package dir, not the package dir", async () => {
+	it.skipIf(process.platform === "win32")("hands buildForge the .app inside the package dir, not the package dir", async () => {
 		await new MakerDMG().make(makeOptions);
 		const [forgeOptions] = buildForge.mock.calls.at(-1)!;
 		expect(forgeOptions).toEqual({ dir: APP_PATH });

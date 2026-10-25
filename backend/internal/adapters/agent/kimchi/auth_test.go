@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
@@ -211,6 +212,9 @@ func TestAuthStatusAuthorizedFromEnvVar(t *testing.T) {
 }
 
 func TestAuthStatusAuthorizedFromConfig(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows resolves the home directory from USERPROFILE, not HOME")
+	}
 	clearKimchiAuthEnv(t)
 	home := withTempHome(t)
 	writeKimchiGlobalConfig(t, home, `{"apiKey":"file-key-012"}`)

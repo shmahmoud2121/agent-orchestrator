@@ -50,7 +50,7 @@ it("rejects helper startup failure so AO can stay open", async () => {
 	await expect(readFile(path.join(root, "update-restart", "active.json"))).rejects.toThrow();
 });
 
-it("acknowledges only the new process running the expected version and bundle", async () => {
+it.skipIf(process.platform === "win32")("acknowledges only the new process running the expected version and bundle", async () => {
 	await start();
 	const options = { stateDir: root, appPath, version: "2.0.0", pid: process.pid + 1 };
 	expect(await acknowledgeMacUpdateRestart({ ...options, pid: process.pid })).toBe(false);

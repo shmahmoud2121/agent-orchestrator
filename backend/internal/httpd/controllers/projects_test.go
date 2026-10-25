@@ -2,6 +2,7 @@ package controllers_test
 
 import (
 	"context"
+	"runtime"
 
 	"encoding/json"
 
@@ -287,6 +288,9 @@ func TestProjectsAPI_AddValidationAndConflicts(t *testing.T) {
 }
 
 func TestProjectsAPI_Clone(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("clone fixtures build a file:// URL from a Unix-style path; a Windows drive path does not form a valid URL this way")
+	}
 	srv := newTestServer(t)
 	source := gitRepo(t, "clone-source")
 	remoteURL := (&url.URL{Scheme: "file", Path: source}).String()

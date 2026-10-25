@@ -17,7 +17,7 @@ afterEach(async () => {
 });
 
 describe("TelemetryPolicyAuthority", () => {
-	it("materializes the packaged default as an owner-only durable record", async () => {
+	it.skipIf(process.platform === "win32")("materializes the packaged default as an owner-only durable record", async () => {
 		const dataDir = await makeDir();
 		const authority = new TelemetryPolicyAuthority({ dataDir, packagedDefault: true, platform: "linux" });
 		const snapshot = await authority.load();
@@ -35,7 +35,7 @@ describe("TelemetryPolicyAuthority", () => {
 		});
 	});
 
-	it("records whether the release gate was open when a choice is written", async () => {
+	it.skipIf(process.platform === "win32")("records whether the release gate was open when a choice is written", async () => {
 		const dataDir = await makeDir();
 		const policyPath = path.join(dataDir, "telemetry_policy.json");
 		const gated = new TelemetryPolicyAuthority({ dataDir, packagedDefault: false, platform: "linux", productionEnabled: false });
@@ -49,7 +49,7 @@ describe("TelemetryPolicyAuthority", () => {
 		expect(JSON.parse(await readFile(policyPath, "utf8"))).toMatchObject({ events_enabled: true, consent_production_enabled: true });
 	});
 
-	it("does not resume a version 1 opt-in once the release gate opens, and leaves the file alone", async () => {
+	it.skipIf(process.platform === "win32")("does not resume a version 1 opt-in once the release gate opens, and leaves the file alone", async () => {
 		const dataDir = await makeDir();
 		const policyPath = path.join(dataDir, "telemetry_policy.json");
 		const raw = JSON.stringify({
@@ -68,7 +68,8 @@ describe("TelemetryPolicyAuthority", () => {
 		expect(await readFile(policyPath, "utf8")).toBe(raw);
 	});
 
-	it.each(["symlink", "group-readable", "malformed"])("fails closed without replacing an unsafe %s authority", async (kind) => {
+	it.for(["symlink", "group-readable", "malformed"])("fails closed without replacing an unsafe %s authority", async (kind, { skip }) => {
+		if (kind === "symlink" && process.platform === "win32") skip("symlink creation requires a privilege Windows does not grant by default");
 		const dataDir = await makeDir();
 		const policyPath = path.join(dataDir, "telemetry_policy.json");
 		if (kind === "symlink") {
@@ -106,7 +107,7 @@ describe("TelemetryPolicyAuthority", () => {
 		expect(authority.snapshot().acknowledged).toBe(false);
 	});
 
-	it("retries an unacknowledged replacement without changing its generation", async () => {
+	it.skipIf(process.platform === "win32")("retries an unacknowledged replacement without changing its generation", async () => {
 		const dataDir = await makeDir();
 		const base = nodeTelemetryPolicyFileSystem;
 		let syncAttempts = 0;
@@ -147,7 +148,7 @@ describe("TelemetryPolicyAuthority", () => {
 	});
 });
 
-it("resolves one absolute data directory against the daemon launch cwd", () => {
+it.skipIf(process.platform === "win32")("resolves one absolute data directory against the daemon launch cwd", () => {
 	expect(resolveDesktopDataDir({ AO_DATA_DIR: "relative-data" }, "/home/ao", "/work/checkout", false)).toBe("/work/checkout/relative-data");
 	expect(resolveDesktopDataDir({}, "/home/ao", "/work/checkout", true)).toBe("/home/ao/.ao/data");
 	expect(resolveDesktopDataDir({}, "/home/ao", "/work/checkout", false)).toBe("/home/ao/.ao/dev/data");

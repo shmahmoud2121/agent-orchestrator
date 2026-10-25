@@ -99,6 +99,7 @@ func TestParseCodexCredentialIdentity(t *testing.T) {
 }
 
 func TestCodexAccountCatalogPersistsSafeProviderAccountID(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := filepath.Join(t.TempDir(), "accounts")
 	pending := filepath.Join(filepath.Dir(root), "pending-accounts")
 	catalog := newCodexAccountCatalog(root, nil)
@@ -120,6 +121,7 @@ func TestCodexAccountCatalogPersistsSafeProviderAccountID(t *testing.T) {
 }
 
 func TestCodexAccountCatalogLazilyUpgradesLegacyDescriptorIdentity(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := filepath.Join(t.TempDir(), "accounts")
 	pending := filepath.Join(filepath.Dir(root), "pending-accounts")
 	catalog := newCodexAccountCatalog(root, nil)
@@ -156,6 +158,7 @@ func TestCodexAccountCatalogLazilyUpgradesLegacyDescriptorIdentity(t *testing.T)
 }
 
 func TestCodexAccountCatalogCommitsStrictPrivateOpaqueSlot(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := filepath.Join(t.TempDir(), "accounts")
 	pending := filepath.Join(filepath.Dir(root), "pending-accounts")
 	catalog := newCodexAccountCatalog(root, nil)
@@ -204,6 +207,7 @@ func TestCodexAccountCatalogCommitsStrictPrivateOpaqueSlot(t *testing.T) {
 }
 
 func TestCodexAccountCatalogAllowsDuplicateEmailAndOrdersByCreation(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := filepath.Join(t.TempDir(), "accounts")
 	pending := filepath.Join(filepath.Dir(root), "pending-accounts")
 	catalog := newCodexAccountCatalog(root, nil)
@@ -238,6 +242,7 @@ func TestCodexAccountCatalogAllowsDuplicateEmailAndOrdersByCreation(t *testing.T
 }
 
 func TestCodexAccountCatalogSurfacesUnsafeAndMalformedSlotsWithoutMetadataLeak(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := filepath.Join(t.TempDir(), "accounts")
 	if err := ensurePrivateDirectory(root); err != nil {
 		t.Fatal(err)
@@ -265,6 +270,7 @@ func TestCodexAccountCatalogSurfacesUnsafeAndMalformedSlotsWithoutMetadataLeak(t
 }
 
 func TestCodexAccountCatalogRejectsSymlinkedCredentialHome(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := filepath.Join(t.TempDir(), "accounts")
 	pending := filepath.Join(filepath.Dir(root), "pending-accounts")
 	catalog := newCodexAccountCatalog(root, nil)
@@ -287,6 +293,7 @@ func TestCodexAccountCatalogRejectsSymlinkedCredentialHome(t *testing.T) {
 }
 
 func TestCodexAccountCatalogRetainsSignedOutSlotAndReplacesItsCredential(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := filepath.Join(t.TempDir(), "accounts")
 	pending := filepath.Join(filepath.Dir(root), "pending-accounts")
 	catalog := newCodexAccountCatalog(root, nil)
@@ -330,6 +337,7 @@ func TestCodexAccountCatalogRetainsSignedOutSlotAndReplacesItsCredential(t *test
 }
 
 func TestCodexAccountCatalogDeletesSignedOutSlot(t *testing.T) {
+	skipIfHostTempACLUnsafe(t)
 	root := filepath.Join(t.TempDir(), "accounts")
 	pending := filepath.Join(filepath.Dir(root), "pending-accounts")
 	catalog := newCodexAccountCatalog(root, nil)

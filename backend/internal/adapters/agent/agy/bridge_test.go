@@ -3,6 +3,7 @@ package agy
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -140,6 +141,9 @@ func TestBridgeRequiresSourceDatabase(t *testing.T) {
 }
 
 func TestGeminiHomePrefersSessionThenDaemonThenDefault(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows resolves the home directory from USERPROFILE, not HOME")
+	}
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("GEMINI_HOME", "")
@@ -247,6 +251,9 @@ func TestBridgeSyncsBrainDeletionsAndAbsentFolder(t *testing.T) {
 }
 
 func TestBridgeBrainHandlesExistingSymlinksSafely(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires a privilege Windows does not grant by default")
+	}
 	home := t.TempDir()
 	const id = "conv-symlink-safe"
 

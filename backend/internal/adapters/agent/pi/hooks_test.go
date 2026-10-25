@@ -40,6 +40,9 @@ func TestParsePiVersion(t *testing.T) {
 }
 
 func TestPiAgentSettledSupportedFromBinaryVersion(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shebang script stub cannot be executed or found on PATH on Windows")
+	}
 	for _, tc := range []struct {
 		version string
 		want    bool

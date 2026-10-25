@@ -2,6 +2,7 @@ package codexappserver
 
 import (
 	"context"
+	"runtime"
 	"testing"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
@@ -11,6 +12,9 @@ import (
 // keeps: a disabled skill would render as a command the provider then refuses to
 // run, and a skill reachable from two roots would appear twice.
 func TestListSkillsDropsDisabledAndDeduplicates(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	// Scripted before Start: the server goroutine reads this map, so writing it
 	// afterwards would race the connection it is already serving. Kept on one line
@@ -52,6 +56,9 @@ func TestListSkillsDropsDisabledAndDeduplicates(t *testing.T) {
 // SKILL.json's interface block supersedes the top-level fields. Reading only the
 // legacy fields would label a skill with text its author replaced.
 func TestListSkillsPrefersTheInterfaceBlock(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	srv.reply("skills/list", `{"data":[{"cwd":"/tmp/ws","errors":[],"skills":[{"name":"deploy","description":"legacy long text","shortDescription":"legacy short","enabled":true,"scope":"repo","path":"/tmp/ws/SKILL.md","interface":{"displayName":"Deploy to prod","shortDescription":"Ships the current branch"}}]}]}`)
 
@@ -84,6 +91,9 @@ func TestListSkillsPrefersTheInterfaceBlock(t *testing.T) {
 // has to be able to tell "no skills" from "the call broke" so `/` can stay an
 // ordinary character.
 func TestListSkillsReportsAnEmptyListRatherThanNil(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture workspace path /tmp/ws is not absolute on Windows")
+	}
 	d, srv := newTestDriver(t)
 	srv.reply("skills/list", `{"data":[]}`)
 

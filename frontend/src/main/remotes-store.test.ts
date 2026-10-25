@@ -27,7 +27,7 @@ describe("readRemotes", () => {
 		]);
 	});
 
-	it("refuses a file readable by others, naming the fix", async () => {
+	it.skipIf(process.platform === "win32")("refuses a file readable by others, naming the fix", async () => {
 		const path = await tempFile('{"remotes":[]}', 0o644);
 		await expect(readRemotes(path)).rejects.toBeInstanceOf(RemotesFilePermissionError);
 		await expect(readRemotes(path)).rejects.toThrow(/chmod 600/);
@@ -56,7 +56,7 @@ describe("addRemote", () => {
 		expect((await readRemotes(path))[0]?.hostId).toBe("h_workbox");
 	});
 
-	it("creates the file 0600 when absent", async () => {
+	it.skipIf(process.platform === "win32")("creates the file 0600 when absent", async () => {
 		const path = await tempFile();
 		await addRemote(path, { label: "workbox", url: "http://192.0.2.1:3011", password: "pw" });
 		expect((await stat(path)).mode & 0o777).toBe(0o600);
@@ -153,13 +153,13 @@ describe("updateRemote", () => {
 		await expect(updateRemote(path, "http://192.0.2.7:7", { label: "ghost" })).rejects.toThrow(/no saved host/);
 	});
 
-	it("keeps the file 0600", async () => {
+	it.skipIf(process.platform === "win32")("keeps the file 0600", async () => {
 		const path = await tempFile(TWO_HOSTS);
 		await updateRemote(path, "http://192.0.2.1:1", { password: "rotated" });
 		expect((await stat(path)).mode & 0o777).toBe(0o600);
 	});
 
-	it("refuses to touch a file others can read", async () => {
+	it.skipIf(process.platform === "win32")("refuses to touch a file others can read", async () => {
 		const path = await tempFile(TWO_HOSTS, 0o644);
 		await expect(updateRemote(path, "http://192.0.2.1:1", { password: "rotated" })).rejects.toBeInstanceOf(
 			RemotesFilePermissionError,
@@ -176,7 +176,7 @@ describe("removeRemote", () => {
 		expect(await savedRemotes(path)).toEqual([{ label: "mini", url: "http://192.0.2.9:9", password: "m" }]);
 	});
 
-	it("keeps the file 0600", async () => {
+	it.skipIf(process.platform === "win32")("keeps the file 0600", async () => {
 		const path = await tempFile(TWO_HOSTS);
 		await removeRemote(path, "http://192.0.2.1:1");
 		expect((await stat(path)).mode & 0o777).toBe(0o600);
@@ -188,7 +188,7 @@ describe("removeRemote", () => {
 		expect(await readFile(path, "utf8")).toBe(TWO_HOSTS);
 	});
 
-	it("refuses to touch a file others can read", async () => {
+	it.skipIf(process.platform === "win32")("refuses to touch a file others can read", async () => {
 		const path = await tempFile(TWO_HOSTS, 0o644);
 		await expect(removeRemote(path, "http://192.0.2.1:1")).rejects.toBeInstanceOf(RemotesFilePermissionError);
 		expect(await readFile(path, "utf8")).toBe(TWO_HOSTS);

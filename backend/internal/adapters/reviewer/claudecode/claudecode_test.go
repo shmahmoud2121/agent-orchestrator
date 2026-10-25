@@ -285,6 +285,9 @@ func TestReviewRestoreCommandDetectsExistingTranscript(t *testing.T) {
 }
 
 func TestReviewRestoreCommandEmitsResumeWithPolicySystemPromptAndTask(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows resolves the home directory from USERPROFILE, not HOME")
+	}
 	home := t.TempDir()
 	binDir := t.TempDir()
 	binaryName := "claude"

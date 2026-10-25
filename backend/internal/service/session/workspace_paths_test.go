@@ -82,6 +82,9 @@ func TestWorkspacePathsConcurrentReadsShareInventory(t *testing.T) {
 }
 
 func TestWorkspaceFileRevisionLiveReadAvoidsGitAndChecksRevision(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires a privilege Windows does not grant by default")
+	}
 	root := newWorkspaceRepo(t)
 	st := newFakeStore()
 	st.sessions["session"] = domain.SessionRecord{ID: "session", Metadata: domain.SessionMetadata{WorkspacePath: root}}

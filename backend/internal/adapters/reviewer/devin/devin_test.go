@@ -3,6 +3,7 @@ package devin
 import (
 	"context"
 	"errors"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -12,6 +13,9 @@ import (
 )
 
 func TestReviewCommandUsesVisibleInteractiveTUI(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fixture uses hard-coded Unix paths that are not absolute on Windows")
+	}
 	r := &Reviewer{resolveBinary: func(context.Context) (string, error) { return "/opt/devin", nil }}
 	inv := ports.ReviewInvocation{
 		TaskPromptRoot: "/ao/prompts", SystemPromptFile: "/ao/prompts/system.md", Prompt: "Read task.md.",

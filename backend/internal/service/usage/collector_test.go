@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -1869,6 +1870,9 @@ func TestDefaultSourceRootsIncludesManagedKimiHome(t *testing.T) {
 }
 
 func TestDefaultSourceRootsFollowsClaudeConfigDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows resolves the home directory from USERPROFILE, so setting HOME does not redirect it")
+	}
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("CLAUDE_CONFIG_DIR", "")

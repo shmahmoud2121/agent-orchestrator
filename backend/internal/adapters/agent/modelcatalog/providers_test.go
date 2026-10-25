@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 )
 
@@ -70,6 +71,9 @@ func TestConfiguredProvidersOpenCodeScopeAndMalformedStore(t *testing.T) {
 }
 
 func TestConfiguredProvidersOMPDisabledCredentialsDoNotFallBack(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows resolves the home directory from USERPROFILE, not HOME")
+	}
 	env := providerTestEnv(t)
 	dir := env["PI_CODING_AGENT_DIR"]
 	db, err := sql.Open("sqlite", filepath.Join(dir, "agent.db"))

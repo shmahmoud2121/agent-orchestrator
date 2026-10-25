@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
@@ -47,6 +48,9 @@ func TestParseAutoHandModelsUsesConfiguredProviderModel(t *testing.T) {
 }
 
 func TestAutoHandDiscoveryReadsConfigurationWithoutRunningBinary(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows resolves the home directory from USERPROFILE, not HOME")
+	}
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	path := filepath.Join(home, ".autohand", "config.json")
@@ -90,6 +94,9 @@ func TestQwenConfigDiscoveryUsesQwenHome(t *testing.T) {
 }
 
 func TestQwenSharedCatalogMarksConfiguredProviders(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows resolves the home directory from USERPROFILE, not HOME")
+	}
 	home := t.TempDir()
 	qwenHome := filepath.Join(home, ".qwen")
 	t.Setenv("HOME", home)
