@@ -32,6 +32,8 @@ func (s *Service) recordBlock(ctx context.Context, session domain.SessionRecord,
 	if s.shouldStop(session, decision.Tamper) && s.Stop != nil {
 		if err := s.Stop.KillPreservingWorkspace(ctx, session.ID); err == nil {
 			decision.Stopped = true
+			// A restored worker starts its three blocks over.
+			s.clearBlocks(session.ID)
 		}
 	}
 	action := "blocked"
@@ -60,6 +62,12 @@ func (s *Service) shouldStop(session domain.SessionRecord, tamper bool) bool {
 	}
 	s.blocks[session.ID]++
 	return tamper || s.blocks[session.ID] >= watchdogStopAfter
+}
+
+func (s *Service) clearBlocks(id domain.SessionID) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.blocks, id)
 }
 
 func (s *Service) notify(ctx context.Context, typ domain.NotificationType, session domain.SessionRecord, path string, now time.Time) {

@@ -222,6 +222,89 @@ func TestThirdBlockedCallStopsAWorker(t *testing.T) {
 	}
 }
 
+func TestStrikeCountClearsAfterAStop(t *testing.T) {
+	root := t.TempDir()
+	work := filepath.Join(root, "work")
+	if err := os.MkdirAll(work, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(work, ".env"), []byte("SECRET=1"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	stop := &fakeStopper{}
+	svc := workerService(t, root, work, domain.KindWorker, stop)
+	input := json.RawMessage(`{"file_path":".env"}`)
+	for i := 1; i <= 3; i++ {
+		got, err := svc.Decide(context.Background(), "worker-1", "Read", input)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if i < 3 && got.Stopped {
+			t.Fatalf("call %d stopped early", i)
+		}
+		if i == 3 && !got.Stopped {
+			t.Fatal("third call did not stop")
+		}
+	}
+	if stop.calls != 1 {
+		t.Fatalf("stops = %d, want 1", stop.calls)
+	}
+	for i := 1; i <= 2; i++ {
+		got, err := svc.Decide(context.Background(), "worker-1", "Read", input)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.Stopped {
+			t.Fatalf("block %d after the stop stopped again", i)
+		}
+	}
+	if stop.calls != 1 {
+		t.Fatalf("stops after two more blocks = %d, want 1", stop.calls)
+	}
+	got, err := svc.Decide(context.Background(), "worker-1", "Read", input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.Stopped || stop.calls != 2 {
+		t.Fatalf("third block after the stop: stopped=%v calls=%d", got.Stopped, stop.calls)
+	}
+}
+
+type errStopper struct {
+	calls int
+}
+
+func (f *errStopper) KillPreservingWorkspace(context.Context, domain.SessionID) error {
+	f.calls++
+	return errors.New("busy")
+}
+
+func TestFailedStopKeepsTheStrikeCount(t *testing.T) {
+	root := t.TempDir()
+	work := filepath.Join(root, "work")
+	if err := os.MkdirAll(work, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(work, ".env"), []byte("SECRET=1"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	stop := &errStopper{}
+	svc := workerService(t, root, work, domain.KindWorker, stop)
+	input := json.RawMessage(`{"file_path":".env"}`)
+	for i := 1; i <= 4; i++ {
+		got, err := svc.Decide(context.Background(), "worker-1", "Read", input)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.Stopped {
+			t.Fatalf("call %d reported stopped after a failed kill", i)
+		}
+	}
+	if stop.calls != 2 {
+		t.Fatalf("stop attempts = %d, want 2", stop.calls)
+	}
+}
+
 func TestTamperStopsAWorkerAtOnce(t *testing.T) {
 	root := t.TempDir()
 	work := filepath.Join(root, "work")
