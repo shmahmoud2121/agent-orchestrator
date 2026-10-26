@@ -41,7 +41,16 @@ const (
 	// the cap truncates it first, so a persistently failing hook cannot grow
 	// the file without bound.
 	maxHooksLogBytes = 1 << 20
+	// watchdogHookTimeout bounds the pre-tool-use decision. It stays well under
+	// the agent's own hook budget (30s for Claude Code, 5s for Codex).
+	watchdogHookTimeout = 3 * time.Second
+	// watchdogMaxToolInput is how much tool input the hook will forward. A
+	// larger call is denied for a watched session rather than checked partially.
+	watchdogMaxToolInput = 256 << 10
 )
+
+const watchdogDaemonDownReason = "AO isn't running. This tool call was blocked."
+const watchdogInputTooLargeReason = "AO blocked this: the tool input was too large to check. Do the task without reading protected files, or ask the person."
 
 // setActivityAPIRequest mirrors the daemon's SetActivityRequest body for
 // POST /api/v1/sessions/{id}/activity. The CLI keeps its own copy so it need
@@ -611,6 +620,13 @@ func (c *commandContext) runHook(ctx context.Context, agent, event string) error
 	if shouldEmitSessionStartContext(agent, event) {
 		c.emitSessionStartContext(agent, event, sessionID)
 	}
+	if isWatchdogHook(agent, event) {
+		if reason, deny := c.watchdogDecision(ctx, sessionID, payload); deny {
+			if err := json.NewEncoder(c.deps.Out).Encode(preToolUseDeny(reason)); err != nil {
+				c.reportHookFailure(agent, event, sessionID, fmt.Errorf("write watchdog denial: %w", err))
+			}
+		}
+	}
 	if isCursorPermissionHook(agent, event) {
 		return c.runCursorPermissionHook(ctx, agent, event, sessionID, payload)
 	}
@@ -938,4 +954,89 @@ func appendHooksLog(dataDir, line string) {
 	}
 	defer func() { _ = f.Close() }()
 	_, _ = f.WriteString(line)
+}
+
+// preToolUseHookOutput is the denial Claude Code and Codex both honor for
+// PreToolUse: exit 0 and permissionDecision deny. Exit 2 is not used because
+// Windows PowerShell reports it as 1, and Codex then ignores the JSON.
+type preToolUseHookOutput struct {
+	HookSpecificOutput struct {
+		HookEventName            string `json:"hookEventName"`
+		PermissionDecision       string `json:"permissionDecision"`
+		PermissionDecisionReason string `json:"permissionDecisionReason"`
+	} `json:"hookSpecificOutput"`
+}
+
+func preToolUseDeny(reason string) preToolUseHookOutput {
+	var out preToolUseHookOutput
+	out.HookSpecificOutput.HookEventName = "PreToolUse"
+	out.HookSpecificOutput.PermissionDecision = "deny"
+	out.HookSpecificOutput.PermissionDecisionReason = reason
+	return out
+}
+
+type watchdogDecisionResponse struct {
+	Decision string `json:"decision"`
+	Reason   string `json:"reason"`
+}
+
+// isWatchdogHook reports the PreToolUse callbacks that ask the daemon before
+// the tool runs. Claude Code is always watched. Codex is watched because
+// 0.163's PreToolUse hook can refuse Bash and apply_patch.
+func isWatchdogHook(agent, event string) bool {
+	if event != "pre-tool-use" {
+		return false
+	}
+	switch domain.AgentHarness(agent) {
+	case domain.HarnessClaudeCode, domain.HarnessCodex:
+		return true
+	default:
+		return false
+	}
+}
+
+// watchdogDecision asks the daemon whether a project session's tool call may
+// run. A session with no AO_PROJECT_ID is standalone (or the person's own
+// terminal) and is not watched. If the daemon cannot be reached, a watched
+// session fails closed.
+func (c *commandContext) watchdogDecision(ctx context.Context, sessionID string, payload []byte) (reason string, deny bool) {
+	if strings.TrimSpace(os.Getenv("AO_PROJECT_ID")) == "" {
+		return "", false
+	}
+	toolName, toolInput := hookToolCall(payload)
+	if len(toolInput) > watchdogMaxToolInput {
+		return watchdogInputTooLargeReason, true
+	}
+	reqCtx, cancel := context.WithTimeout(ctx, watchdogHookTimeout)
+	defer cancel()
+	var resp watchdogDecisionResponse
+	err := c.postJSONTimeout(reqCtx, "sessions/"+url.PathEscape(sessionID)+"/watchdog", map[string]any{
+		"toolName":  toolName,
+		"toolInput": json.RawMessage(toolInput),
+	}, &resp, watchdogHookTimeout)
+	if err != nil {
+		return watchdogDaemonDownReason, true
+	}
+	if resp.Decision == "deny" {
+		reason = strings.TrimSpace(resp.Reason)
+		if reason == "" {
+			reason = "AO blocked this: that file is a protected file. Do the task without reading it, or ask the person."
+		}
+		return reason, true
+	}
+	return "", false
+}
+
+func hookToolCall(payload []byte) (toolName string, toolInput json.RawMessage) {
+	var body struct {
+		ToolName  string          `json:"tool_name"`
+		ToolInput json.RawMessage `json:"tool_input"`
+	}
+	if json.Unmarshal(normalizeHookPayload(payload), &body) != nil {
+		return "", nil
+	}
+	if len(body.ToolName) > maxActivityMetaLen {
+		body.ToolName = ""
+	}
+	return body.ToolName, body.ToolInput
 }

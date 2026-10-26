@@ -72,6 +72,7 @@ import (
 	"github.com/aoagents/agent-orchestrator/backend/internal/service/systemcheck"
 	"github.com/aoagents/agent-orchestrator/backend/internal/service/systeminstall"
 	usagesvc "github.com/aoagents/agent-orchestrator/backend/internal/service/usage"
+	watchdogsvc "github.com/aoagents/agent-orchestrator/backend/internal/service/watchdog"
 	verifysvc "github.com/aoagents/agent-orchestrator/backend/internal/service/verify"
 	sessionmanager "github.com/aoagents/agent-orchestrator/backend/internal/session_manager"
 	"github.com/aoagents/agent-orchestrator/backend/internal/skillassets"
@@ -974,6 +975,7 @@ func Run() error {
 		CDC:                store,
 		Events:             cdcPipe.Broadcaster,
 		Activity:           hookActivity,
+		Watchdog:           &watchdogsvc.Service{Store: store, DataDir: cfg.DataDir},
 		NativeSessions:     nativeSessions,
 		UsageHooks:         usageCollector,
 		UsageSummary:       usagesvc.NewSummaryReader(store),

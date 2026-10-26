@@ -3358,6 +3358,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sessions/{sessionId}/watchdog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide whether a project session's tool call may read a protected file */
+        post: operations["decideSessionWatchdog"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sessions/{sessionId}/workspace/diffs": {
         parameters: {
             query?: never;
@@ -7075,6 +7092,28 @@ export interface components {
             account?: components["schemas"]["AgentAccountResponse"];
             /** @enum {string} */
             status: "waiting" | "complete" | "duplicate" | "mismatch";
+        };
+        WatchdogDecisionRequest: {
+            /** @description Raw tool-input object from the agent hook. */
+            toolInput?: unknown;
+            /** @description Native tool name, such as Read or Bash. */
+            toolName: string;
+        };
+        WatchdogDecisionResponse: {
+            /**
+             * @description allow runs the tool, deny blocks it, skip means this session is not watched.
+             * @enum {string}
+             */
+            decision: "allow" | "deny" | "skip";
+            ok: boolean;
+            /** @description Protected path the tool call touched. */
+            path?: string;
+            /** @description Sentence the agent sees when the call is denied. */
+            reason?: string;
+            /** @description True when this call stopped the worker. */
+            stopped?: boolean;
+            /** @description True when the call tried to change AO's hook settings. */
+            tamper?: boolean;
         };
         WorkerSandboxConfig: {
             allowedDomains?: string[];
@@ -20100,6 +20139,69 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIError"];
+                };
+            };
+        };
+    };
+    decideSessionWatchdog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Session identifier, e.g. project-1. */
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WatchdogDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WatchdogDecisionResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

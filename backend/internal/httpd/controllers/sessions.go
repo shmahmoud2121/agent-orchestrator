@@ -38,6 +38,7 @@ import (
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 	previewutil "github.com/aoagents/agent-orchestrator/backend/internal/preview"
 	"github.com/aoagents/agent-orchestrator/backend/internal/previewserver"
+	watchdogsvc "github.com/aoagents/agent-orchestrator/backend/internal/service/watchdog"
 	projectsvc "github.com/aoagents/agent-orchestrator/backend/internal/service/project"
 	sessionsvc "github.com/aoagents/agent-orchestrator/backend/internal/service/session"
 	usagesvc "github.com/aoagents/agent-orchestrator/backend/internal/service/usage"
@@ -159,6 +160,11 @@ type ActivityRecorder interface {
 	ApplyActivitySignal(ctx context.Context, id domain.SessionID, s ports.ActivitySignal) error
 }
 
+// WatchdogDecider checks one tool call against the session's protected files.
+type WatchdogDecider interface {
+	Decide(ctx context.Context, id domain.SessionID, toolName string, toolInput json.RawMessage) (watchdogsvc.Decision, error)
+}
+
 // ManagedPreviewServer is the deterministic server lifecycle attached to a
 // worker. It is separate from static file rendering and browser automation.
 type ManagedPreviewServer interface {
@@ -193,6 +199,7 @@ type SessionsController struct {
 		Get(context.Context, domain.ProjectID) (projectsvc.GetResult, error)
 	}
 	Activity                 ActivityRecorder
+	Watchdog                 WatchdogDecider
 	NativeSessions           ports.AgentNativeSessionResolver
 	DataDir                  string
 	Usage                    UsageHookRecorder
@@ -273,6 +280,7 @@ func (c *SessionsController) Register(r chi.Router) {
 	r.Post("/sessions/{sessionId}/rollback", c.rollback)
 	r.Post("/sessions/{sessionId}/send", c.send)
 	r.Post("/sessions/{sessionId}/activity", c.activity)
+	r.Post("/sessions/{sessionId}/watchdog", c.watchdog)
 	r.Post("/sessions/{sessionId}/activity/codewhale", c.codewhaleActivity)
 	r.Post("/sessions/{sessionId}/pin", c.pin)
 	r.Delete("/sessions/{sessionId}/pin", c.unpin)
@@ -2421,6 +2429,43 @@ func (c *SessionsController) activity(w http.ResponseWriter, r *http.Request) {
 	}
 	envelope.WriteJSON(w, http.StatusOK, SetActivityResponse{OK: true, SessionID: sessionID(r), State: in.State})
 }
+
+// watchdog answers a PreToolUse hook. The protected list stays in the daemon.
+// A tool input larger than watchdogMaxInputBytes is denied: the hook cannot
+// show the daemon a call it did not fully receive.
+func (c *SessionsController) watchdog(w http.ResponseWriter, r *http.Request) {
+	if c.Watchdog == nil {
+		apispec.NotImplemented(w, r, "POST", "/api/v1/sessions/{sessionId}/watchdog")
+		return
+	}
+	var in WatchdogDecisionRequest
+	if err := decodeJSON(r, &in); err != nil {
+		envelope.WriteAPIError(w, r, http.StatusBadRequest, "bad_request", "INVALID_JSON", "Invalid JSON body", nil)
+		return
+	}
+	if len(in.ToolInput) > watchdogMaxInputBytes {
+		envelope.WriteJSON(w, http.StatusOK, WatchdogDecisionResponse{
+			OK: true, Decision: "deny",
+			Reason: "AO blocked this: the tool input was too large to check. Do the task without reading protected files, or ask the person.",
+		})
+		return
+	}
+	decision, err := c.Watchdog.Decide(r.Context(), sessionID(r), in.ToolName, in.ToolInput)
+	if err != nil {
+		if errors.Is(err, watchdogsvc.ErrSessionNotFound) {
+			envelope.WriteAPIError(w, r, http.StatusNotFound, "not_found", "SESSION_NOT_FOUND", "Unknown session", nil)
+			return
+		}
+		envelope.WriteError(w, r, err)
+		return
+	}
+	envelope.WriteJSON(w, http.StatusOK, WatchdogDecisionResponse{
+		OK: true, Decision: decision.Action, Path: decision.Path, Reason: decision.Reason,
+		Tamper: decision.Tamper, Stopped: decision.Stopped,
+	})
+}
+
+const watchdogMaxInputBytes = 256 << 10
 
 // codewhaleActivity translates Codewhale's v0.10 lifecycle outbox webhook into
 // AO's provider-neutral activity signal. The launch id lives in the callback

@@ -1437,6 +1437,23 @@ type SetActivityResponse struct {
 	State     string           `json:"state"`
 }
 
+// WatchdogDecisionRequest is the body of POST /api/v1/sessions/{sessionId}/watchdog.
+// The hook sends the tool call. The protected list stays on the daemon.
+type WatchdogDecisionRequest struct {
+	ToolName  string          `json:"toolName" description:"Native tool name, such as Read or Bash."`
+	ToolInput json.RawMessage `json:"toolInput,omitempty" description:"Raw tool-input object from the agent hook."`
+}
+
+// WatchdogDecisionResponse tells the hook whether the tool call may run.
+type WatchdogDecisionResponse struct {
+	OK        bool   `json:"ok"`
+	Decision  string `json:"decision" enum:"allow,deny,skip" description:"allow runs the tool, deny blocks it, skip means this session is not watched."`
+	Path      string `json:"path,omitempty" description:"Protected path the tool call touched."`
+	Reason    string `json:"reason,omitempty" description:"Sentence the agent sees when the call is denied."`
+	Tamper    bool   `json:"tamper,omitempty" description:"True when the call tried to change AO's hook settings."`
+	Stopped   bool   `json:"stopped,omitempty" description:"True when this call stopped the worker."`
+}
+
 // CodewhaleLifecycleWebhookRequest is Codewhale v0.10's lifecycle webhook
 // envelope. The thread id is process-local correlation, not the durable saved
 // conversation UUID used for restore.
