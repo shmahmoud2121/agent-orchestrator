@@ -7,6 +7,7 @@ package controllers
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -172,6 +173,7 @@ func (c *ProjectsController) updateSettings(w http.ResponseWriter, r *http.Reque
 		envelope.WriteAPIError(w, r, http.StatusBadRequest, "bad_request", "INVALID_JSON", "Invalid JSON body", nil)
 		return
 	}
+	in.CallerSessionID = strings.TrimSpace(r.Header.Get("X-AO-Session-ID"))
 	p, err := c.Mgr.UpdateSettings(r.Context(), projectID(r), in)
 	if err != nil {
 		envelope.WriteError(w, r, err)
@@ -190,6 +192,7 @@ func (c *ProjectsController) setConfig(w http.ResponseWriter, r *http.Request) {
 		envelope.WriteAPIError(w, r, http.StatusBadRequest, "bad_request", "INVALID_JSON", "Invalid JSON body", nil)
 		return
 	}
+	in.CallerSessionID = strings.TrimSpace(r.Header.Get("X-AO-Session-ID"))
 	p, err := c.Mgr.SetConfig(r.Context(), projectID(r), in)
 	if err != nil {
 		envelope.WriteError(w, r, err)
@@ -238,6 +241,7 @@ func (c *ProjectsController) setPermissions(w http.ResponseWriter, r *http.Reque
 		envelope.WriteAPIError(w, r, http.StatusBadRequest, "bad_request", "INVALID_JSON", "Invalid JSON body", nil)
 		return
 	}
+	in.CallerSessionID = strings.TrimSpace(r.Header.Get("X-AO-Session-ID"))
 	p, err := c.Mgr.SetPermissions(r.Context(), projectID(r), in)
 	if err != nil {
 		envelope.WriteError(w, r, err)

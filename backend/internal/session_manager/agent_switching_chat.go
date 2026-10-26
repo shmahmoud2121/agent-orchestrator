@@ -382,6 +382,7 @@ func (m *Manager) executeChatAgentSwitch(
 	if resumable {
 		historyMode = ports.ChatHistoryDeferred
 	}
+	m.clampWorkerLaunchPermission(rec.Kind, id, &agentConfig.Permissions)
 	_, err = m.chat.StartChat(ctx, ChatStart{
 		SessionID:               id,
 		ProjectID:               rec.ProjectID,

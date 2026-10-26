@@ -24,7 +24,17 @@ func (m *Service) RepoTrust(ctx context.Context, id domain.ProjectID, branch str
 // rejects orchestrators too. It guards mistakes, not agents stripping identity.
 func (m *Service) SetRepoTrust(ctx context.Context, id domain.ProjectID, fingerprint, caller, branch string, revoke bool) (repotrust.Scan, error) {
 	if strings.TrimSpace(caller) != "" {
-		return repotrust.Scan{}, apierr.Forbidden("REPO_TRUST_FORBIDDEN", "Agent sessions cannot approve or revoke repository trust; ask a person to use Project Settings or ao project trust")
+		message := "Only the person can change repository trust. Ask them in your report."
+		if m.sessionCatalog != nil {
+			if sess, ok, err := m.sessionCatalog.GetSession(ctx, domain.SessionID(strings.TrimSpace(caller))); err == nil && ok && sess.ProjectID == id {
+				if sess.Kind == domain.KindWorker {
+					message = "Only the person can change repository trust. You are a worker: ask the person in your report."
+				} else if sess.Kind == domain.KindOrchestrator {
+					message = "Only the person can change repository trust. You are the manager and can be misled by worker output. Ask the person in your report."
+				}
+			}
+		}
+		return repotrust.Scan{}, apierr.Forbidden("REPO_TRUST_FORBIDDEN", message)
 	}
 	m.addMu.Lock()
 	defer m.addMu.Unlock()

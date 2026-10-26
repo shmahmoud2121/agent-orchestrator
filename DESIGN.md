@@ -499,3 +499,4 @@ Approve only when the answer to every applicable check is yes. Otherwise classif
 | 2026-10-25 | Steps stay visible while a turn runs and fold into "Worked for …" only once it finishes | The owner wants to watch work live; folding applies to finished turns. |
 | 2026-10-25 | The changed-files card is open by default and lists files flat for now; a file tree is a later step | The owner wants to see what changed without an extra click; a flat list is the smallest safe step toward the design. |
 | 2026-10-26 | The composer context strip ships read-only (project, branch); the branch dropdown and Team toggle come later | Switching branches and team mode need backend work; showing where the work runs is useful now. |
+| 2026-10-26 | Workers never run in Bypass on any agent; only the person can change permissions, the sandbox, repository trust or answer approvals | Enforced in the daemon so neither a worker nor a misled manager can widen its own access. |

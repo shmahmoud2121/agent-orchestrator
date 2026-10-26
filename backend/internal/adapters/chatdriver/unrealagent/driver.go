@@ -147,8 +147,12 @@ func validateStart(workspace string, permissions ports.PermissionMode, readOnly 
 	if !filepath.IsAbs(workspace) {
 		return fmt.Errorf("workspace path must be absolute, got %q", workspace)
 	}
-	if ports.NormalizePermissionMode(permissions) != ports.PermissionModeBypassPermissions {
-		return errors.New("unreal agent currently requires bypass-permissions because its harness has no interactive approval channel")
+	// The harness has no approval UI. Orchestrators may still launch in bypass.
+	// Workers are remapped to accept-edits before start, so that mode is
+	// accepted too; AO records it, and the process still has no prompt.
+	mode := ports.NormalizePermissionMode(permissions)
+	if mode != ports.PermissionModeBypassPermissions && mode != ports.PermissionModeAcceptEdits {
+		return errors.New("unreal agent currently requires bypass-permissions or accept-edits because its harness has no interactive approval channel")
 	}
 	if readOnly {
 		return errors.New("unreal agent does not provide a read-only sandbox")

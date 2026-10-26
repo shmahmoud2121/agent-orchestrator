@@ -17,7 +17,7 @@
  * provider's; only the grouping of the triggers is AO's.
  */
 
-import { Fragment, useMemo, useState, type FocusEvent, type ReactNode } from "react";
+import { Fragment, useMemo, useState, type ComponentProps, type FocusEvent, type ReactNode } from "react";
 import { ChevronDown, Shuffle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
@@ -35,6 +35,7 @@ import { cn } from "../../lib/utils";
 import { effortDisplayLabel, EffortMenuItems, EffortPicker, formatEffortLabel } from "../settings/EffortPicker";
 import { agentModelDisplayLabel, claudeChoiceModel, isDefaultPlaceholderLabel, splitClaudeModels } from "../../lib/agent-model-choices";
 import { Switch } from "../ui/switch";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { ModelMenuChoices } from "./ModelMenuChoices";
 import type {
 	ApprovalMode,
@@ -104,6 +105,7 @@ export function TurnSettingsBar({
 	configPending,
 	error,
 	disabled,
+	workerBypassDisabled = false,
 	autoSelectEffortOnOpen = false,
 	children,
 }: {
@@ -144,6 +146,8 @@ export function TurnSettingsBar({
 	autoSelectEffortOnOpen?: boolean;
 	error?: string;
 	disabled?: boolean;
+	/** Workers cannot choose Bypass. The orchestrator picker is unchanged. */
+	workerBypassDisabled?: boolean;
 	/** Inline controls on the right model row, before the mode/approval picker — queue vs steer. */
 	children?: ReactNode;
 }) {
@@ -313,6 +317,7 @@ export function TurnSettingsBar({
 								option={modeOption}
 								title={harness === "agy" ? "Approval policy for the next turn" : undefined}
 								disabled={optionDisabled}
+								workerBypassDisabled={workerBypassDisabled}
 								onChange={(value) => applyOption(modeOption.id, value)}
 								footer={rememberAction}
 							/>
@@ -323,8 +328,9 @@ export function TurnSettingsBar({
 													disabled={optionDisabled}
 							>
 								{approvalOrder.filter((mode) => !approvalModes || approvalModes.includes(mode)).map((mode) => (
-									<OptionMenuItem
+									<WorkerBypassMenuItem
 										key={mode}
+										disabled={isWorkerBypassChoice(workerBypassDisabled, mode)}
 										active={mode === (settings.approvalMode ?? "default")}
 										radio
 										onSelect={() => onChange({ ...settings, approvalMode: mode }, "approvalMode")}
@@ -340,7 +346,7 @@ export function TurnSettingsBar({
 										>
 											{approvalCopy[mode].label}
 										</span>
-									</OptionMenuItem>
+									</WorkerBypassMenuItem>
 								))}
 								{rememberAction}
 							</Picker>
@@ -886,6 +892,7 @@ function ConfigOptionPicker({
 	disabled,
 	footer,
 	groupClaude,
+	workerBypassDisabled,
 }: {
 	option: ChatConfigOption;
 	label?: string;
@@ -894,6 +901,7 @@ function ConfigOptionPicker({
 	disabled?: boolean;
 	footer?: ReactNode;
 	groupClaude?: boolean;
+	workerBypassDisabled?: boolean;
 }) {
 	return (
 		<Picker
@@ -905,7 +913,7 @@ function ConfigOptionPicker({
 			{isModelOption(option) ? (
 				<ConfigModelChoices option={option} onChange={onChange} groupClaude={groupClaude} />
 			) : (
-				<ConfigOptionChoices option={option} onChange={onChange} />
+				<ConfigOptionChoices option={option} onChange={onChange} workerBypassDisabled={workerBypassDisabled} />
 			)}
 			{footer}
 		</Picker>
@@ -970,11 +978,13 @@ function ConfigOptionChoices({
 	onChange,
 	searchActiveID,
 	optionID,
+	workerBypassDisabled,
 }: {
 	option: ChatConfigOption;
 	onChange: (value: ChatConfigOptionValue) => void;
 	searchActiveID?: string;
 	optionID?: (id: string) => string;
+	workerBypassDisabled?: boolean;
 }) {
 	if (option.type === "boolean") {
 		return (
@@ -1013,8 +1023,9 @@ function ConfigOptionChoices({
 								{choice.groupName || choice.group}
 							</OptionMenuLabel>
 						) : null}
-						<OptionMenuItem
+						<WorkerBypassMenuItem
 							id={optionID?.(choice.value)}
+							disabled={isWorkerBypassChoice(workerBypassDisabled, choice.value, choice.permissionMode)}
 							active={choice.value === option.currentValue}
 							searchActive={choice.value === searchActiveID}
 							radio
@@ -1033,11 +1044,40 @@ function ConfigOptionChoices({
 									{choice.name}
 								</span>
 							</span>
-						</OptionMenuItem>
+						</WorkerBypassMenuItem>
 					</Fragment>
 				);
 			})}
 		</>
+	);
+}
+
+function isWorkerBypassChoice(disabled: boolean | undefined, value: string, permissionMode?: string) {
+	if (!disabled) return false;
+	return value === "bypass-permissions" || value === "bypass" || value === "bypassPermissions" || permissionMode === "bypass-permissions";
+}
+
+function WorkerBypassMenuItem({
+	disabled,
+	children,
+	...props
+}: ComponentProps<typeof OptionMenuItem>) {
+	const { t } = useTranslation();
+	const item = (
+		<OptionMenuItem disabled={disabled} {...props}>
+			{children}
+		</OptionMenuItem>
+	);
+	if (!disabled) return item;
+	return (
+		<TooltipProvider delayDuration={0}>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<span className="block">{item}</span>
+				</TooltipTrigger>
+				<TooltipContent>{t("chat.permissions.workerBypassDisabled")}</TooltipContent>
+			</Tooltip>
+		</TooltipProvider>
 	);
 }
 

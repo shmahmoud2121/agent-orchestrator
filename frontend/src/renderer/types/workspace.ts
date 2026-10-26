@@ -190,6 +190,11 @@ export type WorkspaceSession = {
 	/** Whether the cloud worker has a current control-plane connection. */
 	runtimeConnected?: boolean;
 	chatProviderPreserved?: boolean;
+	/**
+	 * True only when this worker's launch used the OS sandbox. Derived by the
+	 * daemon; the client never writes it.
+	 */
+	sandboxed?: boolean;
 	/** User preference to tear down this session when its PR set completes through a merge. */
 	terminateOnPrMerge?: boolean;
 	/** Whether SCM review feedback is automatically injected into the worker. */

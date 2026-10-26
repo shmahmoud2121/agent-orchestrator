@@ -221,12 +221,12 @@ func (d *Driver) discoverConfigOptions(ctx context.Context, workingDir string) (
 	return normalizeConfigOptions(resp.ConfigOptions), nil
 }
 
-// sandboxBlocksBypass reports whether this launch must refuse bypassPermissions.
-// Claude's OS sandbox only covers Bash; bypass auto-approves Edit/Write anywhere.
-// The worker sandbox is Claude-only, so other ACP harnesses are unaffected.
+// sandboxBlocksBypass reports whether an explicit bypassPermissions request
+// must be refused. Every worker is refused, on every harness. The name stays
+// so the conversation flag wiring is unchanged. Initial launch remaps bypass
+// to accept-edits before settings are applied, so a start is not a refusal.
 func (d *Driver) sandboxBlocksBypass(cfg LaunchConfig) bool {
-	return d.cfg.Harness == domain.HarnessClaudeCode &&
-		cfg.Kind == domain.KindWorker && cfg.WorkerSandbox.IsEnabled()
+	return cfg.Kind == domain.KindWorker
 }
 
 // Harness identifies the AO harness this ACP transport adapts.
@@ -249,6 +249,7 @@ func (d *Driver) Start(ctx context.Context, cfg ports.ChatStartConfig) (ports.Ch
 	if !filepath.IsAbs(cfg.WorkspacePath) {
 		return nil, fmt.Errorf("workspace path must be absolute, got %q", cfg.WorkspacePath)
 	}
+	cfg.Permissions = domain.WorkerLaunchPermission(cfg.Kind, cfg.Permissions)
 	if d.cfg.ValidateTurnSettings != nil {
 		if err := d.cfg.ValidateTurnSettings(cfg.Permissions, ports.ChatTurnSettings{
 			Model: cfg.Model, Effort: cfg.Effort, Approval: cfg.Permissions,
@@ -416,6 +417,7 @@ func (d *Driver) Resume(ctx context.Context, cfg ports.ChatResumeConfig) (ports.
 	if !filepath.IsAbs(cfg.WorkspacePath) {
 		return nil, fmt.Errorf("workspace path must be absolute, got %q", cfg.WorkspacePath)
 	}
+	cfg.Permissions = domain.WorkerLaunchPermission(cfg.Kind, cfg.Permissions)
 	if d.cfg.ValidateTurnSettings != nil {
 		if err := d.cfg.ValidateTurnSettings(cfg.Permissions, ports.ChatTurnSettings{
 			Model: cfg.Model, Effort: cfg.Effort, Approval: cfg.Permissions,

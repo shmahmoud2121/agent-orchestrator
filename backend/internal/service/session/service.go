@@ -14,6 +14,7 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
+	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/httpd/apierr"
 	"github.com/aoagents/agent-orchestrator/backend/internal/observe/ownership"
@@ -1237,6 +1238,7 @@ func (s *Service) List(ctx context.Context, filter ListFilter) ([]domain.Session
 		}
 	}
 	out := make([]domain.Session, 0, len(filtered))
+	ctx = withSandboxProjectCache(ctx)
 	for _, rec := range filtered {
 		facts, found := cleanupBySession[rec.ID]
 		sess, err := s.toSessionWithFacts(ctx, rec, prsBySession[rec.ID], runsBySession[rec.ID], interrupted[rec.ID], currentWorkspaceCleanup(rec, facts, found))
@@ -1396,6 +1398,7 @@ func (s *Service) toSessionWithFacts(ctx context.Context, rec domain.SessionReco
 	// recomputed here so the API and Kanban see the same durable
 	// classification rather than a value that can differ read to read.
 	presentation := deriveKanbanPresentation(rec, prs, runs, interrupted, now, s.harnessSignals(rec.Harness))
+	sandboxed := s.sessionSandboxed(ctx, rec)
 	readiness := "ready"
 	if recovery, ok := s.manager.(interface {
 		SessionStatusReadiness(domain.SessionRecord) string
@@ -1408,6 +1411,7 @@ func (s *Service) toSessionWithFacts(ctx context.Context, rec domain.SessionReco
 		StatusReadiness:  readiness,
 		ChatProviderPreserved: rec.Mode == domain.SessionModeChat && !rec.IsTerminated &&
 			s.chatProviderPreserved != nil && s.chatProviderPreserved(rec.ID),
+		Sandboxed:        sandboxed,
 		Status:           deriveStatus(rec, prs, now, s.harnessSignals(rec.Harness)),
 		SCMStatus:        deriveSCMStatus(prs),
 		KanbanColumn:     presentation.Column,
@@ -1416,6 +1420,60 @@ func (s *Service) toSessionWithFacts(ctx context.Context, rec domain.SessionReco
 		ArtifactFiles:    artifactFiles,
 		PRs:              prs,
 	}, nil
+}
+
+type sandboxProjectCache struct {
+	mu   sync.Mutex
+	hits map[string]sandboxProjectHit
+}
+
+type sandboxProjectHit struct {
+	cfg   domain.WorkerSandboxConfig
+	found bool
+	err   error
+}
+
+type sandboxProjectCacheKey struct{}
+
+// withSandboxProjectCache shares one project read across a session list so the
+// sandboxed flag does not add a query per session.
+func withSandboxProjectCache(ctx context.Context) context.Context {
+	return context.WithValue(ctx, sandboxProjectCacheKey{}, &sandboxProjectCache{hits: map[string]sandboxProjectHit{}})
+}
+
+func sandboxProjectFromContext(ctx context.Context) *sandboxProjectCache {
+	cache, _ := ctx.Value(sandboxProjectCacheKey{}).(*sandboxProjectCache)
+	return cache
+}
+
+// sessionSandboxed is true only when this worker's launch used the OS sandbox:
+// a Claude Code worker whose project sandbox is on and available here.
+func (s *Service) sessionSandboxed(ctx context.Context, rec domain.SessionRecord) bool {
+	if rec.Kind != domain.KindWorker || rec.Harness != domain.HarnessClaudeCode || s.store == nil {
+		return false
+	}
+	projectID := string(rec.ProjectID)
+	cache := sandboxProjectFromContext(ctx)
+	var hit sandboxProjectHit
+	var ok bool
+	if cache != nil {
+		cache.mu.Lock()
+		hit, ok = cache.hits[projectID]
+		cache.mu.Unlock()
+	}
+	if !ok {
+		project, found, err := s.store.GetProject(ctx, projectID)
+		hit = sandboxProjectHit{cfg: project.Config.WorkerSandbox, found: found, err: err}
+		if cache != nil {
+			cache.mu.Lock()
+			cache.hits[projectID] = hit
+			cache.mu.Unlock()
+		}
+	}
+	if hit.err != nil || !hit.found || !hit.cfg.IsEnabled() {
+		return false
+	}
+	return claudecode.CheckSandboxAvailability() == nil
 }
 
 // toAPIError maps the session engine's sentinel errors to their REST API

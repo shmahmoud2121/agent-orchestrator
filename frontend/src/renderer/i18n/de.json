@@ -22,6 +22,7 @@
 	"settings.harness.availableVersion": "Verfügbare Version",
 	"settings.harness.viewDetails": "Details anzeigen",
 	"chat.annotationReferences": "Referenced chat annotations",
+	"chat.permissions.workerBypassDisabled": "Worker können Berechtigungen nicht umgehen.",
 	"chat.accountSwitched": "Zu {{email}} gewechselt",
 	"chat.accountSwitchedDetail": "Der Agent hat hier für den Wechsel angehalten. Drücke Fortsetzen, um diesen Schritt wieder aufzunehmen, oder sende eine neue Nachricht.",
 	"chat.removeAllAnnotations": "Remove all annotations",

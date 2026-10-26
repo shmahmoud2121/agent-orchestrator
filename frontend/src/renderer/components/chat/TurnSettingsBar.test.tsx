@@ -750,6 +750,39 @@ describe("ACP session config options", () => {
 		expect(screen.queryByRole("button", { name: "Permission mode" })).not.toBeInTheDocument();
 	});
 
+	it("disables Bypass for a worker and leaves it available for the orchestrator", async () => {
+		const user = userEvent.setup();
+		const onChange = vi.fn();
+		const { unmount } = render(
+			<TurnSettingsBar
+				models={[]}
+				settings={{}}
+				workerBypassDisabled
+				onChange={onChange}
+			/>,
+		);
+		await user.click(screen.getByRole("button", { name: "Approval policy for the next turn" }));
+		const workerBypass = screen.getByRole("menuitemradio", { name: "Bypass permissions" });
+		expect(workerBypass).toHaveAttribute("aria-disabled", "true");
+		await user.hover(workerBypass);
+		expect(await screen.findByRole("tooltip")).toHaveTextContent("Workers can't bypass permissions.");
+		await user.click(workerBypass);
+		expect(onChange).not.toHaveBeenCalled();
+		unmount();
+
+		render(
+			<TurnSettingsBar
+				models={[]}
+				settings={{}}
+				onChange={onChange}
+			/>,
+		);
+		await user.click(screen.getByRole("button", { name: "Approval policy for the next turn" }));
+		const managerBypass = screen.getByRole("menuitemradio", { name: "Bypass permissions" });
+		expect(managerBypass).not.toHaveAttribute("aria-disabled", "true");
+		expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+	});
+
 	it("keeps plan and agent modes out of the permissions menu", async () => {
 		const user = userEvent.setup();
 		render(

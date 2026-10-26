@@ -507,7 +507,7 @@ func (c *conversation) applyTurnSettings(ctx context.Context, settings ports.Cha
 	blocksBypass := c.sandboxBlocksBypass
 	c.mu.Unlock()
 	if blocksBypass && ports.NormalizePermissionMode(settings.Approval) == ports.PermissionModeBypassPermissions {
-		return fmt.Errorf("%w: %w", ports.ErrChatPermissionModeUnsupported, ports.ErrChatSandboxBypassDisabled)
+		return ports.ErrWorkerBypassForbidden
 	}
 	if legacyModel && settings.Model != "" {
 		model := settings.Model

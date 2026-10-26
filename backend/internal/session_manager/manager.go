@@ -1445,6 +1445,7 @@ func (m *Manager) Spawn(ctx context.Context, cfg ports.SpawnConfig) (domain.Sess
 		}
 	}
 	m.augmentAgentRuntimeEnv(agent, env)
+	m.clampWorkerLaunchPermission(cfg.Kind, id, &adapterConfig.Permissions)
 	pinRuntimePermissionEnv(env, adapterConfig.Permissions)
 	if validator, ok := agent.(ports.AgentLaunchAuthValidator); ok {
 		status, authErr := validator.ValidateLaunchAuth(ctx, ws.Path, env)
@@ -3536,6 +3537,7 @@ func (m *Manager) relaunchSessionWithPolicyAndGeneration(ctx context.Context, op
 		}
 	}
 	m.augmentAgentRuntimeEnv(agent, env)
+	m.clampWorkerLaunchPermission(rec.Kind, rec.ID, &agentConfig.Permissions)
 	pinRuntimePermissionEnv(env, agentConfig.Permissions)
 	if validator, ok := agent.(ports.AgentLaunchAuthValidator); ok {
 		status, authErr := validator.ValidateLaunchAuth(ctx, ws.Path, env)
@@ -6182,6 +6184,25 @@ func hookPATHForOS(executable func() (string, error), getenv func(string) string
 	return HookPATH(executable, getenv, projectEnv, dataDir)
 }
 
+// clampWorkerLaunchPermission rewrites a worker's bypass to accept-edits and
+// logs that once for this launch. A mode that does not change is silent, so a
+// later call in the same launch does not log again.
+func (m *Manager) clampWorkerLaunchPermission(kind domain.SessionKind, id domain.SessionID, mode *domain.PermissionMode) {
+	if mode == nil {
+		return
+	}
+	next := domain.WorkerLaunchPermission(kind, *mode)
+	if next == *mode {
+		return
+	}
+	*mode = next
+	logger := m.logger
+	if logger == nil {
+		logger = slog.Default()
+	}
+	logger.Info("worker bypass permissions launch as accept-edits", "sessionID", id)
+}
+
 // pinRuntimePermissionEnv exposes the session's AO approval policy to hook
 // commands so adapters like Cursor can decide whether a tool attempt needs
 // user approval before returning a native permission response.
@@ -6825,6 +6846,7 @@ func sleepContext(ctx context.Context, d time.Duration) error {
 // ErrNotResumable when transcript-preserving restore is required but unavailable,
 // or when a promptless, unresumable worker has nothing to restore from.
 func restoreArgv(ctx context.Context, agent ports.Agent, id domain.SessionID, workspacePath string, meta domain.SessionMetadata, systemPrompt, systemPromptFile string, agentConfig ports.AgentConfig, kind domain.SessionKind, _ domain.AgentHarness, dataDir string, env map[string]string, workerSandbox domain.WorkerSandboxConfig) ([]string, ports.PromptDeliveryStrategy, RestoreMode, error) {
+	agentConfig.Permissions = domain.WorkerLaunchPermission(kind, agentConfig.Permissions)
 	ref := ports.SessionRef{
 		ID:            string(id),
 		WorkspacePath: workspacePath,
@@ -6896,6 +6918,7 @@ func freshLaunchArgv(ctx context.Context, agent ports.Agent, id domain.SessionID
 	if meta.Prompt == "" && kind != domain.KindOrchestrator && !allowPromptless {
 		return nil, "", "", ErrNotResumable
 	}
+	agentConfig.Permissions = domain.WorkerLaunchPermission(kind, agentConfig.Permissions)
 	// Fall through to a fresh launch. Command-delivered agents receive
 	// meta.Prompt in argv; after-start agents receive it via the messenger once
 	// the runtime is live.

@@ -76,6 +76,9 @@ var (
 	ErrChatSandboxBypassDisabled = errors.New(
 		"bypassPermissions is not available while the Claude worker sandbox is enabled",
 	)
+	// ErrWorkerBypassForbidden refuses an explicit request to put a worker in
+	// bypass-permissions. Error() is the message clients and agents see.
+	ErrWorkerBypassForbidden = errors.New("Workers can't bypass permissions.")
 	// ErrChatHistoryUnsettled means the native conversation history is not safe
 	// to project as complete. Only a ChatHistoryRefresher promises that another
 	// provider observation may make progress; rereading a snapshot need not.

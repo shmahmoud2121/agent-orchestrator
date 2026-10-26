@@ -710,7 +710,7 @@ func (m *sideManager) open(side domain.SideConversation, cfg StartConfig, driver
 			forkConfig := ports.ChatStartConfig{
 				SessionID: domain.SessionID(side.ProviderHostID), DataDir: cfg.DataDir,
 				WorkspacePath: cfg.WorkspacePath, Env: cfg.Env, Model: side.Model, Effort: side.Effort,
-				Permissions: cfg.Permissions, Kind: cfg.Kind, WorkerSandbox: cfg.WorkerSandbox,
+				Permissions: effectiveChatPermission(cfg), Kind: cfg.Kind, WorkerSandbox: cfg.WorkerSandbox,
 				ReadOnly: cfg.ReadOnly, SystemPrompt: sideIdentityPrompt(cfg.SystemPrompt),
 				ProviderScopeID: side.ID, ProviderIDsScoped: true, RecordFork: recordFork,
 				AdditionalDirectories: cfg.AdditionalDirectories, MCPServers: cfg.MCPServers,
@@ -754,7 +754,7 @@ func (m *sideManager) open(side domain.SideConversation, cfg StartConfig, driver
 		conv, err = driver.Resume(ctx, ports.ChatResumeConfig{
 			SessionID: domain.SessionID(side.ProviderHostID), ProviderConversationID: providerID,
 			DataDir: cfg.DataDir, WorkspacePath: cfg.WorkspacePath, Env: cfg.Env,
-			Model: side.Model, Effort: side.Effort, Permissions: cfg.Permissions,
+			Model: side.Model, Effort: side.Effort, Permissions: effectiveChatPermission(cfg),
 			Kind: cfg.Kind, WorkerSandbox: cfg.WorkerSandbox,
 			ReadOnly: cfg.ReadOnly, SystemPrompt: sideIdentityPrompt(cfg.SystemPrompt),
 			AdditionalDirectories: cfg.AdditionalDirectories, MCPServers: cfg.MCPServers,
@@ -764,7 +764,7 @@ func (m *sideManager) open(side domain.SideConversation, cfg StartConfig, driver
 		conv, err = driver.Start(ctx, ports.ChatStartConfig{
 			SessionID: domain.SessionID(side.ProviderHostID), DataDir: cfg.DataDir,
 			WorkspacePath: cfg.WorkspacePath, Env: cfg.Env, Model: side.Model, Effort: side.Effort,
-			Permissions: cfg.Permissions, Kind: cfg.Kind, WorkerSandbox: cfg.WorkerSandbox,
+			Permissions: effectiveChatPermission(cfg), Kind: cfg.Kind, WorkerSandbox: cfg.WorkerSandbox,
 			ReadOnly:     cfg.ReadOnly,
 			SystemPrompt: sideIdentityPrompt(cfg.SystemPrompt), ProviderScopeID: side.ID, ProviderIDsScoped: true,
 			AdditionalDirectories: cfg.AdditionalDirectories, MCPServers: cfg.MCPServers,
@@ -886,7 +886,7 @@ func (m *sideManager) restore(ctx context.Context, side domain.SideConversation)
 	conv, err := driver.Resume(ctx, ports.ChatResumeConfig{
 		SessionID: domain.SessionID(side.ProviderHostID), ProviderConversationID: side.ProviderForkID,
 		DataDir: cfg.DataDir, WorkspacePath: cfg.WorkspacePath, Env: cfg.Env,
-		Model: side.Model, Effort: side.Effort, Permissions: cfg.Permissions,
+		Model: side.Model, Effort: side.Effort, Permissions: effectiveChatPermission(cfg),
 		Kind: cfg.Kind, WorkerSandbox: cfg.WorkerSandbox,
 		ReadOnly: cfg.ReadOnly, SystemPrompt: sideIdentityPrompt(cfg.SystemPrompt),
 		AdditionalDirectories: cfg.AdditionalDirectories, MCPServers: cfg.MCPServers,

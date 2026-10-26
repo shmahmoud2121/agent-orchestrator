@@ -88,10 +88,17 @@ type turnAutoResumeService interface {
 // Every route dispatches from the session's persisted mode inside the service, so
 // a client cannot reach the Chat path for a session that was created in TUI mode
 // even by calling these URLs directly. UI visibility is not the boundary.
+// SessionCallerLookup resolves the session named by X-AO-Session-ID.
+type SessionCallerLookup interface {
+	GetSession(ctx context.Context, id domain.SessionID) (domain.SessionRecord, bool, error)
+}
+
 type ConversationsController struct {
 	Svc ConversationService
 	// Renders serves agent HTML renders. Nil answers the render route 501.
 	Renders *attachmentstore.Store
+	// Callers resolves a session header. Nil fails closed when the header is set.
+	Callers SessionCallerLookup
 }
 
 // Register mounts the conversation routes under a session.
@@ -286,6 +293,9 @@ func (c *ConversationsController) reviewSend(w http.ResponseWriter, r *http.Requ
 }
 
 func (c *ConversationsController) reviewResolve(w http.ResponseWriter, r *http.Request) {
+	if c.refuseSessionApproval(w, r) {
+		return
+	}
 	svc, ok := c.reviewService(w, r)
 	if !ok {
 		return
@@ -937,6 +947,9 @@ func conversationContent(req SendConversationMessageRequest) ([]ports.ChatConten
 }
 
 func (c *ConversationsController) resolve(w http.ResponseWriter, r *http.Request) {
+	if c.refuseSessionApproval(w, r) {
+		return
+	}
 	if c.Svc == nil {
 		apispec.NotImplemented(w, r, "POST",
 			"/api/v1/sessions/{sessionId}/conversation/approvals/{requestId}/resolve")
@@ -1047,10 +1060,40 @@ func decodeConversationBodyLimit(w http.ResponseWriter, r *http.Request, into an
 	return true
 }
 
+// refuseSessionApproval rejects an approval answer that came from a session.
+// The desktop app and the person's own terminal send no session header and
+// are unchanged. A header with no lookup fails closed.
+func (c *ConversationsController) refuseSessionApproval(w http.ResponseWriter, r *http.Request) bool {
+	caller := strings.TrimSpace(r.Header.Get("X-AO-Session-ID"))
+	if caller == "" {
+		return false
+	}
+	message := "Only the person can answer approvals. Ask them in your report."
+	if c.Callers != nil {
+		sess, ok, err := c.Callers.GetSession(r.Context(), domain.SessionID(caller))
+		switch {
+		case err != nil || !ok:
+			message = fmt.Sprintf("Only the person can answer approvals. Calling session %s cannot answer them. Ask the person in your report.", caller)
+		case sess.Kind == domain.KindWorker:
+			message = "Only the person can answer approvals. You are a worker: ask the person in your report instead of resolving this yourself."
+		case sess.Kind == domain.KindOrchestrator:
+			message = "Only the person can answer approvals. You are the manager and can be misled by worker output. Ask the person in your report."
+		default:
+			message = fmt.Sprintf("Only the person can answer approvals. Calling session %s cannot answer them. Ask the person in your report.", caller)
+		}
+	}
+	envelope.WriteAPIError(w, r, http.StatusForbidden, "forbidden", "APPROVAL_FORBIDDEN", message, nil)
+	return true
+}
+
 // writeConversationError maps the Chat service's typed failures onto stable
 // codes, so a client can tell a permanent answer from a retryable one.
 func writeConversationError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
+	case errors.Is(err, ports.ErrWorkerBypassForbidden):
+		envelope.WriteAPIError(w, r, http.StatusConflict, "conflict",
+			"WORKER_BYPASS_FORBIDDEN", err.Error(), nil)
+
 	case errors.Is(err, ports.ErrSessionNotFound):
 		envelope.WriteAPIError(w, r, http.StatusNotFound, "not_found",
 			"SESSION_NOT_FOUND", "session not found", nil)

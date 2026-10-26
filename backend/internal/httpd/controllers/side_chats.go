@@ -238,6 +238,9 @@ func (c *ConversationsController) compactSideChat(w http.ResponseWriter, r *http
 }
 
 func (c *ConversationsController) resolveSideApproval(w http.ResponseWriter, r *http.Request) {
+	if c.refuseSessionApproval(w, r) {
+		return
+	}
 	svc, ok := c.sideService(w, r)
 	if !ok {
 		return

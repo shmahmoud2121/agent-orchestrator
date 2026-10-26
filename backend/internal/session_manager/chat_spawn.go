@@ -244,6 +244,7 @@ func (m *Manager) launchChatController(ctx context.Context, in chatSpawn) (domai
 		controllerCommitted bool
 		completionErr       error
 	)
+	m.clampWorkerLaunchPermission(in.cfg.Kind, id, &agentConfig.Permissions)
 	_, err = m.chat.StartChat(ctx, ChatStart{
 		SessionID:               id,
 		ProjectID:               in.cfg.ProjectID,
@@ -535,6 +536,7 @@ func (m *Manager) resumeChatController(
 		awakeTarget = &target
 	}
 	var completionErr error
+	m.clampWorkerLaunchPermission(rec.Kind, rec.ID, &agentConfig.Permissions)
 	_, err = m.chat.StartChat(ctx, ChatStart{
 		AwakeReconnectTarget:    awakeTarget,
 		ReconnectOnly:           reconnectOnly,

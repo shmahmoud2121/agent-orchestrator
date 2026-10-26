@@ -59,12 +59,16 @@ type InitializeRepositoryResult struct {
 type UpdateSettingsInput struct {
 	DisplayName string               `json:"displayName" minLength:"1" maxLength:"100"`
 	Config      domain.ProjectConfig `json:"config"`
+	// CallerSessionID is the X-AO-Session-ID header. It is not a body field.
+	CallerSessionID string `json:"-"`
 }
 
 // SetConfigInput is the body shape for PUT /api/v1/projects/{id}/config. Config
 // replaces the project's stored config wholesale; a zero-value config clears it.
 type SetConfigInput struct {
 	Config domain.ProjectConfig `json:"config"`
+	// CallerSessionID is the X-AO-Session-ID header. It is not a body field.
+	CallerSessionID string `json:"-"`
 }
 
 // RemoveResult reports what DELETE /api/v1/projects/{id} actually did.
@@ -77,4 +81,6 @@ type RemoveResult struct {
 type SetPermissionsInput struct {
 	SourceHarness domain.AgentHarness   `json:"sourceHarness,omitempty"`
 	Permissions   domain.PermissionMode `json:"permissions" enum:"default,accept-edits,auto,bypass-permissions"`
+	// CallerSessionID is the X-AO-Session-ID header. It is not a body field.
+	CallerSessionID string `json:"-"`
 }

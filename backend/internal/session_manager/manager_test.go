@@ -1797,8 +1797,8 @@ func TestSpawn_InheritsChatOrchestratorPermissions(t *testing.T) {
 	if got := rec.Harness; got != domain.HarnessClaudeCode {
 		t.Fatalf("harness = %q, want claude-code", got)
 	}
-	if got := rt.lastCfg.Env[EnvPermissionMode]; got != string(domain.PermissionModeBypassPermissions) {
-		t.Fatalf("worker permission environment = %q, want %q", got, domain.PermissionModeBypassPermissions)
+	if got := rt.lastCfg.Env[EnvPermissionMode]; got != string(domain.PermissionModeAcceptEdits) {
+		t.Fatalf("worker permission environment = %q, want accept-edits", got)
 	}
 }
 
@@ -1932,7 +1932,9 @@ func TestSpawnModelValidation(t *testing.T) {
 // a spawn model override for Amp ends up as `--mode <value>` in the actual
 // launch argv instead of silently being dropped because Amp reads Config.Mode.
 func TestSpawnAmpModelOverrideLaunchArgv(t *testing.T) {
-	if !retiredTestAgentsAvailable { t.Skip("Amp is retired in this build") }
+	if !retiredTestAgentsAvailable {
+		t.Skip("Amp is retired in this build")
+	}
 	if runtime.GOOS == "windows" {
 		t.Skip("PATH setup differs on windows")
 	}
@@ -1984,7 +1986,9 @@ func TestSpawnAmpModelOverrideLaunchArgv(t *testing.T) {
 // resolved value is still reported as metadata.Model instead of appearing as
 // the agent default.
 func TestSpawnAmpProjectDefaultModePersistsAsModel(t *testing.T) {
-	if !retiredTestAgentsAvailable { t.Skip("Amp is retired in this build") }
+	if !retiredTestAgentsAvailable {
+		t.Skip("Amp is retired in this build")
+	}
 	if runtime.GOOS == "windows" {
 		t.Skip("PATH setup differs on windows")
 	}
@@ -3090,7 +3094,9 @@ func (a *modelCheckingMemcodeAgent) GetLaunchCommand(ctx context.Context, cfg po
 }
 
 func TestRestoreMemcodeModelFollowsNativeEndpointConfiguration(t *testing.T) {
-	if !retiredTestAgentsAvailable { t.Skip("memcode is retired in this build") }
+	if !retiredTestAgentsAvailable {
+		t.Skip("memcode is retired in this build")
+	}
 	for _, test := range []struct {
 		name            string
 		model           string
@@ -3163,7 +3169,9 @@ func TestRestoreMemcodeModelFollowsNativeEndpointConfiguration(t *testing.T) {
 }
 
 func TestSpawnMemcodeCustomEndpointClearsOnlyInheritedModels(t *testing.T) {
-	if !retiredTestAgentsAvailable { t.Skip("memcode is retired in this build") }
+	if !retiredTestAgentsAvailable {
+		t.Skip("memcode is retired in this build")
+	}
 	for _, source := range []string{"project environment", "daemon environment", "global settings", "workspace settings", "no endpoint", "malformed settings"} {
 		for _, modelSource := range []string{"project default", "role default", "explicit override"} {
 			t.Run(source+"/"+modelSource, func(t *testing.T) {
@@ -3244,7 +3252,9 @@ func TestSpawnMemcodeCustomEndpointClearsOnlyInheritedModels(t *testing.T) {
 }
 
 func TestMemcodeWithoutPromptOrModelSkipsReadiness(t *testing.T) {
-	if !retiredTestAgentsAvailable { t.Skip("memcode is retired in this build") }
+	if !retiredTestAgentsAvailable {
+		t.Skip("memcode is retired in this build")
+	}
 	agent := testMemcodeReadinessAgent()
 	cfg := ports.LaunchConfig{}
 	hints, err := agent.PromptReadinessHints(ctx, cfg)
@@ -5973,11 +5983,11 @@ func TestSpawn_ForwardsResolvedAgentConfigPermissions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if agent.lastLaunch.Config.Permissions != domain.PermissionModeBypassPermissions {
-		t.Fatalf("launch config permissions = %q, want bypass", agent.lastLaunch.Config.Permissions)
+	if agent.lastLaunch.Config.Permissions != domain.PermissionModeAcceptEdits {
+		t.Fatalf("launch config permissions = %q, want accept-edits", agent.lastLaunch.Config.Permissions)
 	}
-	if agent.lastLaunch.Permissions != domain.PermissionModeBypassPermissions {
-		t.Fatalf("launch permissions = %q, want bypass", agent.lastLaunch.Permissions)
+	if agent.lastLaunch.Permissions != domain.PermissionModeAcceptEdits {
+		t.Fatalf("launch permissions = %q, want accept-edits", agent.lastLaunch.Permissions)
 	}
 }
 
@@ -6001,11 +6011,11 @@ func TestRestore_ForwardsResolvedAgentConfigPermissions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if agent.lastRestore.Config.Permissions != domain.PermissionModeBypassPermissions {
-		t.Fatalf("restore config permissions = %q, want bypass", agent.lastRestore.Config.Permissions)
+	if agent.lastRestore.Config.Permissions != domain.PermissionModeAcceptEdits {
+		t.Fatalf("restore config permissions = %q, want accept-edits", agent.lastRestore.Config.Permissions)
 	}
-	if agent.lastRestore.Permissions != domain.PermissionModeBypassPermissions {
-		t.Fatalf("restore permissions = %q, want bypass", agent.lastRestore.Permissions)
+	if agent.lastRestore.Permissions != domain.PermissionModeAcceptEdits {
+		t.Fatalf("restore permissions = %q, want accept-edits", agent.lastRestore.Permissions)
 	}
 }
 
