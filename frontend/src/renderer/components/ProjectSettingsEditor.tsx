@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import type { ProjectSettingsSaveState, ProjectSettingsSection as SettingsSection } from "./ProjectSettingsForm";
 import { deriveRepoHost, deriveRepoPath, IntakeFields, intakeNeedsRule } from "./IntakeFields";
 import { ProductExternalLink } from "./ProductExternalLink";
-import { AgentModelField, ProjectAutoReviewToggle, ProjectPushAfterMergeToggle, ProjectWorkerSandboxToggle, ProjectWorkersRequestReviewToggle } from "./settings/ProjectAgentRoleControls";
+import { AgentModelField, ProjectAutoReviewToggle, ProjectPushAfterMergeToggle, ProjectWorkerSandboxRequireToggle, ProjectWorkerSandboxToggle, ProjectWorkersRequestReviewToggle } from "./settings/ProjectAgentRoleControls";
 import { ProtectedFilesSettings } from "./settings/ProtectedFilesSettings";
 import { SettingsOptionMenu } from "./settings/SettingsOptionMenu";
 import { SettingsRow } from "./settings/SettingsRow";
@@ -51,6 +51,8 @@ export type ProjectSettingsDraft = {
 	workerSandboxAllowedDomains?: string;
 	/** Local-only: files workers may not read, beyond the built-in list. */
 	workerSandboxProtectedPaths?: string[];
+	/** Local-only: refuse unsandboxed workers (default on). */
+	workerSandboxRequireSandbox?: boolean;
 };
 
 const roles = ["worker", "orchestrator", "reviewer"] as const;
@@ -254,10 +256,12 @@ export function ProjectSettingsEditor({ initialValues, section, capabilities, de
 						{role === "worker" && !capabilities.runtimeDefaults ? <WorkerSandboxSettings
 							agent={agent}
 							enabled={draft.workerSandboxEnabled !== false}
+							requireSandbox={draft.workerSandboxRequireSandbox !== false}
 							domains={draft.workerSandboxAllowedDomains ?? ""}
 							protectedPaths={draft.workerSandboxProtectedPaths ?? []}
 							bypassSelected={(draft.workerPermissions || "auto") === "bypass-permissions"}
 							onEnabledChange={(workerSandboxEnabled) => patch({ workerSandboxEnabled })}
+							onRequireSandboxChange={(workerSandboxRequireSandbox) => patch({ workerSandboxRequireSandbox })}
 							onDomainsChange={(workerSandboxAllowedDomains) => patch({ workerSandboxAllowedDomains })}
 							onProtectedPathsChange={(workerSandboxProtectedPaths) => patch({ workerSandboxProtectedPaths })}
 						/> : null}
@@ -280,23 +284,33 @@ function ProjectRolePermissions({ role, agent, value, runtimeDefaults, onChange 
 	return <SettingsOptionMenu aria-label={label} value={runtimeDefaults ? value : value === "default" && agent === "codex" ? "bypass-permissions" : value || "auto"} options={options} disabled={runtimeDefaults && !agent} placeholder={t("settings.project.permissionNotReported")} triggerClassName="w-fit" onChange={onChange} />;
 }
 
-function WorkerSandboxSettings({ agent, enabled, domains, protectedPaths, bypassSelected, onEnabledChange, onDomainsChange, onProtectedPathsChange }: {
+function WorkerSandboxSettings({ agent, enabled, requireSandbox, domains, protectedPaths, bypassSelected, onEnabledChange, onRequireSandboxChange, onDomainsChange, onProtectedPathsChange }: {
 	agent: string;
 	enabled: boolean;
+	requireSandbox: boolean;
 	domains: string;
 	protectedPaths: string[];
 	bypassSelected: boolean;
 	onEnabledChange: (enabled: boolean) => void;
+	onRequireSandboxChange: (required: boolean) => void;
 	onDomainsChange: (domains: string) => void;
 	onProtectedPathsChange: (paths: string[]) => void;
 }) {
 	const { t } = useTranslation();
+	const requireToggle = <>
+		<ProjectWorkerSandboxRequireToggle checked={requireSandbox} onCheckedChange={onRequireSandboxChange} />
+		{!requireSandbox ? <p className="px-(--settings-row-inset) text-xs text-warning" role="status">{t("settings.project.workerSandboxRequireUnsafe")}</p> : null}
+	</>;
 	if (agent && agent !== "claude-code") {
-		return <SettingsRow label={t("settings.project.workerSandboxToggle")} description={t("settings.project.workerSandboxNotSupported")}>
-			<span className="text-sm text-settings-muted">{t("settings.project.workerSandboxNotSandboxed")}</span>
-		</SettingsRow>;
+		return <>
+			{requireToggle}
+			<SettingsRow label={t("settings.project.workerSandboxToggle")} description={t("settings.project.workerSandboxNotSupported")}>
+				<span className="text-sm text-settings-muted">{t("settings.project.workerSandboxNotSandboxed")}</span>
+			</SettingsRow>
+		</>;
 	}
 	return <>
+		{requireToggle}
 		<ProjectWorkerSandboxToggle checked={enabled} onCheckedChange={onEnabledChange} unsafe={!enabled} />
 		{enabled ? <>
 			<SettingsRow label={t("settings.project.workerSandboxDomains")} description={t("settings.project.workerSandboxDomainsDescription")}>

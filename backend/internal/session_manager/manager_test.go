@@ -89,6 +89,12 @@ func (f *fakeStore) GetProject(_ context.Context, id string) (domain.ProjectReco
 		return domain.ProjectRecord{}, false, f.getProjectErr
 	}
 	r, ok := f.projects[id]
+	if ok && r.Config.WorkerSandbox.RequireSandbox == nil {
+		// Production nil means on. Fixtures that are not about that gate opt
+		// out so Codex/FX workers keep covering their own behavior.
+		off := false
+		r.Config.WorkerSandbox.RequireSandbox = &off
+	}
 	return r, ok, nil
 }
 func (f *fakeStore) ListWorkspaceRepos(_ context.Context, projectID string) ([]domain.WorkspaceRepoRecord, error) {
@@ -1667,7 +1673,7 @@ func testRoleAgents() domain.ProjectConfig {
 	return domain.ProjectConfig{
 		Worker:        domain.RoleOverride{Harness: domain.HarnessClaudeCode},
 		Orchestrator:  domain.RoleOverride{Harness: domain.HarnessClaudeCode},
-		WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &sandboxOff},
+		WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &sandboxOff, RequireSandbox: &sandboxOff},
 	}
 }
 

@@ -41,6 +41,8 @@ func TestSessionCallerProjectWrites(t *testing.T) {
 	teamMode := domain.ProjectConfig{TeamMode: &teamOff}
 	perms := domain.ProjectConfig{AgentConfig: domain.AgentConfig{Permissions: domain.PermissionModeBypassPermissions}}
 	sandbox := domain.ProjectConfig{WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &enabled}}
+	requireOff := false
+	requireSandbox := domain.ProjectConfig{WorkerSandbox: domain.WorkerSandboxConfig{RequireSandbox: &requireOff}}
 
 	cases := []struct {
 		name    string
@@ -56,6 +58,9 @@ func TestSessionCallerProjectWrites(t *testing.T) {
 		{name: "orchestrator rules", caller: "orch-1", config: rules},
 		{name: "orchestrator permissions", caller: "orch-1", config: perms, wantErr: true},
 		{name: "orchestrator sandbox", caller: "orch-1", config: sandbox, wantErr: true},
+		{name: "person require sandbox", config: requireSandbox},
+		{name: "worker require sandbox", caller: "worker-1", config: requireSandbox, wantErr: true},
+		{name: "orchestrator require sandbox", caller: "orch-1", config: requireSandbox, wantErr: true},
 		{name: "person team mode", config: teamMode},
 		{name: "worker team mode", caller: "worker-1", config: teamMode, wantErr: true},
 		{name: "orchestrator team mode", caller: "orch-1", config: teamMode, wantErr: true},

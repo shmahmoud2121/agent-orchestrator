@@ -628,6 +628,40 @@ describe("ProjectSettingsForm", () => {
 		expect(screen.queryByRole("switch", { name: "Worker OS sandbox" })).not.toBeInTheDocument();
 	});
 
+	it("persists turning off required sandbox with a warning", async () => {
+		mockProject({
+			id: "proj-1", name: "Project One", kind: "single_repo", path: "/repo/project-one",
+			repo: "", defaultBranch: "main", config: {
+				worker: { agent: "claude-code" },
+				orchestrator: { agent: "claude-code" },
+			},
+		});
+		renderSettings("proj-1", undefined, "agents");
+		const toggle = await screen.findByRole("switch", { name: "Only allow sandboxed workers" });
+		expect(toggle).toBeChecked();
+		await userEvent.click(toggle);
+		expect(toggle).not.toBeChecked();
+		expect(screen.getByText("Workers on other AIs can read any file and reach the internet.")).toBeInTheDocument();
+		submitSettings();
+		await waitFor(() => expect(putMock).toHaveBeenCalledTimes(1));
+		expect(putMock.mock.calls[0][1].body.config.workerSandbox).toEqual({ enabled: true, requireSandbox: false });
+	});
+
+	it("disables non-Claude worker harnesses while sandboxed workers are required", async () => {
+		mockProject({
+			id: "proj-1", name: "Project One", kind: "single_repo", path: "/repo/project-one",
+			repo: "", defaultBranch: "main", config: {
+				worker: { agent: "claude-code" },
+				orchestrator: { agent: "claude-code" },
+			},
+		});
+		renderSettings("proj-1", undefined, "agents");
+		await userEvent.click(await screen.findByRole("button", { name: "Worker agent" }));
+		const codex = await screen.findByRole("menuitem", { name: /codex/i });
+		expect(codex).toHaveAttribute("aria-disabled", "true");
+		expect(codex).toHaveAttribute("title", "This project only runs sandboxed workers. Use Claude Code, or ask the person to allow unsandboxed workers in project settings.");
+	});
+
 	it("persists turning the worker sandbox off as unsafe", async () => {
 		mockProject({
 			id: "proj-1", name: "Project One", kind: "single_repo", path: "/repo/project-one",
@@ -721,6 +755,7 @@ describe("ProjectSettingsForm", () => {
 					agent: "codex",
 					agentConfig: { model: "worker-model" },
 				},
+				workerSandbox: { requireSandbox: false },
 				orchestrator: { agent: "claude-code" },
 				agentConfig: {
 					model: "claude-opus-4-5",
@@ -1679,6 +1714,7 @@ describe("ProjectSettingsForm", () => {
 			config: {
 				worker: { agent: "codex" },
 				orchestrator: { agent: "claude-code" },
+				workerSandbox: { requireSandbox: false },
 			},
 		});
 

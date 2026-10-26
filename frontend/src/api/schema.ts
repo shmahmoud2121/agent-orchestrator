@@ -7078,6 +7078,7 @@ export interface components {
             allowedDomains?: string[];
             enabled?: null | boolean;
             protectedPaths?: string[];
+            requireSandbox?: null | boolean;
         };
         WorkspaceCommitSummary: {
             author: string;

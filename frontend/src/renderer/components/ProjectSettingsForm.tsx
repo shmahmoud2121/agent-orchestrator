@@ -172,6 +172,7 @@ function SettingsBody({ project, projectId, hostId, hostConnected, onSaved, sect
 		intakeRepo: intake.repo ?? "",
 		intakeAssignee: intake.assignee ?? "",
 		workerSandboxEnabled: config.workerSandbox?.enabled !== false,
+		workerSandboxRequireSandbox: config.workerSandbox?.requireSandbox !== false,
 		workerSandboxAllowedDomains: (config.workerSandbox?.allowedDomains ?? []).join("\n"),
 		workerSandboxProtectedPaths: config.workerSandbox?.protectedPaths ?? [],
 		...(verifiable && {
@@ -356,7 +357,7 @@ function LocalAgentPicker({ role, draft, value, invalid, onChange, projectId, ho
 	const agents = hostId ? agentsQuery.data?.agents.filter(isLaunchableAgent) : agentsQuery.data?.agents;
 	return role === "reviewer"
 		? <ReviewerSelect value={value} model={draft.reviewerModel} mode={draft.reviewerMode} projectId={projectId} hostId={hostId} harnessOnly defaultHarness={WORKER_DEFAULT_REVIEWERS[draft.workerAgent] ?? "claude-code"} triggerClassName="w-full" onChange={onChange} ariaLabel={t("settings.project.defaultReviewer")} agents={agents} disabled={disabled} />
-		: <RequiredAgentField id={`${role}Agent`} variant="settings-control" value={value} placeholder={t(role === "worker" ? "settings.project.selectWorker" : "settings.project.selectOrchestrator")} label={t(role === "worker" ? "settings.project.defaultWorker" : "settings.project.defaultOrchestrator")} agents={agents} hostId={hostId} disabled={disabled} invalid={invalid} onChange={onChange} />;
+		: <RequiredAgentField id={`${role}Agent`} variant="settings-control" value={value} placeholder={t(role === "worker" ? "settings.project.selectWorker" : "settings.project.selectOrchestrator")} label={t(role === "worker" ? "settings.project.defaultWorker" : "settings.project.defaultOrchestrator")} agents={agents} hostId={hostId} disabled={disabled} invalid={invalid} sandboxRequired={role === "worker" && draft.workerSandboxRequireSandbox !== false} onChange={onChange} />;
 }
 
 function repositoryHref(repository: string): string | undefined {
@@ -426,14 +427,16 @@ function parseSandboxDomains(raw: string | undefined): string[] {
 }
 
 /** Persist only when the policy differs from the default (enabled, no domains, no extra protected files). */
-function workerSandboxConfig(values: ProjectSettingsDraft): { workerSandbox?: { enabled: boolean; allowedDomains?: string[]; protectedPaths?: string[] } } {
+function workerSandboxConfig(values: ProjectSettingsDraft): { workerSandbox?: { enabled: boolean; requireSandbox?: boolean; allowedDomains?: string[]; protectedPaths?: string[] } } {
 	const enabled = values.workerSandboxEnabled !== false;
+	const requireSandbox = values.workerSandboxRequireSandbox !== false;
 	const allowedDomains = parseSandboxDomains(values.workerSandboxAllowedDomains);
 	const protectedPaths = values.workerSandboxProtectedPaths ?? [];
-	if (enabled && allowedDomains.length === 0 && protectedPaths.length === 0) return { workerSandbox: undefined };
+	if (enabled && requireSandbox && allowedDomains.length === 0 && protectedPaths.length === 0) return { workerSandbox: undefined };
 	return {
 		workerSandbox: {
 			enabled,
+			...(!requireSandbox ? { requireSandbox: false } : {}),
 			...(allowedDomains.length > 0 ? { allowedDomains } : {}),
 			...(protectedPaths.length > 0 ? { protectedPaths } : {}),
 		},

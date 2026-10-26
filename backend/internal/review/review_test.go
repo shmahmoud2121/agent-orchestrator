@@ -351,7 +351,12 @@ func (f fakePRs) ListPRsBySession(_ context.Context, _ domain.SessionID) ([]doma
 type fakeProjects struct{ cfg domain.ProjectConfig }
 
 func (f fakeProjects) GetProject(_ context.Context, id string) (domain.ProjectRecord, bool, error) {
-	return domain.ProjectRecord{ID: id, Config: f.cfg}, true, nil
+	cfg := f.cfg
+	if cfg.WorkerSandbox.RequireSandbox == nil {
+		off := false
+		cfg.WorkerSandbox.RequireSandbox = &off
+	}
+	return domain.ProjectRecord{ID: id, Config: cfg}, true, nil
 }
 
 type chatReviewAdapter struct{}
@@ -561,10 +566,12 @@ func newSQLiteReviewStore(t *testing.T) *sqlite.Store {
 func seedReviewWorker(t *testing.T, st *sqlite.Store, worker domain.SessionRecord) {
 	t.Helper()
 	ctx := context.Background()
+	requireOff := false
 	if err := st.UpsertProject(ctx, domain.ProjectRecord{
 		ID:           string(worker.ProjectID),
 		Path:         "/tmp/" + string(worker.ProjectID),
 		RegisteredAt: time.Now().UTC().Truncate(time.Second),
+		Config:       domain.ProjectConfig{WorkerSandbox: domain.WorkerSandboxConfig{RequireSandbox: &requireOff}},
 	}); err != nil {
 		t.Fatalf("seed project %s: %v", worker.ProjectID, err)
 	}

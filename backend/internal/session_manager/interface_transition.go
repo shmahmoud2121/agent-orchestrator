@@ -880,6 +880,9 @@ func (m *Manager) preflightInterfaceTarget(
 		if err != nil {
 			return err
 		}
+		if err := refuseUnsandboxedWorkerForProject(project, rec.Kind, rec.Harness, false); err != nil {
+			return err
+		}
 		permissions := effectiveAgentConfig(rec.Harness, rec.Kind, project.Config).Permissions
 		return m.chat.PreflightChat(ctx, rec.Harness, permissions)
 	}
@@ -889,6 +892,9 @@ func (m *Manager) preflightInterfaceTarget(
 	}
 	project, err := m.loadProject(ctx, rec.ProjectID)
 	if err != nil {
+		return err
+	}
+	if err := refuseUnsandboxedWorkerForProject(project, rec.Kind, rec.Harness, false); err != nil {
 		return err
 	}
 	config := restoredAgentConfig(rec, project.Config)

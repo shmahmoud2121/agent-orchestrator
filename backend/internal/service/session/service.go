@@ -1695,6 +1695,12 @@ func mapSessionError(err error) error {
 		return apierr.Conflict("WORKSPACE_LOCKED", err.Error(), nil)
 	case errors.Is(err, sessionmanager.ErrCleanupScript):
 		return apierr.Conflict("WORKSPACE_CLEANUP_FAILED", "Workspace cleanup script failed; the worktree was preserved. Fix the script and retry cleanup.", nil)
+	case errors.Is(err, domain.ErrWorkerSandboxRequired):
+		msg := domain.WorkerSandboxRequiredMessage
+		if strings.Contains(err.Error(), domain.WorkerSandboxRequiredRestoreMessage) {
+			msg = domain.WorkerSandboxRequiredRestoreMessage
+		}
+		return apierr.Conflict("WORKER_SANDBOX_REQUIRED", msg, nil)
 	default:
 		return err
 	}

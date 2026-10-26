@@ -533,9 +533,22 @@ func (f *fakeRuntime) SendMessage(_ context.Context, handle ports.RuntimeHandle,
 }
 
 func launchSpec() LaunchSpec {
+	requireOff := false
 	return LaunchSpec{
 		RunID: "run-1", BatchID: "batch-1", ReviewSessionID: "review-1", WorkerID: "mer-1", ProjectID: "mer", Harness: domain.ReviewerClaudeCode,
 		WorkspacePath: "/ws/mer-1", PRURL: "https://github.com/o/r/pull/1", TargetSHA: "sha1",
+		WorkerSandbox: domain.WorkerSandboxConfig{RequireSandbox: &requireOff},
+	}
+}
+
+func TestLauncherSpawnRequireSandbox(t *testing.T) {
+	rt := &fakeRuntime{}
+	l := NewLauncher(fakeReviewerResolver{reviewer: &fakeReviewer{}, ok: true}, rt, t.TempDir())
+	if _, err := l.Spawn(context.Background(), LaunchSpec{
+		RunID: "run-1", ReviewSessionID: "review-1", WorkerID: "mer-1", ProjectID: "mer",
+		Harness: domain.ReviewerCodex, WorkspacePath: "/ws",
+	}); !errors.Is(err, domain.ErrWorkerSandboxRequired) {
+		t.Fatalf("codex reviewer = %v, want WORKER_SANDBOX_REQUIRED", err)
 	}
 }
 

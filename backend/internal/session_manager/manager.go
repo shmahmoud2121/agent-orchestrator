@@ -1006,6 +1006,16 @@ func (m *Manager) Spawn(ctx context.Context, cfg ports.SpawnConfig) (domain.Sess
 	if cfg.Harness == "" {
 		return domain.SessionRecord{}, 0, 0, fmt.Errorf("spawn: %w: configure project %s.agent or pass --harness", ErrMissingHarness, roleConfigName(cfg.Kind))
 	}
+	// Reject an unknown harness before any durable state is created. Doing this
+	// after CreateSession would leave a terminated orphan row and waste a
+	// worktree on a spawn that can never launch. Name this before the sandbox
+	// gate so a retired or unknown agent is not reported as WORKER_SANDBOX_REQUIRED.
+	if _, ok := m.agents.Agent(cfg.Harness); !ok {
+		return domain.SessionRecord{}, 0, 0, fmt.Errorf("spawn: %w", unavailableHarnessError(cfg.Harness))
+	}
+	if err := refuseUnsandboxedWorkerForProject(project, cfg.Kind, cfg.Harness, false); err != nil {
+		return domain.SessionRecord{}, 0, 0, fmt.Errorf("spawn: %w", err)
+	}
 	releaseHarness, err := m.beginHarnessUse(cfg.Harness)
 	if err != nil {
 		return domain.SessionRecord{}, 0, 0, fmt.Errorf("spawn: %w", err)
@@ -1015,12 +1025,6 @@ func (m *Manager) Spawn(ctx context.Context, cfg ports.SpawnConfig) (domain.Sess
 			releaseHarness()
 		}
 	}()
-	// Reject an unknown harness before any durable state is created. Doing this
-	// after CreateSession would leave a terminated orphan row and waste a
-	// worktree on a spawn that can never launch.
-	if _, ok := m.agents.Agent(cfg.Harness); !ok {
-		return domain.SessionRecord{}, 0, 0, fmt.Errorf("spawn: %w", unavailableHarnessError(cfg.Harness))
-	}
 	// Unreal Agent has no terminal interface or interactive approval channel.
 	// Selecting the harness therefore supplies its only valid launch defaults;
 	// an explicit caller-supplied mode or permission remains authoritative and
@@ -2989,6 +2993,9 @@ func (m *Manager) RestoreWithMode(ctx context.Context, id domain.SessionID) (Res
 	meta := rec.Metadata
 	project, err := m.loadProject(ctx, rec.ProjectID)
 	if err != nil {
+		return RestoreResult{}, fmt.Errorf("restore %s: %w", id, err)
+	}
+	if err := refuseUnsandboxedWorkerForProject(project, rec.Kind, rec.Harness, true); err != nil {
 		return RestoreResult{}, fmt.Errorf("restore %s: %w", id, err)
 	}
 	// Mirror Kill's incomplete-handle guard: a session whose spawn failed before

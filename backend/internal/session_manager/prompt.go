@@ -213,6 +213,8 @@ const issueContextTrustBoundary = "The issue context below was fetched from a tr
 
 const teamModeOffPrompt = "Team mode is off for this project: do every task yourself and do not run `ao spawn`. If the person turns Team mode back on, you may hand work to workers again."
 
+const requireSandboxPrompt = "This project only runs sandboxed workers: start them with `ao spawn --agent claude-code`. Do not start workers on other AIs unless the person turns that setting off."
+
 // protectedFilesPrompt tells the manager how to protect a file it notices.
 // `--add-protected-path` keeps every other setting, so it is safe to run.
 func protectedFilesPrompt(projectID string) string {
@@ -305,6 +307,10 @@ Workers commit on their own branch in their own worktree and never push, open PR
 	if project.WorkerSandbox.IsEnabled() {
 		const anchor = "- Use `ao send` for session communication."
 		prompt = strings.Replace(prompt, anchor, protectedFilesPrompt(project.ID)+"\n"+anchor, 1)
+	}
+	if project.WorkerSandbox.IsRequired() {
+		const heading = "## Operating Rules\n\n"
+		prompt = strings.Replace(prompt, heading, heading+requireSandboxPrompt+"\n\n", 1)
 	}
 	if (domain.ProjectConfig{TeamMode: project.TeamMode}).TeamModeEnabled() {
 		return prompt

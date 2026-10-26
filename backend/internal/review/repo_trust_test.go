@@ -25,7 +25,8 @@ func TestReviewerRepositoryTrustBeforePreparationAndLaunch(t *testing.T) {
 				}
 				return apierr.Conflict("REPO_TRUST_REQUIRED", "review repository configuration", nil)
 			}))
-			spec := LaunchSpec{ProjectID: "p", WorkspacePath: "/worker"}
+			requireOff := false
+			spec := LaunchSpec{ProjectID: "p", WorkspacePath: "/worker", WorkerSandbox: domain.WorkerSandboxConfig{RequireSandbox: &requireOff}}
 			var err error
 			if restore {
 				_, err = launcher.RestoreTerminal(context.Background(), spec)

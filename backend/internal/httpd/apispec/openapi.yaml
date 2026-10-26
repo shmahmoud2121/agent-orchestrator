@@ -20272,6 +20272,10 @@ components:
           items:
             type: string
           type: array
+        requireSandbox:
+          type:
+          - "null"
+          - boolean
       type: object
     WorkspaceCommitSummary:
       properties:

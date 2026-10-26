@@ -17,6 +17,7 @@ import {
 	buildRankedAgentOptions,
 	isLaunchableAgent,
 	DEFAULT_AGENT_PRIORITY_RANK,
+	SANDBOXED_WORKER_HARNESSES,
 	defaultAuthorizedAgentForRole,
 	type AgentInfo,
 	unknownAgentReadiness,
@@ -278,6 +279,7 @@ export function CreateProjectAgentSheet({
 									value={workerAgent}
 									agents={selectableAgents}
 									disabled={isLoadingAgents}
+									sandboxRequired
 									labelClassName="agents-sheet-label"
 									triggerClassName="agents-sheet-control"
 									contentClassName="agents-sheet-menu"
@@ -420,6 +422,7 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 	contentClassName,
 	value,
 	variant = "stacked",
+	sandboxRequired = false,
 }: {
 	agents?: AgentInfo[];
 	disabled?: boolean;
@@ -443,6 +446,8 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 	contentClassName?: string;
 	value: string;
 	variant?: "stacked" | "settings-row" | "settings-control" | "chip";
+	/** When set, non-sandboxed worker harnesses are shown disabled with a tooltip. */
+	sandboxRequired?: boolean;
 }) {
 	const { t } = useTranslation();
 	// The daemon's readiness response is the registration list. An absent
@@ -466,13 +471,17 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 	const setupHint = retiredSelection
 		? <span className="text-xs text-warning" role="status">{t("agentSelector.retired")}</span>
 		: needsSetup ? <span className="text-xs text-muted-foreground">{t("agentSelector.needsSetup")}</span> : null;
+	const sandboxBlocked = (id: string) => sandboxRequired && !SANDBOXED_WORKER_HARNESSES.has(id);
+	const sandboxTitle = t("settings.project.workerSandboxRequireDisabledReason");
+	const withSandbox = (agent: (typeof visibleOptions)[number]) => ({
+		value: agent.id,
+		label: agent.label,
+		disabled: agent.disabled || sandboxBlocked(agent.id),
+		title: sandboxBlocked(agent.id) ? sandboxTitle : undefined,
+	});
 
 	if (variant === "settings-row" || variant === "settings-control") {
-		const menuOptions = visibleOptions.map((agent) => ({
-			value: agent.id,
-			label: agent.label,
-			disabled: agent.disabled,
-		}));
+		const menuOptions = visibleOptions.map(withSandbox);
 
 		const control = (
 				<SettingsOptionMenu
@@ -506,7 +515,7 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 								selected={selected}
 								status={agent.status}
 								statusTone={agent.statusTone}
-								disabled={agent.disabled}
+								disabled={option.disabled}
 							/>
 						);
 					}}
@@ -521,11 +530,7 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 	// model chip beside it) so both halves of the pill share one dropdown
 	// component instead of a Select-based menu and a DropdownMenu-based one.
 	if (variant === "chip") {
-		const menuOptions = visibleOptions.map((agent) => ({
-			value: agent.id,
-			label: agent.label,
-			disabled: agent.disabled,
-		}));
+		const menuOptions = visibleOptions.map(withSandbox);
 
 		return (
 			<SettingsOptionMenu
@@ -570,7 +575,7 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 							selected={selected}
 							status={agent.status}
 							statusTone={agent.statusTone}
-							disabled={agent.disabled}
+							disabled={option.disabled}
 						/>
 					);
 				}}
@@ -622,7 +627,8 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 						<SelectItem
 							key={agent.id}
 							value={agent.id}
-							disabled={agent.disabled}
+							disabled={agent.disabled || sandboxBlocked(agent.id)}
+							title={sandboxBlocked(agent.id) ? sandboxTitle : undefined}
 							className="[&>span:last-child]:w-full"
 						>
 							<AgentSelectMenuItem
@@ -631,7 +637,7 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 								selected={value === agent.id}
 								status={agent.status}
 								statusTone={agent.statusTone}
-								disabled={agent.disabled}
+								disabled={agent.disabled || sandboxBlocked(agent.id)}
 							/>
 						</SelectItem>
 					))}

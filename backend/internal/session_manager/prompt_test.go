@@ -502,6 +502,20 @@ func TestOrchestratorSystemPromptTeamMode(t *testing.T) {
 	}
 }
 
+func TestOrchestratorSystemPromptRequireSandbox(t *testing.T) {
+	const sentence = "This project only runs sandboxed workers: start them with `ao spawn --agent claude-code`. Do not start workers on other AIs unless the person turns that setting off."
+	required := orchestratorSystemPrompt(promptProjectContext("mer", domain.ProjectRecord{ID: "mer", DisplayName: "Mercury"}))
+	if !strings.Contains(required, sentence) {
+		t.Fatalf("default require-sandbox prompt missing %q", sentence)
+	}
+	off := false
+	allowed := orchestratorSystemPrompt(promptProjectContext("mer", domain.ProjectRecord{ID: "mer", DisplayName: "Mercury",
+		Config: domain.ProjectConfig{WorkerSandbox: domain.WorkerSandboxConfig{RequireSandbox: &off}}}))
+	if strings.Contains(allowed, sentence) {
+		t.Fatal("a project that allows unsandboxed workers must not tell the manager to spawn only Claude Code")
+	}
+}
+
 func TestOrchestratorSystemPromptProtectedFiles(t *testing.T) {
 	const sentence = "If you notice a file with passwords, keys or private data that workers should not read, add it to the project's protected files with `ao project set-config mer --add-protected-path <path>`; you can add protected files but never remove them."
 	sandboxed := orchestratorSystemPrompt(promptProjectContext("mer", domain.ProjectRecord{ID: "mer", DisplayName: "Mercury"}))

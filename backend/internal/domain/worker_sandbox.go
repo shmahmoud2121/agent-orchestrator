@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"path/filepath"
@@ -28,6 +29,9 @@ type WorkerSandboxConfig struct {
 	// "~/" path, or absolute. The person and the manager may add entries; only
 	// the person may remove one.
 	ProtectedPaths []string `json:"protectedPaths,omitempty"`
+	// RequireSandbox refuses to start or restore a worker unless that worker
+	// will actually run sandboxed. nil means on. Only the person can change it.
+	RequireSandbox *bool `json:"requireSandbox,omitempty"`
 
 	// Launch is filled in by the session manager for each worker launch and is
 	// never stored or sent over the API.
@@ -54,6 +58,58 @@ func (c WorkerSandboxConfig) IsEnabled() bool {
 		return true
 	}
 	return *c.Enabled
+}
+
+// IsRequired reports whether workers must actually run sandboxed. A missing
+// config (nil RequireSandbox) defaults to true.
+func (c WorkerSandboxConfig) IsRequired() bool {
+	if c.RequireSandbox == nil {
+		return true
+	}
+	return *c.RequireSandbox
+}
+
+// SandboxedWorkerHarnesses is the harnesses that can actually run a worker
+// inside an OS sandbox. Only Claude Code qualifies today; add others here
+// when they grow an equivalent sandbox.
+var SandboxedWorkerHarnesses = map[AgentHarness]struct{}{
+	HarnessClaudeCode: {},
+}
+
+// ErrWorkerSandboxRequired is returned when a project requires sandboxed
+// workers and the launch would not actually be sandboxed.
+var ErrWorkerSandboxRequired = errors.New("worker sandbox required")
+
+// WorkerSandboxRequiredMessage is the 409 body for WORKER_SANDBOX_REQUIRED.
+const WorkerSandboxRequiredMessage = "This project only runs sandboxed workers. Start the worker with Claude Code, or ask the person to allow unsandboxed workers in project settings."
+
+// WorkerSandboxRequiredRestoreMessage is the 409 body when restore is refused
+// because the existing session is not sandboxed.
+const WorkerSandboxRequiredRestoreMessage = "This project only runs sandboxed workers. This session is not sandboxed, so it cannot be restored. Start the worker with Claude Code, or ask the person to allow unsandboxed workers in project settings."
+
+// WorkerMeetsSandboxRequirement reports whether this launch is allowed when
+// the project requires sandboxed workers. Non-workers always pass. osAvailable
+// is whether the host can enforce the OS sandbox.
+func WorkerMeetsSandboxRequirement(kind SessionKind, harness AgentHarness, sandbox WorkerSandboxConfig, osAvailable bool) bool {
+	if kind != KindWorker || !sandbox.IsRequired() {
+		return true
+	}
+	_, supported := SandboxedWorkerHarnesses[harness]
+	return supported && sandbox.IsEnabled() && osAvailable
+}
+
+// RefuseUnsandboxedWorker returns ErrWorkerSandboxRequired when the launch
+// would not actually run sandboxed and the project requires that. restore
+// selects the restore wording.
+func RefuseUnsandboxedWorker(kind SessionKind, harness AgentHarness, sandbox WorkerSandboxConfig, osAvailable, restore bool) error {
+	if WorkerMeetsSandboxRequirement(kind, harness, sandbox, osAvailable) {
+		return nil
+	}
+	msg := WorkerSandboxRequiredMessage
+	if restore {
+		msg = WorkerSandboxRequiredRestoreMessage
+	}
+	return fmt.Errorf("%w: %s", ErrWorkerSandboxRequired, msg)
 }
 
 // WithDefaults returns c with Enabled set to true when it was unset, so callers

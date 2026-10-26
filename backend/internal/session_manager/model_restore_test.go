@@ -62,7 +62,7 @@ func TestClaudeSessionModelSurvivesRestore(t *testing.T) {
 							Orchestrator: domain.RoleOverride{
 								Harness: domain.HarnessClaudeCode, AgentConfig: domain.AgentConfig{Model: selection.roleModel, Effort: selection.roleEffort},
 							},
-							WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &sandboxOff},
+							WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &sandboxOff, RequireSandbox: &sandboxOff},
 						},
 					}
 					if err := store.UpsertProject(ctx, project); err != nil {

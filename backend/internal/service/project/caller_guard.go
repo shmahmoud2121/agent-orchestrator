@@ -105,6 +105,7 @@ func sensitiveConfigChange(before, after domain.ProjectConfig) callerChange {
 			before.Worker.AgentConfig.Permissions != after.Worker.AgentConfig.Permissions ||
 			before.Orchestrator.AgentConfig.Permissions != after.Orchestrator.AgentConfig.Permissions,
 		sandbox: before.WorkerSandbox.IsEnabled() != after.WorkerSandbox.IsEnabled() ||
+			before.WorkerSandbox.IsRequired() != after.WorkerSandbox.IsRequired() ||
 			!slices.Equal(before.WorkerSandbox.AllowedDomains, after.WorkerSandbox.AllowedDomains),
 		teamMode:         before.TeamModeEnabled() != after.TeamModeEnabled(),
 		protectedRemoved: !containsEvery(after.WorkerSandbox.ProtectedPaths, before.WorkerSandbox.ProtectedPaths),

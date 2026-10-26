@@ -274,6 +274,9 @@ func (m *Manager) admitAgentSwitch(ctx context.Context, id domain.SessionID, cfg
 	if err != nil {
 		return domain.AgentSwitch{}, nil, fmt.Errorf("switch agent %s: project: %w", id, err)
 	}
+	if err := refuseUnsandboxedWorkerForProject(project, rec.Kind, cfg.TargetHarness, false); err != nil {
+		return domain.AgentSwitch{}, nil, fmt.Errorf("switch agent %s: %w", id, err)
+	}
 	sourceAgent, ok := m.agents.Agent(rec.Harness)
 	if !ok {
 		return domain.AgentSwitch{}, nil, fmt.Errorf("switch agent %s: %w: %q", id, ErrUnknownHarness, rec.Harness)
