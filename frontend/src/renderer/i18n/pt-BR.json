@@ -2977,6 +2977,7 @@
 	"session.interfaceStartFallbackUnsupported": "O worker do AO neste workspace é uma versão antiga que não consegue preparar o Chat para o Claude. Você pode trocar esta sessão para o Chat.",
 	"session.dismissInterfaceNotice": "Dispensar a mensagem de troca de interface",
 	"session.dismissInterfaceNoticeFailed": "Não foi possível dispensar esta mensagem. Tente novamente.",
+	"chat.composer.describeTask": "Descreva uma tarefa…",
 	"chat.draft.acceptedMessage": "O conteúdo foi aceito, mas seu rascunho local ainda precisa ser apagado.",
 	"chat.draft.steerRestart": "O AO não consegue determinar se o agente já recebeu este conteúdo. Tente novamente com o mesmo ID de entrega ou abandone a recuperação para editá-lo. Enviar novamente após abandonar pode duplicá-lo.",
 	"chat.draft.sendRestart": "A entrega da mensagem não foi confirmada. Tente novamente com o mesmo ID de entrega; o rascunho ficará bloqueado até a confirmação.",

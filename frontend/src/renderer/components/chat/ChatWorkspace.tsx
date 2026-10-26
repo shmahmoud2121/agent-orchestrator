@@ -130,6 +130,7 @@ import { ChatLinkProvider, ChatOpeningRef } from "./ChatMarkdown";
 import { ChatImageSourceProvider } from "./chat-image-source";
 import type { ComposerPromptSuggestion } from "./ComposerEditor";
 import { ChatComposer, type ChatComposerHandle, type StoredComposerAttachment } from "./ChatComposer";
+import { ComposerContextStrip } from "./ComposerContextStrip";
 import { ContextMeter } from "./ContextMeter";
 import { stagedAttachmentParts, attachmentName } from "./messageAttachments";
 import type { QueuedMessageEditOptions } from "../../types/conversation";
@@ -1510,7 +1511,7 @@ function ChatWorkspaceContent({
 	const { t } = useTranslation();
 	const [emptyChatPlaceholder] = useState(
 		() => sessionRole === "orchestrator"
-			? "Ask anything about this project"
+			? t("chat.composer.describeTask")
 			: EMPTY_CHAT_PLACEHOLDERS[Math.floor(Math.random() * EMPTY_CHAT_PLACEHOLDERS.length)],
 	);
 	const composerDockRef = useRef<HTMLDivElement>(null);
@@ -1819,6 +1820,9 @@ function ChatWorkspaceContent({
 										placement={conversationEmpty ? "below" : "above"}
 										active={!workspaceActiveTabKey && !reviewerActive && !shellActive}
 									/>
+									{/* The centered welcome already has the heading and sample prompts.
+									    Keep the strip on the docked composer so it does not sit between them. */}
+									{conversationEmpty ? null : <ComposerContextStrip session={session} />}
 									<ChatComposer
 										onSelectAnnotation={navigateToAnnotation}
 										focusRef={composerFocusRef}

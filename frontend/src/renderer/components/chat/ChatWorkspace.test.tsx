@@ -2044,7 +2044,8 @@ describe("ChatWorkspace timeline", () => {
 		view.rerender(<ChatWorkspace sessionRole="orchestrator" snapshot={chatFixtureEmpty} session={{ ...chatSession, kind: "orchestrator", provisionState: "ready" }} />);
 		expect(screen.getByLabelText("Message the agent")).toBe(composer);
 		expect(composer.closest("form")).not.toHaveAttribute("data-starting");
-		expect(await screen.findByText("Ask anything about this project")).toBeInTheDocument();
+		expect(await screen.findByText("Describe a task…")).toBeInTheDocument();
+		expect(screen.queryByTestId("composer-context-strip")).not.toBeInTheDocument();
 	});
 
 	it.each([
