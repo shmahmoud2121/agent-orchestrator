@@ -1,0 +1,158 @@
+package watchdog
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
+	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
+)
+
+const (
+	watchdogLogName     = "watchdog.log"
+	maxWatchdogLogBytes = 1 << 20
+)
+
+// recordBlock tells the person, writes the timeline and audit lines, and stops
+// a worker after three blocks or any tamper attempt. The manager is alerted
+// and never stopped. Failures here still leave the tool call denied.
+func (s *Service) recordBlock(ctx context.Context, session domain.SessionRecord, toolName string, decision *Decision) {
+	if s == nil || decision == nil {
+		return
+	}
+	now := time.Now().UTC()
+	s.recordTimeline(ctx, session.ID, decision.Path, now)
+	if s.shouldStop(session, decision.Tamper) && s.Stop != nil {
+		if err := s.Stop.KillPreservingWorkspace(ctx, session.ID); err == nil {
+			decision.Stopped = true
+		}
+	}
+	action := "blocked"
+	if decision.Stopped {
+		action = "stopped"
+	}
+	s.appendLog(now, session, toolName, decision.Path, action)
+	s.notify(ctx, domain.NotificationWatchdogBlocked, session, decision.Path, now)
+	if decision.Stopped {
+		s.notify(ctx, domain.NotificationWatchdogStopped, session, decision.Path, now)
+	}
+}
+
+func (s *Service) shouldStop(session domain.SessionRecord, tamper bool) bool {
+	if session.Kind != domain.KindWorker {
+		return false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.blocks == nil {
+		s.blocks = map[domain.SessionID]int{}
+	}
+	s.blocks[session.ID]++
+	return tamper || s.blocks[session.ID] >= watchdogStopAfter
+}
+
+func (s *Service) notify(ctx context.Context, typ domain.NotificationType, session domain.SessionRecord, path string, now time.Time) {
+	if s.Notify == nil {
+		return
+	}
+	key := "watchdog:" + string(session.ID) + ":" + path
+	if typ == domain.NotificationWatchdogStopped {
+		key = "watchdog-stop:" + string(session.ID)
+	}
+	_ = s.Notify.Notify(ctx, ports.NotificationIntent{
+		Type:               typ,
+		SessionID:          session.ID,
+		ProjectID:          session.ProjectID,
+		CreatedAt:          now,
+		SourceKey:          key,
+		SessionDisplayName: sessionLabel(session),
+		Agent:              agentName(session.Harness),
+		Subject:            path,
+	})
+}
+
+func (s *Service) recordTimeline(ctx context.Context, id domain.SessionID, path string, now time.Time) {
+	if s.Activity == nil {
+		return
+	}
+	conversation, err := s.Activity.ConversationForSession(ctx, id)
+	if err != nil || conversation.ID == "" {
+		return
+	}
+	detail, err := json.Marshal(map[string]string{
+		"event": "watchdog",
+		"path":  path,
+	})
+	if err != nil {
+		return
+	}
+	_ = s.Activity.UpsertActivity(ctx, conversation.ID, "", domain.ConversationActivity{
+		ID:      newActivityID(),
+		Kind:    domain.ActivityKindSystem,
+		Status:  domain.ActivityStatusCompleted,
+		Summary: "Watchdog blocked reading " + path,
+		Detail:  detail,
+	}, now)
+}
+
+func (s *Service) appendLog(now time.Time, session domain.SessionRecord, toolName, path, action string) {
+	dataDir := strings.TrimSpace(s.DataDir)
+	if dataDir == "" {
+		return
+	}
+	if err := os.MkdirAll(dataDir, 0o750); err != nil {
+		return
+	}
+	line := fmt.Sprintf("%s project=%s session=%s ai=%s tool=%s path=%q action=%s\n",
+		now.Format(time.RFC3339), session.ProjectID, session.ID, session.Harness, toolName, path, action)
+	logPath := filepath.Join(dataDir, watchdogLogName)
+	flags := os.O_APPEND | os.O_CREATE | os.O_WRONLY
+	if info, err := os.Stat(logPath); err == nil && info.Size() > maxWatchdogLogBytes {
+		flags = os.O_TRUNC | os.O_CREATE | os.O_WRONLY
+	}
+	f, err := os.OpenFile(logPath, flags, 0o600) //nolint:gosec // path is rooted in AO's data dir
+	if err != nil {
+		return
+	}
+	defer func() { _ = f.Close() }()
+	_, _ = f.WriteString(line)
+}
+
+func sessionLabel(session domain.SessionRecord) string {
+	if name := strings.TrimSpace(session.DisplayName); name != "" {
+		return name
+	}
+	if session.ID != "" {
+		return string(session.ID)
+	}
+	return "session"
+}
+
+func agentName(harness domain.AgentHarness) string {
+	switch harness {
+	case domain.HarnessClaudeCode:
+		return "Claude Code"
+	case domain.HarnessCodex:
+		return "Codex"
+	default:
+		if harness == "" {
+			return "The AI"
+		}
+		return string(harness)
+	}
+}
+
+func newActivityID() string {
+	var buf [8]byte
+	if _, err := rand.Read(buf[:]); err != nil {
+		return fmt.Sprintf("watchdog-%d", time.Now().UnixNano())
+	}
+	return "watchdog-" + hex.EncodeToString(buf[:])
+}

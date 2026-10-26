@@ -10,9 +10,12 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/apitoken"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
+	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 	"github.com/aoagents/agent-orchestrator/backend/internal/watchdog"
 )
 
@@ -36,12 +39,36 @@ type Store interface {
 	GetProject(ctx context.Context, id string) (domain.ProjectRecord, bool, error)
 }
 
+// Notifier is the existing notification write path.
+type Notifier interface {
+	Notify(ctx context.Context, intent ports.NotificationIntent) error
+}
+
+// ActivityWriter records one line on the session's chat timeline.
+type ActivityWriter interface {
+	ConversationForSession(ctx context.Context, session domain.SessionID) (domain.ConversationRecord, error)
+	UpsertActivity(ctx context.Context, conversationID, providerTurnID string, activity domain.ConversationActivity, now time.Time) error
+}
+
+// Stopper stops a worker and leaves its worktree on disk.
+type Stopper interface {
+	KillPreservingWorkspace(ctx context.Context, id domain.SessionID) error
+}
+
 // Service checks tool calls for project sessions.
 type Service struct {
-	Store   Store
-	DataDir string
-	HomeDir string
+	Store    Store
+	DataDir  string
+	HomeDir  string
+	Notify   Notifier
+	Activity ActivityWriter
+	Stop     Stopper
+
+	mu     sync.Mutex
+	blocks map[domain.SessionID]int
 }
+
+const watchdogStopAfter = 3
 
 // Decide reports whether the tool call may run. Standalone sessions, which
 // have no project, are skipped. A project session whose protected list cannot
@@ -92,6 +119,7 @@ func (s *Service) Decide(ctx context.Context, id domain.SessionID, toolName stri
 	}
 	decision := denyDecision(hit.Path)
 	decision.Tamper = hit.Tamper
+	s.recordBlock(ctx, session, toolName, &decision)
 	return decision, nil
 }
 

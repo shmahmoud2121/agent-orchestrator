@@ -1446,12 +1446,12 @@ type WatchdogDecisionRequest struct {
 
 // WatchdogDecisionResponse tells the hook whether the tool call may run.
 type WatchdogDecisionResponse struct {
-	OK        bool   `json:"ok"`
-	Decision  string `json:"decision" enum:"allow,deny,skip" description:"allow runs the tool, deny blocks it, skip means this session is not watched."`
-	Path      string `json:"path,omitempty" description:"Protected path the tool call touched."`
-	Reason    string `json:"reason,omitempty" description:"Sentence the agent sees when the call is denied."`
-	Tamper    bool   `json:"tamper,omitempty" description:"True when the call tried to change AO's hook settings."`
-	Stopped   bool   `json:"stopped,omitempty" description:"True when this call stopped the worker."`
+	OK       bool   `json:"ok"`
+	Decision string `json:"decision" enum:"allow,deny,skip" description:"allow runs the tool, deny blocks it, skip means this session is not watched."`
+	Path     string `json:"path,omitempty" description:"Protected path the tool call touched."`
+	Reason   string `json:"reason,omitempty" description:"Sentence the agent sees when the call is denied."`
+	Tamper   bool   `json:"tamper,omitempty" description:"True when the call tried to change AO's hook settings."`
+	Stopped  bool   `json:"stopped,omitempty" description:"True when this call stopped the worker."`
 }
 
 // CodewhaleLifecycleWebhookRequest is Codewhale v0.10's lifecycle webhook
@@ -2139,7 +2139,7 @@ type NotificationResponse struct {
 	SessionID string    `json:"sessionId"`
 	ProjectID string    `json:"projectId"`
 	PRURL     string    `json:"prUrl"`
-	Type      string    `json:"type" enum:"needs_input,ready_to_merge,pr_merged,pr_closed_unmerged,review_completed,review_changes_requested"`
+	Type      string    `json:"type" enum:"needs_input,ready_to_merge,pr_merged,pr_closed_unmerged,review_completed,review_changes_requested,watchdog_blocked,watchdog_stopped"`
 	Title     string    `json:"title"`
 	Body      string    `json:"body"`
 	Status    string    `json:"status" enum:"unread,read" description:"Seen state. unread means the user has not opened the notification panel since it arrived."`

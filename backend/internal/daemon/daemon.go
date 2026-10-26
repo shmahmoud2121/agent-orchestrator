@@ -72,8 +72,8 @@ import (
 	"github.com/aoagents/agent-orchestrator/backend/internal/service/systemcheck"
 	"github.com/aoagents/agent-orchestrator/backend/internal/service/systeminstall"
 	usagesvc "github.com/aoagents/agent-orchestrator/backend/internal/service/usage"
-	watchdogsvc "github.com/aoagents/agent-orchestrator/backend/internal/service/watchdog"
 	verifysvc "github.com/aoagents/agent-orchestrator/backend/internal/service/verify"
+	watchdogsvc "github.com/aoagents/agent-orchestrator/backend/internal/service/watchdog"
 	sessionmanager "github.com/aoagents/agent-orchestrator/backend/internal/session_manager"
 	"github.com/aoagents/agent-orchestrator/backend/internal/skillassets"
 	"github.com/aoagents/agent-orchestrator/backend/internal/storage/sqlite"
@@ -945,6 +945,12 @@ func Run() error {
 	// Terminal hooks pass the hook process gate: a Claude process other than
 	// the session's own must not replace its activity or transcript.
 	hookActivity := hookprocess.New(lcStack.LCM, store, runtimeAdapter, nil, log)
+	var watchdogStop watchdogsvc.Stopper
+	if stopper, ok := sessMgr.(watchdogsvc.Stopper); ok {
+		watchdogStop = stopper
+	} else {
+		log.Warn("watchdog cannot stop a worker: session manager has no preserving kill")
+	}
 	srv, err := httpd.NewWithDeps(cfg, log, termMgr, httpd.APIDeps{
 		Awake:              awakeSvc,
 		Projects:           projectSvc,
@@ -975,13 +981,15 @@ func Run() error {
 		CDC:                store,
 		Events:             cdcPipe.Broadcaster,
 		Activity:           hookActivity,
-		Watchdog:           &watchdogsvc.Service{Store: store, DataDir: cfg.DataDir},
-		NativeSessions:     nativeSessions,
-		UsageHooks:         usageCollector,
-		UsageSummary:       usagesvc.NewSummaryReader(store),
-		SessionMemory:      memoryReader,
-		SessionSteps:       lcStack.LCM,
-		Telemetry:          telemetrySink,
+		Watchdog: &watchdogsvc.Service{
+			Store: store, DataDir: cfg.DataDir, Notify: notificationWriter, Activity: store, Stop: watchdogStop,
+		},
+		NativeSessions: nativeSessions,
+		UsageHooks:     usageCollector,
+		UsageSummary:   usagesvc.NewSummaryReader(store),
+		SessionMemory:  memoryReader,
+		SessionSteps:   lcStack.LCM,
+		Telemetry:      telemetrySink,
 		DevImport: devimportsvc.New(devimportsvc.Deps{
 			Store:         store,
 			TargetDataDir: cfg.DataDir,

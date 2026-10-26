@@ -26,6 +26,10 @@ type NotificationIntent struct {
 	PRTargetBranch     string
 	Provider           string
 	Repo               string
+	// Agent names the AI a watchdog alert is about.
+	Agent string
+	// Subject names the protected file a watchdog alert is about.
+	Subject string
 }
 
 // NotificationResolution is the lifecycle-to-notification-producer contract for

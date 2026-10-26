@@ -16895,6 +16895,8 @@ components:
           - pr_closed_unmerged
           - review_completed
           - review_changes_requested
+          - watchdog_blocked
+          - watchdog_stopped
           type: string
       required:
       - id

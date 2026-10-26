@@ -32,6 +32,33 @@ func TestEnrichReadyToMergePrioritizesPRContext(t *testing.T) {
 	}
 }
 
+func TestEnrichWatchdogNeedsNoPullRequest(t *testing.T) {
+	t.Parallel()
+
+	rec, err := enrich(Intent{
+		Type:               domain.NotificationWatchdogBlocked,
+		SessionID:          "worker-1",
+		ProjectID:          "proj-1",
+		SessionDisplayName: "Docs worker",
+		Agent:              "Claude Code",
+		Subject:            ".env",
+		SourceKey:          "watchdog:worker-1:.env",
+		CreatedAt:          time.Date(2026, 10, 26, 20, 0, 0, 0, time.UTC),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec.Title != "Watchdog blocked Docs worker" {
+		t.Fatalf("title = %q", rec.Title)
+	}
+	if rec.Body != "Claude Code tried to read .env." {
+		t.Fatalf("body = %q", rec.Body)
+	}
+	if rec.PRURL != "" || rec.SourceKey != "watchdog:worker-1:.env" {
+		t.Fatalf("record = %+v", rec)
+	}
+}
+
 func TestEnrichReadyToMergeFallsBackWithoutPRTitle(t *testing.T) {
 	t.Parallel()
 
