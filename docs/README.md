@@ -33,6 +33,7 @@ in [gemini-cli.md](gemini-cli.md).
 | [STATUS.md](STATUS.md)                                 | What is shipped on `main` today and what is still in flight.                                                          |
 | [stack.md](stack.md)                                   | Accepted library/runtime choices, pending stack decisions, and dependencies explicitly avoided for V1.                |
 | [telemetry.md](telemetry.md)                           | User-facing overview of product telemetry, privacy safeguards, and opt-out controls.                                    |
+| [security/worker-secrets.md](security/worker-secrets.md) | Built-in worker secret protection, and `npm run canary` before each release. |
 | [posthog-cost-controls.md](posthog-cost-controls.md)   | PostHog event-name migration, ingestion drop rules, and dashboard queries for reducing telemetry spend.              |
 
 See [startup-cues.md](startup-cues.md) for command cues that gate a new worktree’s opening turn.

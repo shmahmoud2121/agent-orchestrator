@@ -214,3 +214,10 @@ func TestProtectedPathsMustNotCoverGit(t *testing.T) {
 		t.Fatalf("SetConfig = %v, want invalid", err)
 	}
 }
+
+// TestWorkerSecretsCanaryCallerGuard is the always-on canary for who may
+// change protected files: the manager may add, the manager is refused when
+// it removes, workers are refused, and the person may remove.
+func TestWorkerSecretsCanaryCallerGuard(t *testing.T) {
+	TestProtectedPathsCallerGuard(t)
+}
