@@ -2935,6 +2935,7 @@
 	"session.interfaceStartFallbackUnsupported": "このワークスペースの AO ワーカーは古いバージョンのため、Claude の Chat を準備できません。このセッションは Chat に切り替えられます。",
 	"session.dismissInterfaceNotice": "インターフェース切り替えのメッセージを閉じる",
 	"session.dismissInterfaceNoticeFailed": "このメッセージを閉じられませんでした。もう一度お試しください。",
+	"chat.composer.describeTask": "タスクを説明してください…",
 	"chat.draft.acceptedMessage": "内容は受け付けられましたが、ローカルの下書きをまだ削除する必要があります。",
 	"chat.draft.steerRestart": "この内容がすでにエージェントに届いたかどうかを AO は判断できません。同じ配信 ID で安全に再試行するか、復元を中止して編集してください。中止後の再送信は重複する可能性があります。",
 	"chat.draft.sendRestart": "メッセージの配信が確認されていません。同じ配信 ID で再試行してください。確認されるまで下書きはロックされます。",
