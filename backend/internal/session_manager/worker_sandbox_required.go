@@ -9,7 +9,8 @@ import (
 // requires a sandboxed worker and this launch would not actually be sandboxed.
 // Orchestrators and the person's own terminals are not workers, so they pass.
 func refuseUnsandboxedWorker(kind domain.SessionKind, harness domain.AgentHarness, sandbox domain.WorkerSandboxConfig, restore bool) error {
-	return domain.RefuseUnsandboxedWorker(kind, harness, sandbox, claudecode.CheckSandboxAvailability() == nil, restore)
+	available, message := claudecode.WorkerSandboxOSState()
+	return domain.RefuseUnsandboxedWorker(kind, harness, sandbox, available, restore, message)
 }
 
 // refuseUnsandboxedWorkerForProject applies the project requireSandbox policy.

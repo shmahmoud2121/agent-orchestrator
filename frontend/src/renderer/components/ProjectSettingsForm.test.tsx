@@ -165,6 +165,7 @@ const agentCatalogResponse = {
 			agentReadiness("opencode", "OpenCode"),
 			agentReadiness("pi", "Pi"),
 		],
+		workerSandboxAvailable: true,
 	},
 	error: undefined,
 };
@@ -263,6 +264,7 @@ describe("ProjectSettingsForm", () => {
 					agentReadiness("cursor", "Cursor"),
 					agentReadiness("opencode", "OpenCode"),
 				],
+				workerSandboxAvailable: true,
 			},
 			error: undefined,
 		});
@@ -660,6 +662,31 @@ describe("ProjectSettingsForm", () => {
 		const codex = await screen.findByRole("menuitem", { name: /codex/i });
 		expect(codex).toHaveAttribute("aria-disabled", "true");
 		expect(codex).toHaveAttribute("title", "This project only runs sandboxed workers. Use Claude Code, or ask the person to allow unsandboxed workers in project settings.");
+	});
+
+	it("disables Claude Code and notes that this computer cannot sandbox", async () => {
+		mockProject(
+			{
+				id: "proj-1", name: "Project One", kind: "single_repo", path: "/repo/project-one",
+				repo: "", defaultBranch: "main", config: {
+					worker: { agent: "claude-code" },
+					orchestrator: { agent: "claude-code" },
+				},
+			},
+			{
+				data: { ...agentCatalogResponse.data, workerSandboxAvailable: false },
+				error: undefined,
+			},
+		);
+		renderSettings("proj-1", undefined, "agents");
+		expect(await screen.findByText("This computer can't sandbox workers, so no worker will start while this is on.")).toBeInTheDocument();
+		await userEvent.click(await screen.findByRole("button", { name: "Worker agent" }));
+		const claude = await screen.findByRole("menuitem", { name: /Claude Code/ });
+		expect(claude).toHaveAttribute("aria-disabled", "true");
+		expect(claude).toHaveAttribute(
+			"title",
+			'This computer can\'t sandbox workers: Claude Code\'s sandbox does not run on Windows. To use workers in this project, the person can turn off "Only allow sandboxed workers" in project settings. Workers will then be able to read any file and reach the internet.',
+		);
 	});
 
 	it("persists turning the worker sandbox off as unsafe", async () => {

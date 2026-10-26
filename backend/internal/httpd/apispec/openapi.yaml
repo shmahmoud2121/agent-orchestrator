@@ -12617,8 +12617,13 @@ components:
           items:
             $ref: '#/components/schemas/AgentReadinessSnapshot'
           type: array
+        workerSandboxAvailable:
+          description: Whether this host can enforce Claude Code's OS sandbox for
+            workers. Native Windows is false.
+          type: boolean
       required:
       - agents
+      - workerSandboxAvailable
       type: object
     AgentReadinessSnapshot:
       properties:

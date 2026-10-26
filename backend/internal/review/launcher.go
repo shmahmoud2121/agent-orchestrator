@@ -222,7 +222,8 @@ func WithRunFilePath(path string) LauncherOption {
 }
 
 func refuseUnsandboxedReviewer(spec LaunchSpec) error {
-	return domain.RefuseUnsandboxedWorker(domain.KindWorker, domain.AgentHarness(spec.Harness), spec.WorkerSandbox, claudecode.CheckSandboxAvailability() == nil, false)
+	available, message := claudecode.WorkerSandboxOSState()
+	return domain.RefuseUnsandboxedWorker(domain.KindWorker, domain.AgentHarness(spec.Harness), spec.WorkerSandbox, available, false, message)
 }
 
 // NewLauncher builds the production reviewer launcher.

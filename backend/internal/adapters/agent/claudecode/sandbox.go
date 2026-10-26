@@ -24,14 +24,21 @@ import (
 // back to an unsandboxed worker.
 var ErrSandboxUnavailable = errors.New("claude-code worker sandbox unavailable")
 
+// ErrSandboxUnavailableWindows is the native-Windows form of
+// ErrSandboxUnavailable. Claude Code's OS sandbox does not run on Windows.
+var ErrSandboxUnavailableWindows = errors.New("claude-code worker sandbox does not run on Windows")
+
 // ErrSandboxClaudeTooOld is returned when the installed Claude Code binary is
 // older than the release that confines worktree sandbox writes to the shared
 // .git directory (hooks/ and config still denied). Widening allowWrite ourselves
 // would re-open those paths.
 var ErrSandboxClaudeTooOld = errors.New("claude-code worker sandbox requires Claude Code 2.1.268 or newer")
 
-// sandboxUnavailableMessage is the actionable error shown in the UI and logs.
-const sandboxUnavailableMessage = "Claude Code worker sandbox cannot be enforced on this system " +
+// SandboxUnavailableMessage is the actionable error shown in the UI and logs
+// when the OS sandbox cannot be enforced (missing bubblewrap or socat, or
+// Claude Code too old). Native Windows uses ErrSandboxUnavailableWindows
+// instead of this text.
+const SandboxUnavailableMessage = "Claude Code worker sandbox cannot be enforced on this system " +
 	"(needs macOS Seatbelt, or bubblewrap and socat on Linux/WSL2). " +
 	"Install bubblewrap and socat, or turn off the worker sandbox for this project."
 
@@ -143,17 +150,37 @@ func probeSandboxAvailability(goos string) error {
 	case "linux":
 		if _, err := lookPath("bwrap"); err != nil {
 			if _, err2 := lookPath("bubblewrap"); err2 != nil {
-				return fmt.Errorf("%w: %s", ErrSandboxUnavailable, sandboxUnavailableMessage)
+				return fmt.Errorf("%w: %s", ErrSandboxUnavailable, SandboxUnavailableMessage)
 			}
 		}
 		if _, err := lookPath("socat"); err != nil {
-			return fmt.Errorf("%w: %s", ErrSandboxUnavailable, sandboxUnavailableMessage)
+			return fmt.Errorf("%w: %s", ErrSandboxUnavailable, SandboxUnavailableMessage)
 		}
 		return nil
 	default:
 		// Native Windows (and anything else) cannot enforce the sandbox.
-		return fmt.Errorf("%w: %s", ErrSandboxUnavailable, sandboxUnavailableMessage)
+		return WindowsSandboxUnavailableError()
 	}
+}
+
+// WindowsSandboxUnavailableError is the probe failure for native Windows.
+// Tests fake this with OverrideSandboxAvailabilityForTest.
+func WindowsSandboxUnavailableError() error {
+	return fmt.Errorf("%w: %w", ErrSandboxUnavailable, ErrSandboxUnavailableWindows)
+}
+
+// WorkerSandboxOSState reports whether this host can sandbox workers and the
+// 409 body to use when it cannot. available is true iff CheckSandboxAvailability
+// succeeds.
+func WorkerSandboxOSState() (available bool, message string) {
+	err := CheckSandboxAvailability()
+	if err == nil {
+		return true, ""
+	}
+	if errors.Is(err, ErrSandboxUnavailableWindows) {
+		return false, domain.WorkerSandboxRequiredWindowsMessage
+	}
+	return false, SandboxUnavailableMessage + " " + domain.WorkerSandboxRequiredSettingSentence
 }
 
 // resetSandboxAvailabilityForTest clears the availability cache between tests.

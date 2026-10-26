@@ -80,12 +80,26 @@ var SandboxedWorkerHarnesses = map[AgentHarness]struct{}{
 // workers and the launch would not actually be sandboxed.
 var ErrWorkerSandboxRequired = errors.New("worker sandbox required")
 
-// WorkerSandboxRequiredMessage is the 409 body for WORKER_SANDBOX_REQUIRED.
+// WorkerSandboxRequiredMessage is the 409 body for WORKER_SANDBOX_REQUIRED
+// when the host can sandbox but this harness would not actually be sandboxed.
 const WorkerSandboxRequiredMessage = "This project only runs sandboxed workers. Start the worker with Claude Code, or ask the person to allow unsandboxed workers in project settings."
 
+// WorkerSandboxRequiredRestoreLead is prepended when restore is refused because
+// the existing session is not sandboxed.
+const WorkerSandboxRequiredRestoreLead = "This session is not sandboxed, so it cannot be restored."
+
 // WorkerSandboxRequiredRestoreMessage is the 409 body when restore is refused
-// because the existing session is not sandboxed.
-const WorkerSandboxRequiredRestoreMessage = "This project only runs sandboxed workers. This session is not sandboxed, so it cannot be restored. Start the worker with Claude Code, or ask the person to allow unsandboxed workers in project settings."
+// on a host that can sandbox, because the existing session's harness would not
+// actually be sandboxed.
+const WorkerSandboxRequiredRestoreMessage = "This project only runs sandboxed workers. " + WorkerSandboxRequiredRestoreLead + " Start the worker with Claude Code, or ask the person to allow unsandboxed workers in project settings."
+
+// WorkerSandboxRequiredSettingSentence is the actionable close on OS-unavailable
+// refusals. The person turns the setting off; workers then have no sandbox.
+const WorkerSandboxRequiredSettingSentence = `To use workers in this project, the person can turn off "Only allow sandboxed workers" in project settings. Workers will then be able to read any file and reach the internet.`
+
+// WorkerSandboxRequiredWindowsMessage is the 409 body when the harness would
+// qualify but Claude Code's OS sandbox does not run on native Windows.
+const WorkerSandboxRequiredWindowsMessage = `This computer can't sandbox workers: Claude Code's sandbox does not run on Windows. ` + WorkerSandboxRequiredSettingSentence
 
 // WorkerMeetsSandboxRequirement reports whether this launch is allowed when
 // the project requires sandboxed workers. Non-workers always pass. osAvailable
@@ -100,16 +114,48 @@ func WorkerMeetsSandboxRequirement(kind SessionKind, harness AgentHarness, sandb
 
 // RefuseUnsandboxedWorker returns ErrWorkerSandboxRequired when the launch
 // would not actually run sandboxed and the project requires that. restore
-// selects the restore wording.
-func RefuseUnsandboxedWorker(kind SessionKind, harness AgentHarness, sandbox WorkerSandboxConfig, osAvailable, restore bool) error {
+// selects the restore wording. osUnavailableMessage is the OS-level reason
+// used when the host cannot sandbox (Windows, missing bubblewrap/socat, or
+// an old Claude Code); it is ignored when the host can sandbox.
+func RefuseUnsandboxedWorker(kind SessionKind, harness AgentHarness, sandbox WorkerSandboxConfig, osAvailable, restore bool, osUnavailableMessage string) error {
 	if WorkerMeetsSandboxRequirement(kind, harness, sandbox, osAvailable) {
 		return nil
 	}
-	msg := WorkerSandboxRequiredMessage
-	if restore {
-		msg = WorkerSandboxRequiredRestoreMessage
-	}
+	msg := workerSandboxRequiredUserMessage(osAvailable, restore, osUnavailableMessage)
 	return fmt.Errorf("%w: %s", ErrWorkerSandboxRequired, msg)
+}
+
+func workerSandboxRequiredUserMessage(osAvailable, restore bool, osUnavailableMessage string) string {
+	if !osAvailable {
+		reason := osUnavailableMessage
+		if reason == "" {
+			reason = WorkerSandboxRequiredWindowsMessage
+		}
+		if restore {
+			return WorkerSandboxRequiredRestoreLead + " " + reason
+		}
+		return reason
+	}
+	if restore {
+		return WorkerSandboxRequiredRestoreMessage
+	}
+	return WorkerSandboxRequiredMessage
+}
+
+// WorkerSandboxRequiredAPIMessage is the 409 body extracted from a wrapped
+// ErrWorkerSandboxRequired. Unknown wrappers fall back to the harness wording.
+func WorkerSandboxRequiredAPIMessage(err error) string {
+	if err == nil {
+		return WorkerSandboxRequiredMessage
+	}
+	const marker = "worker sandbox required: "
+	text := err.Error()
+	if i := strings.LastIndex(text, marker); i >= 0 {
+		if msg := text[i+len(marker):]; msg != "" {
+			return msg
+		}
+	}
+	return WorkerSandboxRequiredMessage
 }
 
 // WithDefaults returns c with Enabled set to true when it was unset, so callers

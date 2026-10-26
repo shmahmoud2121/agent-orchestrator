@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 )
 
@@ -215,6 +216,8 @@ const teamModeOffPrompt = "Team mode is off for this project: do every task your
 
 const requireSandboxPrompt = "This project only runs sandboxed workers: start them with `ao spawn --agent claude-code`. Do not start workers on other AIs unless the person turns that setting off."
 
+const requireSandboxUnavailablePrompt = `Workers can't start on this computer while "Only allow sandboxed workers" is on. Do the task yourself, or ask the person to turn that setting off.`
+
 // protectedFilesPrompt tells the manager how to protect a file it notices.
 // `--add-protected-path` keeps every other setting, so it is safe to run.
 func protectedFilesPrompt(projectID string) string {
@@ -310,7 +313,11 @@ Workers commit on their own branch in their own worktree and never push, open PR
 	}
 	if project.WorkerSandbox.IsRequired() {
 		const heading = "## Operating Rules\n\n"
-		prompt = strings.Replace(prompt, heading, heading+requireSandboxPrompt+"\n\n", 1)
+		sentence := requireSandboxPrompt
+		if claudecode.CheckSandboxAvailability() != nil {
+			sentence = requireSandboxUnavailablePrompt
+		}
+		prompt = strings.Replace(prompt, heading, heading+sentence+"\n\n", 1)
 	}
 	if (domain.ProjectConfig{TeamMode: project.TeamMode}).TeamModeEnabled() {
 		return prompt

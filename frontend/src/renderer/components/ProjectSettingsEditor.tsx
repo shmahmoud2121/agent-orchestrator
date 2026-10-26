@@ -82,6 +82,8 @@ type Capabilities = {
 	runtimeDefaults?: boolean;
 	/** Cloud keeps each role's agent fixed; its model, effort, and permissions stay editable. Local agents stay editable. */
 	lockedAgents?: boolean;
+	/** False when this host cannot enforce Claude Code's OS sandbox. */
+	workerSandboxAvailable?: boolean;
 };
 type RoleFields = {
 	agent: "workerAgent" | "orchestratorAgent" | "reviewerHarness";
@@ -257,6 +259,7 @@ export function ProjectSettingsEditor({ initialValues, section, capabilities, de
 							agent={agent}
 							enabled={draft.workerSandboxEnabled !== false}
 							requireSandbox={draft.workerSandboxRequireSandbox !== false}
+							hostCanSandbox={capabilities.workerSandboxAvailable !== false}
 							domains={draft.workerSandboxAllowedDomains ?? ""}
 							protectedPaths={draft.workerSandboxProtectedPaths ?? []}
 							bypassSelected={(draft.workerPermissions || "auto") === "bypass-permissions"}
@@ -284,10 +287,11 @@ function ProjectRolePermissions({ role, agent, value, runtimeDefaults, onChange 
 	return <SettingsOptionMenu aria-label={label} value={runtimeDefaults ? value : value === "default" && agent === "codex" ? "bypass-permissions" : value || "auto"} options={options} disabled={runtimeDefaults && !agent} placeholder={t("settings.project.permissionNotReported")} triggerClassName="w-fit" onChange={onChange} />;
 }
 
-function WorkerSandboxSettings({ agent, enabled, requireSandbox, domains, protectedPaths, bypassSelected, onEnabledChange, onRequireSandboxChange, onDomainsChange, onProtectedPathsChange }: {
+function WorkerSandboxSettings({ agent, enabled, requireSandbox, hostCanSandbox, domains, protectedPaths, bypassSelected, onEnabledChange, onRequireSandboxChange, onDomainsChange, onProtectedPathsChange }: {
 	agent: string;
 	enabled: boolean;
 	requireSandbox: boolean;
+	hostCanSandbox: boolean;
 	domains: string;
 	protectedPaths: string[];
 	bypassSelected: boolean;
@@ -299,6 +303,7 @@ function WorkerSandboxSettings({ agent, enabled, requireSandbox, domains, protec
 	const { t } = useTranslation();
 	const requireToggle = <>
 		<ProjectWorkerSandboxRequireToggle checked={requireSandbox} onCheckedChange={onRequireSandboxChange} />
+		{!hostCanSandbox ? <p className="px-(--settings-row-inset) text-xs text-warning" role="status">{t("settings.project.workerSandboxRequireHostUnavailable")}</p> : null}
 		{!requireSandbox ? <p className="px-(--settings-row-inset) text-xs text-warning" role="status">{t("settings.project.workerSandboxRequireUnsafe")}</p> : null}
 	</>;
 	if (agent && agent !== "claude-code") {

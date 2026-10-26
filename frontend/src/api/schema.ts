@@ -4179,6 +4179,8 @@ export interface components {
         };
         AgentReadinessResponse: {
             agents: components["schemas"]["AgentReadinessSnapshot"][];
+            /** @description Whether this host can enforce Claude Code's OS sandbox for workers. Native Windows is false. */
+            workerSandboxAvailable: boolean;
         };
         AgentReadinessSnapshot: {
             authentication: components["schemas"]["AgentAuthenticationObservation"];

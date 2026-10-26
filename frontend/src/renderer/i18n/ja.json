@@ -2836,6 +2836,8 @@
 	"settings.project.workerSandboxRequireDescription": "ワーカーは OS サンドボックスを有効にした Claude Code だけで起動します。",
 	"settings.project.workerSandboxRequireUnsafe": "他の AI のワーカーはどのファイルも読め、インターネットにも出られます。",
 	"settings.project.workerSandboxRequireDisabledReason": "このプロジェクトはサンドボックス済みワーカーだけを実行します。Claude Code を使うか、プロジェクト設定でサンドボックスなしのワーカーを許可するよう本人に頼んでください。",
+	"settings.project.workerSandboxRequireHostUnavailable": "このコンピューターはワーカーをサンドボックスできないため、これがオンの間はワーカーは起動しません。",
+	"settings.project.workerSandboxRequireHostUnavailableReason": "このコンピューターはワーカーをサンドボックスできません。Claude Code のサンドボックスは Windows では動きません。このプロジェクトでワーカーを使うには、本人がプロジェクト設定で「サンドボックス済みワーカーのみ許可」をオフにできます。その場合、ワーカーはどのファイルも読め、インターネットにも出られます。",
 	"settings.project.protectedFiles": "保護されたファイル",
 	"settings.project.protectedFilesDescription": "ワーカーはこれらのファイルを読み取れません。",
 	"settings.project.protectedFilesBuiltin": "常に保護",

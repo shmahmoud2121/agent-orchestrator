@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,7 +23,7 @@ func TestProbeSandboxAvailability(t *testing.T) {
 	if err := probeSandboxAvailability("darwin"); err != nil {
 		t.Fatalf("darwin: %v", err)
 	}
-	if err := probeSandboxAvailability("windows"); !errors.Is(err, ErrSandboxUnavailable) {
+	if err := probeSandboxAvailability("windows"); !errors.Is(err, ErrSandboxUnavailable) || !errors.Is(err, ErrSandboxUnavailableWindows) {
 		t.Fatalf("windows: %v", err)
 	}
 
@@ -241,11 +242,8 @@ func TestGetLaunchCommandSandboxUnavailableRefuses(t *testing.T) {
 		WorkspacePath: t.TempDir(),
 		Prompt:        "do it",
 	})
-	if !errors.Is(err, ErrSandboxUnavailable) {
+	if !errors.Is(err, ErrSandboxUnavailable) || !errors.Is(err, ErrSandboxUnavailableWindows) {
 		t.Fatalf("err = %v", err)
-	}
-	if !strings.Contains(err.Error(), "bubblewrap") && !strings.Contains(err.Error(), "Seatbelt") {
-		t.Fatalf("error should be actionable: %v", err)
 	}
 }
 
@@ -318,6 +316,34 @@ func TestSandboxSettingsAllowAOBashRules(t *testing.T) {
 	}
 	if perms["defaultMode"] != "acceptEdits" {
 		t.Fatalf("defaultMode = %#v, want acceptEdits", perms["defaultMode"])
+	}
+}
+
+func TestWorkerSandboxOSState(t *testing.T) {
+	restore := OverrideSandboxAvailabilityForTest(func() error { return nil })
+	t.Cleanup(restore)
+	available, message := WorkerSandboxOSState()
+	if !available || message != "" {
+		t.Fatalf("available=%v message=%q", available, message)
+	}
+
+	restoreWindows := OverrideSandboxAvailabilityForTest(func() error { return WindowsSandboxUnavailableError() })
+	t.Cleanup(restoreWindows)
+	available, message = WorkerSandboxOSState()
+	if available || message != domain.WorkerSandboxRequiredWindowsMessage {
+		t.Fatalf("windows available=%v message=%q", available, message)
+	}
+
+	restoreOther := OverrideSandboxAvailabilityForTest(func() error {
+		return fmt.Errorf("%w: %s", ErrSandboxUnavailable, SandboxUnavailableMessage)
+	})
+	t.Cleanup(restoreOther)
+	available, message = WorkerSandboxOSState()
+	if available {
+		t.Fatal("other OS reported available")
+	}
+	if !strings.Contains(message, SandboxUnavailableMessage) || !strings.Contains(message, domain.WorkerSandboxRequiredSettingSentence) {
+		t.Fatalf("other OS message = %q", message)
 	}
 }
 

@@ -310,6 +310,42 @@ describe("CreateProjectAgentSheet", () => {
 		expect(worker).toHaveTextContent("Claude Code");
 	});
 
+	it("disables Claude Code in the worker picker when the host cannot sandbox", async () => {
+		const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+		queryClient.setQueryData(agentReadinessQueryKey, {
+			agents: [agentReadiness("claude-code", "Claude Code"), agentReadiness("codex", "Codex")],
+			workerSandboxAvailable: false,
+		});
+		renderSheet(vi.fn().mockResolvedValue(undefined), queryClient);
+		await userEvent.click(screen.getByRole("combobox", { name: "Worker agent" }));
+		const claude = screen.getByRole("option", { name: /Claude Code/ });
+		expect(claude).toHaveAttribute("aria-disabled", "true");
+		expect(claude).toHaveAttribute(
+			"title",
+			'This computer can\'t sandbox workers: Claude Code\'s sandbox does not run on Windows. To use workers in this project, the person can turn off "Only allow sandboxed workers" in project settings. Workers will then be able to read any file and reach the internet.',
+		);
+		expect(screen.getByRole("option", { name: /Codex/ })).toHaveAttribute("aria-disabled", "true");
+	});
+
+	it("disables every harness on RequiredAgentField when the host cannot sandbox", async () => {
+		render(
+			<RequiredAgentField
+				id="agent"
+				label="Worker agent"
+				placeholder="Choose agent"
+				value="claude-code"
+				sandboxRequired
+				sandboxAvailable={false}
+				agents={[agentReadiness("claude-code", "Claude Code"), agentReadiness("codex", "Codex")]}
+				onChange={() => undefined}
+			/>,
+		);
+		await userEvent.click(screen.getByLabelText("Worker agent"));
+		const claude = screen.getByRole("option", { name: /Claude Code/ });
+		expect(claude).toHaveAttribute("aria-disabled", "true");
+		expect(claude).toHaveAttribute("title", expect.stringContaining("does not run on Windows"));
+	});
+
 	it("creates without intake when the toggle is left off", async () => {
 		const onSubmit = renderSheet();
 

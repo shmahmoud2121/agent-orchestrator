@@ -3,7 +3,7 @@ import { buildAgentInventory } from "./agent-inventory-telemetry";
 import type { AgentReadiness } from "../hooks/useAgentReadinessQuery";
 import { agentReadiness } from "../test/agent-readiness-fixtures";
 
-const catalog = (agents: AgentReadiness["agents"] = []): AgentReadiness => ({ agents });
+const catalog = (agents: AgentReadiness["agents"] = []): AgentReadiness => ({ agents, workerSandboxAvailable: true });
 
 describe("agent inventory", () => {
 	// The open question is whether people ever configure more than one agent.

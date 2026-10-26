@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 )
 
@@ -508,11 +509,30 @@ func TestOrchestratorSystemPromptRequireSandbox(t *testing.T) {
 	if !strings.Contains(required, sentence) {
 		t.Fatalf("default require-sandbox prompt missing %q", sentence)
 	}
+	if strings.Contains(required, requireSandboxUnavailablePrompt) {
+		t.Fatal("a host that can sandbox must not tell the manager workers cannot start")
+	}
 	off := false
 	allowed := orchestratorSystemPrompt(promptProjectContext("mer", domain.ProjectRecord{ID: "mer", DisplayName: "Mercury",
 		Config: domain.ProjectConfig{WorkerSandbox: domain.WorkerSandboxConfig{RequireSandbox: &off}}}))
 	if strings.Contains(allowed, sentence) {
 		t.Fatal("a project that allows unsandboxed workers must not tell the manager to spawn only Claude Code")
+	}
+}
+
+func TestOrchestratorSystemPromptRequireSandboxHostUnavailable(t *testing.T) {
+	restore := claudecode.OverrideSandboxAvailabilityForTest(func() error {
+		return claudecode.WindowsSandboxUnavailableError()
+	})
+	t.Cleanup(restore)
+
+	const sentence = `Workers can't start on this computer while "Only allow sandboxed workers" is on. Do the task yourself, or ask the person to turn that setting off.`
+	got := orchestratorSystemPrompt(promptProjectContext("mer", domain.ProjectRecord{ID: "mer", DisplayName: "Mercury"}))
+	if !strings.Contains(got, sentence) {
+		t.Fatalf("host-unavailable prompt missing %q", sentence)
+	}
+	if strings.Contains(got, "start them with `ao spawn --agent claude-code`") {
+		t.Fatal("a host that cannot sandbox must not tell the manager to start workers with Claude Code")
 	}
 }
 

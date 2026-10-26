@@ -335,7 +335,7 @@ describe("startup harness update notice", () => {
 		const pending = deferred<{ data: AgentReadiness }>();
 		vi.mocked(apiClient.POST).mockReturnValueOnce(pending.promise as never);
 		const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-		const readiness = { agents: [agentReadiness("claude-code", "Claude Code")] };
+		const readiness = { agents: [agentReadiness("claude-code", "Claude Code")], workerSandboxAvailable: true };
 		client.setQueryData(["agent-readiness"], readiness);
 		client.setQueryData(updateAdvisoryQueryKey("claude-code"), { status: "behind_latest", currentVersion: "2.1.291", latestVersion: "2.1.292" });
 		mountNotice(true, client);

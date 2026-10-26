@@ -1757,6 +1757,8 @@
 	"settings.project.workerSandboxRequireDescription": "Workers start only on Claude Code, with the OS sandbox on.",
 	"settings.project.workerSandboxRequireUnsafe": "Workers on other AIs can read any file and reach the internet.",
 	"settings.project.workerSandboxRequireDisabledReason": "This project only runs sandboxed workers. Use Claude Code, or ask the person to allow unsandboxed workers in project settings.",
+	"settings.project.workerSandboxRequireHostUnavailable": "This computer can't sandbox workers, so no worker will start while this is on.",
+	"settings.project.workerSandboxRequireHostUnavailableReason": "This computer can't sandbox workers: Claude Code's sandbox does not run on Windows. To use workers in this project, the person can turn off \"Only allow sandboxed workers\" in project settings. Workers will then be able to read any file and reach the internet.",
 	"settings.project.protectedFiles": "Protected files",
 	"settings.project.protectedFilesDescription": "Workers can't read these files.",
 	"settings.project.protectedFilesBuiltin": "Always protected",

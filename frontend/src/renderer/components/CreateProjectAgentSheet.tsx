@@ -280,6 +280,7 @@ export function CreateProjectAgentSheet({
 									agents={selectableAgents}
 									disabled={isLoadingAgents}
 									sandboxRequired
+									sandboxAvailable={agents?.workerSandboxAvailable}
 									labelClassName="agents-sheet-label"
 									triggerClassName="agents-sheet-control"
 									contentClassName="agents-sheet-menu"
@@ -423,6 +424,7 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 	value,
 	variant = "stacked",
 	sandboxRequired = false,
+	sandboxAvailable,
 }: {
 	agents?: AgentInfo[];
 	disabled?: boolean;
@@ -448,6 +450,8 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 	variant?: "stacked" | "settings-row" | "settings-control" | "chip";
 	/** When set, non-sandboxed worker harnesses are shown disabled with a tooltip. */
 	sandboxRequired?: boolean;
+	/** False when this host cannot enforce Claude Code's OS sandbox. */
+	sandboxAvailable?: boolean;
 }) {
 	const { t } = useTranslation();
 	// The daemon's readiness response is the registration list. An absent
@@ -471,8 +475,11 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 	const setupHint = retiredSelection
 		? <span className="text-xs text-warning" role="status">{t("agentSelector.retired")}</span>
 		: needsSetup ? <span className="text-xs text-muted-foreground">{t("agentSelector.needsSetup")}</span> : null;
-	const sandboxBlocked = (id: string) => sandboxRequired && !SANDBOXED_WORKER_HARNESSES.has(id);
-	const sandboxTitle = t("settings.project.workerSandboxRequireDisabledReason");
+	const hostBlocksAllWorkers = Boolean(sandboxRequired && sandboxAvailable === false);
+	const sandboxBlocked = (id: string) => hostBlocksAllWorkers || (Boolean(sandboxRequired) && !SANDBOXED_WORKER_HARNESSES.has(id));
+	const sandboxTitle = hostBlocksAllWorkers
+		? t("settings.project.workerSandboxRequireHostUnavailableReason")
+		: t("settings.project.workerSandboxRequireDisabledReason");
 	const withSandbox = (agent: (typeof visibleOptions)[number]) => ({
 		value: agent.id,
 		label: agent.label,
