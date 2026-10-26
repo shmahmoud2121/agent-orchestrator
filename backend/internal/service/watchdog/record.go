@@ -38,7 +38,11 @@ func (s *Service) recordBlock(ctx context.Context, session domain.SessionRecord,
 	if decision.Stopped {
 		action = "stopped"
 	}
-	s.appendLog(now, session, toolName, decision.Path, action)
+	s.appendLog(now, session, toolName, decision.Path, action, "")
+	// Kill runs under its own timeout and can leave the request context
+	// cancelled, or the database briefly busy, by the time we get here.
+	// The person still has to hear about the block, so the save retries
+	// on a context that outlives this hook call.
 	s.notify(ctx, domain.NotificationWatchdogBlocked, session, decision.Path, now)
 	if decision.Stopped {
 		s.notify(ctx, domain.NotificationWatchdogStopped, session, decision.Path, now)
@@ -66,7 +70,7 @@ func (s *Service) notify(ctx context.Context, typ domain.NotificationType, sessi
 	if typ == domain.NotificationWatchdogStopped {
 		key = "watchdog-stop:" + string(session.ID)
 	}
-	_ = s.Notify.Notify(ctx, ports.NotificationIntent{
+	intent := ports.NotificationIntent{
 		Type:               typ,
 		SessionID:          session.ID,
 		ProjectID:          session.ProjectID,
@@ -75,7 +79,19 @@ func (s *Service) notify(ctx context.Context, typ domain.NotificationType, sessi
 		SessionDisplayName: sessionLabel(session),
 		Agent:              agentName(session.Harness),
 		Subject:            path,
-	})
+	}
+	ctx = context.WithoutCancel(ctx)
+	var err error
+	for attempt := 0; attempt < 3; attempt++ {
+		if attempt > 0 {
+			time.Sleep(50 * time.Millisecond)
+		}
+		err = s.Notify.Notify(ctx, intent)
+		if err == nil {
+			return
+		}
+	}
+	s.appendLog(now, session, "", path, "alert-failed", err.Error())
 }
 
 func (s *Service) recordTimeline(ctx context.Context, id domain.SessionID, path string, now time.Time) {
@@ -102,7 +118,7 @@ func (s *Service) recordTimeline(ctx context.Context, id domain.SessionID, path 
 	}, now)
 }
 
-func (s *Service) appendLog(now time.Time, session domain.SessionRecord, toolName, path, action string) {
+func (s *Service) appendLog(now time.Time, session domain.SessionRecord, toolName, path, action, notifyErr string) {
 	dataDir := strings.TrimSpace(s.DataDir)
 	if dataDir == "" {
 		return
@@ -110,8 +126,12 @@ func (s *Service) appendLog(now time.Time, session domain.SessionRecord, toolNam
 	if err := os.MkdirAll(dataDir, 0o750); err != nil {
 		return
 	}
-	line := fmt.Sprintf("%s project=%s session=%s ai=%s tool=%s path=%q action=%s\n",
+	line := fmt.Sprintf("%s project=%s session=%s ai=%s tool=%s path=%q action=%s",
 		now.Format(time.RFC3339), session.ProjectID, session.ID, session.Harness, toolName, path, action)
+	if notifyErr != "" {
+		line += " error=" + fmt.Sprintf("%q", notifyErr)
+	}
+	line += "\n"
 	logPath := filepath.Join(dataDir, watchdogLogName)
 	flags := os.O_APPEND | os.O_CREATE | os.O_WRONLY
 	if info, err := os.Stat(logPath); err == nil && info.Size() > maxWatchdogLogBytes {

@@ -3,6 +3,7 @@ package watchdog
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -265,6 +266,41 @@ func TestManagerIsBlockedButNotStopped(t *testing.T) {
 	}
 	if !tamper.Tamper || tamper.Stopped || stop.calls != 0 {
 		t.Fatalf("manager tamper = %+v calls=%d", tamper, stop.calls)
+	}
+}
+
+type flakyNotifier struct {
+	fail    int
+	intents []ports.NotificationIntent
+}
+
+func (f *flakyNotifier) Notify(_ context.Context, intent ports.NotificationIntent) error {
+	if f.fail > 0 {
+		f.fail--
+		return errors.New("database is locked")
+	}
+	f.intents = append(f.intents, intent)
+	return nil
+}
+
+func TestNotifyRetriesUntilTheAlertIsSaved(t *testing.T) {
+	root := t.TempDir()
+	work := filepath.Join(root, "work")
+	if err := os.MkdirAll(work, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(work, ".env"), []byte("SECRET=1"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	notes := &flakyNotifier{fail: 2}
+	svc := workerService(t, root, work, domain.KindWorker, &fakeStopper{})
+	svc.Notify = notes
+	got, err := svc.Decide(context.Background(), "worker-1", "Read", json.RawMessage(`{"file_path":".env"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Action != "deny" || len(notes.intents) != 1 || notes.intents[0].Type != domain.NotificationWatchdogBlocked {
+		t.Fatalf("alert = %+v decision=%+v", notes.intents, got)
 	}
 }
 
