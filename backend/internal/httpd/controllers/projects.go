@@ -34,6 +34,7 @@ func (c *ProjectsController) Register(r chi.Router) {
 	r.Post("/projects/clone/prepare", c.prepareClone)
 	r.Post("/projects/clone/cleanup", c.cleanupPreparedClone)
 	r.Post("/projects/initialize", c.initialize)
+	r.Get("/projects/{id}/approvals", c.listApprovals)
 	r.Get("/projects/{id}", c.get)
 	r.Put("/projects/{id}", c.updateSettings)
 	r.Put("/projects/{id}/config", c.setConfig)
@@ -145,6 +146,22 @@ func (c *ProjectsController) initialize(w http.ResponseWriter, r *http.Request) 
 	}
 	envelope.WriteJSON(w, http.StatusOK, result)
 }
+func (c *ProjectsController) listApprovals(w http.ResponseWriter, r *http.Request) {
+	if c.Mgr == nil {
+		apispec.NotImplemented(w, r, "GET", "/api/v1/projects/{id}/approvals")
+		return
+	}
+	items, err := c.Mgr.ListApprovals(r.Context(), projectID(r))
+	if err != nil {
+		envelope.WriteError(w, r, err)
+		return
+	}
+	if items == nil {
+		items = []projectsvc.Approval{}
+	}
+	envelope.WriteJSON(w, http.StatusOK, ProjectApprovalsResponse{Approvals: items})
+}
+
 func (c *ProjectsController) get(w http.ResponseWriter, r *http.Request) {
 	if c.Mgr == nil {
 		apispec.NotImplemented(w, r, "GET", "/api/v1/projects/{id}")

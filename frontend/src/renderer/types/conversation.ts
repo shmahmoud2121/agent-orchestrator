@@ -805,6 +805,8 @@ export interface ConversationSnapshot {
 	/** Backend-selected dispatched turn; an empty value means Continue is unavailable. */
 	continueTurnId?: string;
 	conversationId: string;
+	/** When this conversation started. The team card lists workers created from then on. */
+	createdAt?: string;
 	sessionId: string;
 	harness: string;
 	mode: SessionMode;

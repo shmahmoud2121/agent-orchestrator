@@ -195,6 +195,8 @@ export type WorkspaceSession = {
 	 * daemon; the client never writes it.
 	 */
 	sandboxed?: boolean;
+	/** Model resolved at spawn. Empty means the agent's default, so the team card omits it. */
+	model?: string;
 	/** User preference to tear down this session when its PR set completes through a merge. */
 	terminateOnPrMerge?: boolean;
 	/** Whether SCM review feedback is automatically injected into the worker. */

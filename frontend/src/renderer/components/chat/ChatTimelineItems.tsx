@@ -2601,12 +2601,15 @@ export function ApprovalCard({
 	onDecide,
 	busy,
 	embedded,
+	readOnly,
 }: {
 	activity: ConversationActivity;
 	onDecide?: (requestId: string, decisionId: string) => void;
 	busy?: boolean;
 	/** Render inside the shared chat composer instead of drawing another card shell. */
 	embedded?: boolean;
+	/** Show the request without buttons. The manager chat answers it. */
+	readOnly?: boolean;
 }) {
 	const resolved = activity.status !== "pending";
 	const decisions = orderedApprovalDecisions(activity.decisions ?? []);
@@ -2664,7 +2667,7 @@ export function ApprovalCard({
 				embedded ? "px-1 py-0.5" : "rounded-lg border border-border px-3 py-2.5",
 			)}
 			onKeyDown={(event) => {
-				if (busy || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+				if (readOnly || busy || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
 				if (event.key === "Escape" && rejectOnceDecision) {
 					event.preventDefault();
 					onDecide?.(requestId, rejectOnceDecision.id);
@@ -2689,7 +2692,7 @@ export function ApprovalCard({
 					{detail?.rawCommand ?? command}
 				</pre>
 
-				<div className="mt-2 flex flex-wrap justify-end gap-1.5">
+				{readOnly ? null : <div className="mt-2 flex flex-wrap justify-end gap-1.5">
 					{denyDecision ? (
 						<button
 							type="button"
@@ -2768,7 +2771,7 @@ export function ApprovalCard({
 							The agent offered no decisions AO can present. Open diagnostics.
 						</p>
 					) : null}
-				</div>
+				</div>}
 			</div>
 		</div>
 	);

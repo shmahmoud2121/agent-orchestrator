@@ -666,6 +666,18 @@ type ConversationMessage struct {
 	UpdatedAt         time.Time `json:"updatedAt"`
 }
 
+// PendingProjectApproval is one unanswered approval in a project's chat sessions.
+// Options and the bulk-safe classification are derived at read time from Detail.
+type PendingProjectApproval struct {
+	SessionID     SessionID
+	SessionKind   SessionKind
+	DisplayName   string
+	WorkspacePath string
+	RequestID     string
+	Summary       string
+	Detail        []byte
+}
+
 // ConversationActivity is one non-message timeline entry: a command, a diff, a
 // plan, an approval request, a usage report, an error.
 type ConversationActivity struct {

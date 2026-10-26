@@ -60,6 +60,11 @@ type Manager interface {
 	// Remove unregisters a project, stopping its sessions and reclaiming
 	// managed workspaces.
 	Remove(ctx context.Context, id domain.ProjectID) (RemoveResult, error)
+
+	// ListApprovals returns pending approvals in the project's chat sessions.
+	// Options are copied from the activity. bulkSafe is true only for a file
+	// edit or write whose paths all sit inside that session's workspace.
+	ListApprovals(ctx context.Context, id domain.ProjectID) ([]Approval, error)
 }
 
 // SessionTeardowner is the narrow session-service surface project removal

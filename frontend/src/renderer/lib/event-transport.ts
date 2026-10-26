@@ -225,6 +225,7 @@ export function createEventTransport(queryClient: QueryClient): EventTransport {
 			// it immediately without waiting out a full window.
 			let lastFlushAt = Number.NEGATIVE_INFINITY;
 			const flushPending = () => {
+				const refreshProjectApprovals = allConversationsInvalidationPending || pendingConversationSessions.size > 0;
 				if (allConversationsInvalidationPending) {
 					invalidate(conversationQueryRoot);
 					invalidate(reviewerConversationQueryRoot);
@@ -257,6 +258,7 @@ export function createEventTransport(queryClient: QueryClient): EventTransport {
 					invalidate(conversationQueryKey(sessionId));
 				}
 				pendingConversationSessions.clear();
+				if (refreshProjectApprovals) invalidate(["project-approvals"]);
 				for (const sessionId of pendingReviewSessions) {
 					invalidate(sessionReviewsQueryKey(sessionId));
 				}

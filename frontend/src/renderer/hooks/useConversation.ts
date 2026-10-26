@@ -1510,6 +1510,7 @@ export function toSnapshot(wire: WireSnapshot): ConversationSnapshot {
 	return {
 		continueTurnId: wire.continueTurnId,
 		conversationId: wire.conversationId,
+		createdAt: wire.createdAt || undefined,
 		sessionId: wire.sessionId,
 		harness: wire.harness ?? "",
 		mode: wire.mode as SessionMode,

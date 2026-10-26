@@ -245,6 +245,28 @@ func (s *Store) ArchiveProject(ctx context.Context, id string, at time.Time) (bo
 	return n > 0, nil
 }
 
+// ListPendingProjectApprovals reads unanswered chat approvals for one project.
+func (s *Store) ListPendingProjectApprovals(ctx context.Context, projectID string) ([]domain.PendingProjectApproval, error) {
+	id := domain.ProjectID(projectID)
+	rows, err := s.qr.ListPendingProjectApprovals(ctx, &id)
+	if err != nil {
+		return nil, fmt.Errorf("list pending project approvals: %w", err)
+	}
+	out := make([]domain.PendingProjectApproval, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, domain.PendingProjectApproval{
+			SessionID:     domain.SessionID(row.SessionID),
+			SessionKind:   domain.SessionKind(row.SessionKind),
+			DisplayName:   row.DisplayName,
+			WorkspacePath: row.WorkspacePath,
+			RequestID:     row.RequestID,
+			Summary:       row.Summary,
+			Detail:        []byte(row.DetailJson),
+		})
+	}
+	return out, nil
+}
+
 func projectRowFromGen(p gen.Project) domain.ProjectRecord {
 	r := domain.ProjectRecord{
 		ID:            string(p.ID),

@@ -19,4 +19,7 @@ type Store interface {
 	UpdateProjectSettings(ctx context.Context, id string, displayName string, config domain.ProjectConfig) (bool, error)
 	SetProjectPermissions(ctx context.Context, id string, permissions domain.PermissionMode) (domain.ProjectRecord, bool, error)
 	ArchiveProject(ctx context.Context, id string, at time.Time) (bool, error)
+	// ListPendingProjectApprovals returns unanswered chat approvals for one
+	// project. The caller classifies which of them are safe to approve together.
+	ListPendingProjectApprovals(ctx context.Context, projectID string) ([]domain.PendingProjectApproval, error)
 }
