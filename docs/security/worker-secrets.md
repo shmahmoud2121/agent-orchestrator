@@ -18,12 +18,14 @@ quotes are removed, and a word that names a protected file is blocked. For
 example `cat .env`, `type .env`, and `cp backup.db /tmp` are blocked, while
 `go test ./...` and `ls` are not. This does not understand every shell trick.
 A command that hides the path inside another program, or builds it from
-pieces, can get past the word split.
+pieces, can get past the word split. A search over the whole folder can still
+read a protected file's contents. Examples are `grep -r KEY .`, or Claude's
+Grep with no file filter when `.env` isn't gitignored. The `ao` exemption
+covers only a command that is `ao` on its own.
 
 A search over a folder is allowed even when that folder contains a protected
 file. A pattern that names a protected file, such as `**/.env*`, is blocked.
-The agent's own worktree, the `.git` data it needs, and AO's own `ao`
-commands are not blocked.
+The agent's own worktree and the `.git` data it needs are not blocked.
 
 If the call touches a protected file, AO refuses it. The agent is told to
 continue the task without reading that file, or to ask the person. The person
