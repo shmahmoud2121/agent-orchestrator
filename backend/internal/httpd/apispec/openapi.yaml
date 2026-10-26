@@ -3638,6 +3638,39 @@ paths:
       summary: Atomically replace a project's display name and config
       tags:
       - projects
+  /api/v1/projects/{id}/approvals:
+    get:
+      operationId: listProjectApprovals
+      parameters:
+      - description: Project identifier (registry key).
+        in: path
+        name: id
+        required: true
+        schema:
+          description: Project identifier (registry key).
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectApprovalsResponse'
+          description: OK
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Not Found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Internal Server Error
+      summary: List pending approvals in a project's chat sessions
+      tags:
+      - projects
   /api/v1/projects/{id}/config:
     put:
       operationId: setProjectConfig
@@ -15038,6 +15071,8 @@ components:
           type: string
         conversationId:
           type: string
+        createdAt:
+          type: string
         harness:
           type: string
         hasMoreBefore:
@@ -17004,6 +17039,55 @@ components:
       - repo
       - defaultBranch
       - folderMissing
+      type: object
+    ProjectApproval:
+      properties:
+        bulkSafe:
+          type: boolean
+        displayName:
+          type: string
+        options:
+          items:
+            $ref: '#/components/schemas/ProjectApprovalOption'
+          type: array
+        requestId:
+          type: string
+        sessionId:
+          type: string
+        sessionKind:
+          type: string
+        summary:
+          type: string
+      required:
+      - sessionId
+      - requestId
+      - sessionKind
+      - displayName
+      - summary
+      - bulkSafe
+      - options
+      type: object
+    ProjectApprovalOption:
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+        label:
+          type: string
+      required:
+      - id
+      - kind
+      - label
+      type: object
+    ProjectApprovalsResponse:
+      properties:
+        approvals:
+          items:
+            $ref: '#/components/schemas/ProjectApproval'
+          type: array
+      required:
+      - approvals
       type: object
     ProjectClonePreparationCleanupInput:
       properties:

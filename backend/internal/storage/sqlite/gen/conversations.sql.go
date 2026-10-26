@@ -1424,6 +1424,72 @@ func (q *Queries) ListInterruptedSessions(ctx context.Context, jsonEach interfac
 	return items, nil
 }
 
+const listPendingProjectApprovals = `-- name: ListPendingProjectApprovals :many
+SELECT sessions.id AS session_id,
+       sessions.kind AS session_kind,
+       sessions.display_name,
+       sessions.workspace_path,
+       conversation_activities.request_id,
+       conversation_activities.summary,
+       conversation_activities.detail_json
+FROM conversation_activities
+JOIN conversations ON conversations.id = conversation_activities.conversation_id
+JOIN sessions ON sessions.id = COALESCE(conversations.session_id, conversations.current_session_id)
+WHERE sessions.project_id = ?1
+  AND sessions.session_mode = 'chat'
+  AND sessions.is_terminated = 0
+  AND conversations.scope IN ('session', 'project')
+  AND conversation_activities.kind = 'approval'
+  AND conversation_activities.status = 'pending'
+  AND conversation_activities.request_id <> ''
+ORDER BY conversation_activities.created_at, conversation_activities.sequence
+`
+
+type ListPendingProjectApprovalsRow struct {
+	SessionID     domain.SessionID
+	SessionKind   domain.SessionKind
+	DisplayName   string
+	WorkspacePath string
+	RequestID     string
+	Summary       string
+	DetailJson    string
+}
+
+// Pending approval activities for chat sessions in one project. TUI sessions
+// stay out: their prompts remain in the terminal. Reviewer conversations stay
+// on the reviewer surface. The orchestrator row is included; the manager bar
+// hides it and keeps that request on the composer card.
+func (q *Queries) ListPendingProjectApprovals(ctx context.Context, projectID *domain.ProjectID) ([]ListPendingProjectApprovalsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPendingProjectApprovals, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPendingProjectApprovalsRow{}
+	for rows.Next() {
+		var i ListPendingProjectApprovalsRow
+		if err := rows.Scan(
+			&i.SessionID,
+			&i.SessionKind,
+			&i.DisplayName,
+			&i.WorkspacePath,
+			&i.RequestID,
+			&i.Summary,
+			&i.DetailJson,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listVisibleRunningTurnsForConversation = `-- name: ListVisibleRunningTurnsForConversation :many
 WITH RECURSIVE active_path(branch_id, max_sequence) AS (
     SELECT conversations.active_branch_id, CAST(NULL AS INTEGER)

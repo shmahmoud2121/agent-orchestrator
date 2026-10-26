@@ -326,6 +326,9 @@ var schemaNames = map[string]string{ //nolint:gosec // Public OpenAPI type names
 	"ControllersCodexAccountIDParam":                      "CodexAccountIDParam",
 	"ControllersCodexAccountLoginIDParam":                 "CodexAccountLoginIDParam",
 	"ControllersGetProjectResponse":                       "ProjectGetResponse",
+	"ControllersProjectApprovalsResponse":                 "ProjectApprovalsResponse",
+	"ProjectApproval":                                     "ProjectApproval",
+	"ProjectApprovalOption":                               "ProjectApprovalOption",
 	"ControllersProjectOrDegraded":                        "ProjectOrDegraded",
 	"ControllersListSessionsQuery":                        "ListSessionsQuery",
 	"ControllersListDirsQuery":                            "ListDirsQuery",
@@ -2355,6 +2358,15 @@ func projectOperations() []operation {
 				{http.StatusOK, projectsvc.InitializeRepositoryResult{}},
 				{http.StatusBadRequest, envelope.APIError{}},
 				{http.StatusConflict, envelope.APIError{}},
+				{http.StatusInternalServerError, envelope.APIError{}},
+			},
+		}, {
+			method: http.MethodGet, path: "/api/v1/projects/{id}/approvals", id: "listProjectApprovals", tag: "projects",
+			summary:    "List pending approvals in a project's chat sessions",
+			pathParams: []any{controllers.ProjectIDParam{}},
+			resps: []respUnit{
+				{http.StatusOK, controllers.ProjectApprovalsResponse{}},
+				{http.StatusNotFound, envelope.APIError{}},
 				{http.StatusInternalServerError, envelope.APIError{}},
 			},
 		}, {

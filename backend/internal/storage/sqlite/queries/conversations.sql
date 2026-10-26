@@ -1863,3 +1863,27 @@ WHERE conversation_turns.conversation_id = sqlc.arg(conversation_id)
   ))
 ORDER BY conversation_turns.requested_at DESC, conversation_turns.rowid DESC
 LIMIT 1;
+
+-- name: ListPendingProjectApprovals :many
+-- Pending approval activities for chat sessions in one project. TUI sessions
+-- stay out: their prompts remain in the terminal. Reviewer conversations stay
+-- on the reviewer surface. The orchestrator row is included; the manager bar
+-- hides it and keeps that request on the composer card.
+SELECT sessions.id AS session_id,
+       sessions.kind AS session_kind,
+       sessions.display_name,
+       sessions.workspace_path,
+       conversation_activities.request_id,
+       conversation_activities.summary,
+       conversation_activities.detail_json
+FROM conversation_activities
+JOIN conversations ON conversations.id = conversation_activities.conversation_id
+JOIN sessions ON sessions.id = COALESCE(conversations.session_id, conversations.current_session_id)
+WHERE sessions.project_id = sqlc.arg(project_id)
+  AND sessions.session_mode = 'chat'
+  AND sessions.is_terminated = 0
+  AND conversations.scope IN ('session', 'project')
+  AND conversation_activities.kind = 'approval'
+  AND conversation_activities.status = 'pending'
+  AND conversation_activities.request_id <> ''
+ORDER BY conversation_activities.created_at, conversation_activities.sequence;

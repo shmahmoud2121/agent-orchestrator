@@ -1259,6 +1259,7 @@ func conversationSnapshotResponse(s chatsvc.Snapshot) ConversationSnapshotRespon
 	out := ConversationSnapshotResponse{
 		ContinueTurnID:                   chatsvc.ContinuableTurnID(s.Turns),
 		ConversationID:                   s.Conversation.ID,
+		CreatedAt:                        conversationCreatedAt(s.Conversation.CreatedAt),
 		ActiveBranchID:                   s.Conversation.ActiveBranchID,
 		BranchedFromEarlierMessage:       s.BranchedFromEarlierMessage,
 		SessionID:                        string(s.SessionID),
@@ -1642,6 +1643,13 @@ func decodeDetail(raw []byte) map[string]any {
 		return nil
 	}
 	return detail
+}
+
+func conversationCreatedAt(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.UTC().Format(time.RFC3339)
 }
 
 func optionalTimestamp(t *time.Time) *string {

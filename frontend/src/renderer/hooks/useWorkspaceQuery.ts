@@ -137,6 +137,7 @@ export function toWorkspaceSession(
 		workspaceCleanup: session.workspaceCleanup,
 		chatProviderPreserved: session.chatProviderPreserved,
 		sandboxed: session.sandboxed,
+		model: session.model || undefined,
 		terminateOnPrMerge: session.terminateOnPrMerge ?? false,
 		autoInjectReview: session.autoInjectReview ?? true,
 		autoInjectCI: session.autoInjectCI ?? true,

@@ -1379,6 +1379,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{id}/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List pending approvals in a project's chat sessions */
+        get: operations["listProjectApprovals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{id}/config": {
         parameters: {
             query?: never;
@@ -5062,6 +5079,7 @@ export interface components {
             /** @enum {string} */
             controller: "connecting" | "ready" | "busy" | "recovering" | "hibernated" | "stopped";
             conversationId: string;
+            createdAt?: string;
             harness?: string;
             hasMoreBefore: boolean;
             /** Format: int64 */
@@ -5795,6 +5813,23 @@ export interface components {
             path: string;
             repo: string;
             workspaceRepos?: components["schemas"]["WorkspaceRepo"][];
+        };
+        ProjectApproval: {
+            bulkSafe: boolean;
+            displayName: string;
+            options: components["schemas"]["ProjectApprovalOption"][];
+            requestId: string;
+            sessionId: string;
+            sessionKind: string;
+            summary: string;
+        };
+        ProjectApprovalOption: {
+            id: string;
+            kind: string;
+            label: string;
+        };
+        ProjectApprovalsResponse: {
+            approvals: components["schemas"]["ProjectApproval"][];
         };
         ProjectClonePreparationCleanupInput: {
             path: string;
@@ -11966,6 +12001,47 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["APIError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIError"];
+                };
+            };
+        };
+    };
+    listProjectApprovals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project identifier (registry key). */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectApprovalsResponse"];
                 };
             };
             /** @description Not Found */

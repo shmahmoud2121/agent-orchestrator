@@ -38,6 +38,11 @@ import {
 import { ArrowDown, Lightbulb, Loader2, MessageSquarePlus, TriangleAlert, Undo2 } from "lucide-react";
 import { AnimatePresence, motion, Reorder, useDragControls, useReducedMotion } from "motion/react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "@tanstack/react-router";
+import { LOCAL_HOST } from "../../lib/hosts";
+import { projectNavigateTarget, sessionNavigateTarget } from "../../lib/navigate-to-session";
+import { ProjectApprovalBar, WorkerApprovalNotice } from "./ProjectApprovalBar";
+import { TeamCard, useHasQueryClient, useManagerOrchestrator, WhenQueryClient } from "./TeamCard";
 import { useChatSelectionPosition } from "../../hooks/useChatSelectionPosition";
 import { actionMenuContentClass, actionMenuItemClass } from "../ui/menu-styles";
 import { NAV_ROW_HIGHLIGHT_HOST_CLASS, NavRowHighlight } from "../NavRowHighlight";
@@ -747,6 +752,14 @@ function ChatWorkspaceContent({
 	const draftScopeKey = chatDraftScopeKey(draftScope);
 	const uiSessionId = draftScope.sessionId;
 	const activeRemoteHostId = remoteHostId ?? session?.hostId;
+	const navigate = useNavigate();
+	const openProjectSession = useCallback((sessionId: string) => {
+		void navigate(sessionNavigateTarget(session?.workspaceId, sessionId, activeRemoteHostId ?? LOCAL_HOST));
+	}, [activeRemoteHostId, navigate, session?.workspaceId]);
+	const openProjectBoard = useCallback(() => {
+		if (!session?.workspaceId) return;
+		void navigate(projectNavigateTarget(session.workspaceId, activeRemoteHostId ?? LOCAL_HOST));
+	}, [activeRemoteHostId, navigate, session?.workspaceId]);
 	const remoteCreateMux = useMemo(
 		() => assetBaseUrl ? () => createTerminalMux(muxUrlFromApiBase(assetBaseUrl)) : undefined,
 		[assetBaseUrl],
@@ -1420,16 +1433,17 @@ function ChatWorkspaceContent({
 		],
 	);
 	const composerApproval = useMemo(
-		() =>
-			stablePendingApproval ? (
-				<ApprovalCard
-					activity={stablePendingApproval}
-					onDecide={onDecide}
-					busy={busy}
-					embedded
-				/>
-			) : undefined,
-		[busy, onDecide, stablePendingApproval],
+		() => stablePendingApproval ? (
+			<ComposerPendingApproval
+				activity={stablePendingApproval}
+				busy={busy}
+				session={session}
+				sessionRole={sessionRole}
+				onDecide={onDecide}
+				onOpenSession={openProjectSession}
+			/>
+		) : undefined,
+		[busy, onDecide, openProjectSession, session, sessionRole, stablePendingApproval],
 	);
 	const composerElicitation = useMemo(
 		() =>
@@ -1770,6 +1784,17 @@ function ChatWorkspaceContent({
 									localEchos={localEchos}
 									startup={sessionRole === "orchestrator" ? undefined : startup}
 									arriving={arrivingInChat}
+									footer={conversationEmpty || sessionRole !== "orchestrator" ? undefined : (
+										<WhenQueryClient>
+											<TeamCard
+												projectId={session?.workspaceId}
+												hostId={activeRemoteHostId}
+												conversationStartedAt={snapshot.createdAt ?? session?.createdAt}
+												onOpenSession={openProjectSession}
+												onOpenProject={openProjectBoard}
+											/>
+										</WhenQueryClient>
+									)}
 								/>
 							</ChatImageSourceProvider>
 						</ChatLinkProvider>
@@ -1822,6 +1847,26 @@ function ChatWorkspaceContent({
 										placement={conversationEmpty ? "below" : "above"}
 										active={!workspaceActiveTabKey && !reviewerActive && !shellActive}
 									/>
+									{conversationEmpty && sessionRole === "orchestrator" ? (
+										<WhenQueryClient>
+											<TeamCard
+												projectId={session?.workspaceId}
+												hostId={activeRemoteHostId}
+												conversationStartedAt={snapshot.createdAt ?? session?.createdAt}
+												onOpenSession={openProjectSession}
+												onOpenProject={openProjectBoard}
+											/>
+										</WhenQueryClient>
+									) : null}
+									{sessionRole === "orchestrator" ? (
+										<WhenQueryClient>
+											<ProjectApprovalBar
+												projectId={session?.workspaceId}
+												hostId={activeRemoteHostId}
+												onOpenSession={openProjectSession}
+											/>
+										</WhenQueryClient>
+									) : null}
 									{/* The centered welcome already has the heading and sample prompts.
 									    Keep the strip on the docked composer so it does not sit between them. */}
 									{conversationEmpty ? null : <ComposerContextStrip session={session} />}
@@ -2441,6 +2486,61 @@ const CHAT_ESTIMATED_TURN_HEIGHT = 600;
 const CHAT_TURN_GAP = 18;
 const CHAT_INITIAL_VIEWPORT_HEIGHT = 800;
 
+function ComposerPendingApproval({
+	activity,
+	busy,
+	session,
+	sessionRole,
+	onDecide,
+	onOpenSession,
+}: {
+	activity: ConversationActivity;
+	busy?: boolean;
+	session?: WorkspaceSession;
+	sessionRole?: SessionKind;
+	onDecide?: (requestId: string, decisionId: string) => void;
+	onOpenSession: (sessionId: string) => void;
+}) {
+	const hasClient = useHasQueryClient();
+	if (sessionRole === "worker" && hasClient) {
+		return (
+			<WorkerComposerApproval
+				activity={activity}
+				busy={busy}
+				session={session}
+				onDecide={onDecide}
+				onOpenSession={onOpenSession}
+			/>
+		);
+	}
+	return <ApprovalCard activity={activity} onDecide={onDecide} busy={busy} embedded />;
+}
+
+function WorkerComposerApproval({
+	activity,
+	busy,
+	session,
+	onDecide,
+	onOpenSession,
+}: {
+	activity: ConversationActivity;
+	busy?: boolean;
+	session?: WorkspaceSession;
+	onDecide?: (requestId: string, decisionId: string) => void;
+	onOpenSession: (sessionId: string) => void;
+}) {
+	const orchestrator = useManagerOrchestrator(session, "worker");
+	if (!orchestrator) {
+		return <ApprovalCard activity={activity} onDecide={onDecide} busy={busy} embedded />;
+	}
+	return (
+		<>
+			<ApprovalCard activity={activity} busy={busy} embedded readOnly />
+			<WorkerApprovalNotice onOpen={() => onOpenSession(orchestrator.id)} />
+		</>
+	);
+}
+
 /**
  * The conversation transcript: turn grouping, live status, "Worked for", and
  * scroll follow. Exported so a side chat renders its transcript with exactly
@@ -2479,6 +2579,7 @@ export function Timeline({
 	localEchos = [],
 	startup,
 	arriving = false,
+	footer,
 }: {
 	onAddToSideChat?: ChatWorkspaceProps["onAddToSideChat"];
 	/** Replaces the default "Add to chat" (write to this draft scope's composer). */
@@ -2517,6 +2618,8 @@ export function Timeline({
 	startup?: ComponentProps<typeof SessionStartup> & { openingTurnId?: string };
 	/** An interface switch is bringing this conversation in; only then does the transcript fade in. */
 	arriving?: boolean;
+	/** Drawn once after the last turn. */
+	footer?: ReactNode;
 }) {
 	const hasTranscript = snapshot.items.length > 0;
 	const arrivedEmpty = useRef(false);
@@ -4027,6 +4130,7 @@ export function Timeline({
 							/>
 						</div>
 					) : null}
+					{footer}
 					{/* Pushes the latest prompt toward the top of the viewport when following,
 					    then shrinks as the reply fills the space below it. */}
 					<div

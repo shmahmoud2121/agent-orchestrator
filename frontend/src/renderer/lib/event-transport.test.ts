@@ -882,6 +882,11 @@ describe("createEventTransport", () => {
 
 describe("bounded live refresh", () => {
 	const emit = (sessionId = "chat-1") => cdcSources()[0].emit("session_updated", JSON.stringify({ sessionId, payload: { conversationId: "conv-1" } }));
+	const conversationInvalidations = (client: ReturnType<typeof fakeQueryClient>) =>
+		(client.invalidateQueries as unknown as { mock: { calls: unknown[][] } }).mock.calls.filter((call) => {
+			const key = (call[0] as { queryKey?: unknown[] } | undefined)?.queryKey;
+			return Array.isArray(key) && key[0] === "conversation";
+		}).length;
 	afterEach(() => vi.useRealTimers());
 
 	it("refreshes throughout continuous 100ms events rather than waiting for silence", async () => {
@@ -891,14 +896,15 @@ describe("bounded live refresh", () => {
 		// The first event flushes immediately (leading edge); the rest are paced
 		// to one flush per window, so a busy stream keeps updating throughout.
 		emit();
-		expect(client.invalidateQueries).toHaveBeenCalledTimes(1);
+		expect(conversationInvalidations(client)).toBe(1);
+		expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["project-approvals"] }, { cancelRefetch: false });
 		for (let elapsed = 100; elapsed < 2_000; elapsed += 100) {
 			emit();
 			await vi.advanceTimersByTimeAsync(100);
 			expect(client.invalidateQueries).toHaveBeenCalled();
 		}
 		await vi.advanceTimersByTimeAsync(100);
-		expect(client.invalidateQueries).toHaveBeenCalledTimes(14);
+		expect(conversationInvalidations(client)).toBe(14);
 		disconnect();
 	});
 
@@ -907,16 +913,16 @@ describe("bounded live refresh", () => {
 		const client = fakeQueryClient();
 		const disconnect = createEventTransport(client).connect();
 		emit("a"); // leading edge flushes immediately
-		expect(client.invalidateQueries).toHaveBeenCalledTimes(1);
+		expect(conversationInvalidations(client)).toBe(1);
 		emit("a"); emit("b"); // coalesced into the trailing window
 		await vi.advanceTimersByTimeAsync(150);
 		// Within the window the repeated "a" and the new "b" flush once each.
-		expect(client.invalidateQueries).toHaveBeenCalledTimes(3);
+		expect(conversationInvalidations(client)).toBe(3);
 		emit("c");
 		disconnect();
 		emit("late");
 		await vi.advanceTimersByTimeAsync(500);
-		expect(client.invalidateQueries).toHaveBeenCalledTimes(3);
+		expect(conversationInvalidations(client)).toBe(3);
 	});
 
 	it("lets slow fetches finish and catches up once for events during the fetch", async () => {
@@ -928,11 +934,11 @@ describe("bounded live refresh", () => {
 		emit();
 		await vi.advanceTimersByTimeAsync(150);
 		for (let i = 0; i < 5; i++) { emit(); await vi.advanceTimersByTimeAsync(150); }
-		expect(client.invalidateQueries).toHaveBeenCalledTimes(1);
+		expect(conversationInvalidations(client)).toBe(1);
 		expect(client.invalidateQueries).toHaveBeenCalledWith({ queryKey: ["conversation", "chat-1"] }, { cancelRefetch: false });
 		finish();
 		await vi.advanceTimersByTimeAsync(0);
-		expect(client.invalidateQueries).toHaveBeenCalledTimes(2);
+		expect(conversationInvalidations(client)).toBe(2);
 		disconnect();
 	});
 
@@ -943,7 +949,7 @@ describe("bounded live refresh", () => {
 		const disconnect = createEventTransport(client).connect();
 		emit();
 		await vi.advanceTimersByTimeAsync(150);
-		expect(client.invalidateQueries).toHaveBeenCalledTimes(2);
+		expect(conversationInvalidations(client)).toBe(2);
 		disconnect();
 	});
 
@@ -956,7 +962,7 @@ describe("bounded live refresh", () => {
 		emit(); await vi.advanceTimersByTimeAsync(150);
 		emit(); await vi.advanceTimersByTimeAsync(150);
 		disconnect(); finish(); await vi.advanceTimersByTimeAsync(0);
-		expect(client.invalidateQueries).toHaveBeenCalledTimes(1);
+		expect(conversationInvalidations(client)).toBe(1);
 	});
 });
 

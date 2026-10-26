@@ -82,6 +82,11 @@ type ListReportsQuery struct {
 // wrappers: handlers decode the body straight into the project commands
 // (projectsvc.AddInput), which apispec also reflects.
 
+// ProjectApprovalsResponse lists pending approvals in a project's chat sessions.
+type ProjectApprovalsResponse struct {
+	Approvals []projectsvc.Approval `json:"approvals"`
+}
+
 // ProjectIDParam is the {id} path parameter shared by the /projects/{id}
 // routes. Handlers read it via chi.URLParam (see projectID); it is declared here
 // so every wire input/output shape has one home, and apispec.Build reflects it
@@ -2839,8 +2844,11 @@ type ConversationSnapshotResponse struct {
 	ContinueTurnID string `json:"continueTurnId"`
 	// SupportsExcerpts advertises daemon-owned source verification separately from
 	// provider capabilities. Older daemons silently ignore the excerpts input.
-	SupportsExcerpts           bool   `json:"supportsExcerpts,omitempty"`
-	ConversationID             string `json:"conversationId"`
+	SupportsExcerpts bool   `json:"supportsExcerpts,omitempty"`
+	ConversationID   string `json:"conversationId"`
+	// CreatedAt is when this orchestrator conversation started. The team card
+	// uses it to list only workers created from then on.
+	CreatedAt                  string `json:"createdAt,omitempty"`
 	ActiveBranchID             string `json:"activeBranchId,omitempty"`
 	BranchedFromEarlierMessage bool   `json:"branchedFromEarlierMessage"`
 	SessionID                  string `json:"sessionId"`
