@@ -114,6 +114,7 @@ func (m *Manager) preflightAccountTarget(
 		return err
 	}
 	config := restoredAgentConfig(rec, project.Config)
+	config.Permissions = domain.WorkerLaunchPermission(rec.Kind, config.Permissions)
 	pinRuntimePermissionEnv(env, config.Permissions)
 	m.augmentAgentRuntimeEnv(agent, env)
 	if err := m.preflightLaunchAuth(ctx, agent, rec, env); err != nil {

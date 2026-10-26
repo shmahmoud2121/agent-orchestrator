@@ -1380,6 +1380,7 @@ function ChatWorkspaceContent({
 					configPending={configOptionPending}
 					autoSelectEffortOnOpen={snapshot.items.length === 0 && !turn}
 					error={configOptionError}
+					workerBypassDisabled={sessionRole === "worker"}
 					// Turn settings require a live controller even while messages can queue.
 				// A background resume keeps the controls visible with their last values.
 					disabled={
@@ -1411,6 +1412,7 @@ function ChatWorkspaceContent({
 			approvalModes,
 			session?.cloud,
 			snapshot.controller.state,
+			sessionRole,
 			snapshot.items.length,
 			turn,
 			stableModelReroute,

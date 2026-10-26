@@ -72,6 +72,7 @@ type SessionTeardowner interface {
 type Service struct {
 	store               Store
 	sessions            SessionTeardowner
+	sessionCatalog      SessionCatalog
 	clock               func() time.Time
 	telemetry           ports.EventSink
 	defaultHarness      domain.AgentHarness
@@ -95,6 +96,9 @@ type Deps struct {
 	DefaultHarness domain.AgentHarness
 	Store          Store
 	Sessions       SessionTeardowner
+	// SessionCatalog resolves X-AO-Session-ID. Nil fails closed when a caller
+	// header is present: the person (no header) is unaffected.
+	SessionCatalog SessionCatalog
 	Clock          func() time.Time
 	Telemetry      ports.EventSink
 	// Logger receives structured logs. Left nil, the service falls back to
@@ -119,6 +123,7 @@ func NewWithDeps(d Deps) *Service {
 	s := &Service{
 		store:               d.Store,
 		sessions:            d.Sessions,
+		sessionCatalog:      d.SessionCatalog,
 		clock:               d.Clock,
 		telemetry:           d.Telemetry,
 		defaultHarness:      defaultHarness,
@@ -722,6 +727,9 @@ func (m *Service) UpdateSettings(ctx context.Context, id domain.ProjectID, in Up
 	if !ok || !row.ArchivedAt.IsZero() {
 		return Project{}, apierr.NotFound("PROJECT_NOT_FOUND", "Unknown project")
 	}
+	if err := m.authorizeCaller(ctx, id, in.CallerSessionID, sensitiveConfigChange(row.Config, in.Config)); err != nil {
+		return Project{}, err
+	}
 	if utf8.RuneCountInString(inDisplayName) > maxDisplayNameLen && inDisplayName != strings.TrimSpace(projectDisplayName(row)) {
 		return Project{}, apierr.Invalid("DISPLAY_NAME_TOO_LONG", fmt.Sprintf("Display name must be %d characters or fewer", maxDisplayNameLen), nil)
 	}
@@ -770,6 +778,9 @@ func (m *Service) SetConfig(ctx context.Context, id domain.ProjectID, in SetConf
 	}
 	if !ok || !row.ArchivedAt.IsZero() {
 		return Project{}, apierr.NotFound("PROJECT_NOT_FOUND", "Unknown project")
+	}
+	if err := m.authorizeCaller(ctx, id, in.CallerSessionID, sensitiveConfigChange(row.Config, in.Config)); err != nil {
+		return Project{}, err
 	}
 	if row.Kind.WithDefault() == domain.ProjectKindScratch {
 		if err := validateScratchProjectConfig(in.Config); err != nil {
@@ -1090,6 +1101,9 @@ func (m *Service) SetPermissions(ctx context.Context, id domain.ProjectID, in Se
 	}
 	if in.SourceHarness != "" && !in.SourceHarness.IsKnown() {
 		return Project{}, apierr.Invalid("INVALID_HARNESS", "Unknown source harness", nil)
+	}
+	if err := m.authorizeCaller(ctx, id, in.CallerSessionID, callerChange{anyWrite: true, permissions: true}); err != nil {
+		return Project{}, err
 	}
 	// Codex default grants full access; remember its portable equivalent so
 	// another harness does not interpret it as its own manual baseline.

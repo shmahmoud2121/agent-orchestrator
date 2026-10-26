@@ -1383,6 +1383,7 @@ func (m *Manager) prepareTargetActivation(ctx context.Context, store ports.Agent
 		return preparedTargetActivation{}, fmt.Errorf("target config: %w", err)
 	}
 	env := m.runtimeEnv(rec.ID, rec.ProjectID, rec.IssueID, project.Config.Env)
+	m.clampWorkerLaunchPermission(rec.Kind, rec.ID, &config.Permissions)
 	pinRuntimePermissionEnv(env, config.Permissions)
 	m.augmentAgentRuntimeEnv(agent, env)
 	if validator, ok := agent.(ports.AgentLaunchAuthValidator); ok {

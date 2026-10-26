@@ -14415,6 +14415,8 @@ components:
           - cline
           - autohand
           type: string
+        sandboxed:
+          type: boolean
         scmStatus:
           enum:
           - pr_open
@@ -14486,6 +14488,7 @@ components:
       - isPinned
       - statusReadiness
       - chatProviderPreserved
+      - sandboxed
       - status
       - kanbanColumn
       - displayStatus

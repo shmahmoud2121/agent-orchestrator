@@ -157,23 +157,17 @@ func resetSandboxAvailabilityForTest() {
 	sandboxAvailLogged = sync.Once{}
 }
 
-// workerLaunchPolicy remaps bypass-permissions to accept-edits when the
-// worker sandbox is on. bypassPermissions skips deny rules and, unless
-// strictAllowlist is set, admits hosts outside the sandbox network allowlist;
-// it also auto-approves unsandboxed retries when allowUnsandboxedCommands is
-// left at its default. See https://code.claude.com/docs/en/sandboxing and
+// workerLaunchPolicy remaps a worker's bypass-permissions to accept-edits
+// whether or not the OS sandbox is on. bypassPermissions skips deny rules.
+// The sandbox argument stays so existing callers keep their signature; the
+// sandbox settings themselves are unchanged. See
+// https://code.claude.com/docs/en/sandboxing and
 // https://code.claude.com/docs/en/permissions.
-func workerLaunchPolicy(kind domain.SessionKind, sandbox domain.WorkerSandboxConfig, policy agentruntime.PermissionPolicy) agentruntime.PermissionPolicy {
-	if kind != domain.KindWorker || !sandbox.IsEnabled() {
-		return policy
-	}
-	if agentruntime.NormalizePermissionPolicy(policy) == agentruntime.PermissionBypassPermissions {
-		return agentruntime.PermissionAcceptEdits
-	}
-	return policy
+func workerLaunchPolicy(kind domain.SessionKind, _ domain.WorkerSandboxConfig, policy agentruntime.PermissionPolicy) agentruntime.PermissionPolicy {
+	return agentruntime.PermissionPolicy(domain.WorkerLaunchPermission(kind, domain.PermissionMode(policy)))
 }
 
-// EffectiveWorkerPermission remaps bypass→acceptEdits for sandboxed workers.
+// EffectiveWorkerPermission remaps bypass→acceptEdits for every worker.
 // Used by both the terminal CLI launch and Claude chat ACP session mode.
 func EffectiveWorkerPermission(kind domain.SessionKind, sandbox domain.WorkerSandboxConfig, permissions ports.PermissionMode) ports.PermissionMode {
 	return ports.PermissionMode(workerLaunchPolicy(kind, sandbox, agentruntime.PermissionPolicy(permissions)))
@@ -269,7 +263,18 @@ func buildWorkerSandboxSettings(
 	// even if AO's session/set_mode path regresses; the OS sandbox only covers
 	// Bash, so bypass would otherwise auto-approve Edit/Write anywhere.
 	permissions := map[string]any{
-		"allow":                        []string{"Bash(ao)", "Bash(ao *)"},
+		"allow": []string{"Bash(ao)", "Bash(ao *)"},
+		// Deny wins over the ao allow rules. A worker can otherwise clear
+		// AO_SESSION_ID and run `ao project set-config` or `ao project trust`
+		// outside the sandbox, where the daemon would see no session header.
+		"deny": []string{
+			"Bash(ao project set-config)",
+			"Bash(ao project set-config *)",
+			"Bash(ao project set-config:*)",
+			"Bash(ao project trust)",
+			"Bash(ao project trust *)",
+			"Bash(ao project trust:*)",
+		},
 		"disableBypassPermissionsMode": "disable",
 	}
 	if flag := agentruntime.ClaudePermissionArgs(policy); len(flag) == 2 {

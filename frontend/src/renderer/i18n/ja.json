@@ -22,6 +22,7 @@
 	"settings.harness.availableVersion": "利用可能なバージョン",
 	"settings.harness.viewDetails": "詳細を見る",
 	"chat.annotationReferences": "Referenced chat annotations",
+	"chat.permissions.workerBypassDisabled": "ワーカーは権限をバイパスできません。",
 	"chat.accountSwitched": "{{email}} に切り替えました",
 	"chat.accountSwitchedDetail": "切り替えのため、エージェントはここで停止しました。続行を押してこのターンを再開するか、新しいメッセージを送ってください。",
 	"chat.removeAllAnnotations": "Remove all annotations",

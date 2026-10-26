@@ -22,6 +22,7 @@
 	"settings.harness.availableVersion": "可用版本",
 	"settings.harness.viewDetails": "查看详情",
 	"chat.annotationReferences": "Referenced chat annotations",
+	"chat.permissions.workerBypassDisabled": "工作者不能绕过权限。",
 	"chat.accountSwitched": "已切换到 {{email}}",
 	"chat.accountSwitchedDetail": "智能体因切换在此停止。按“继续”恢复此轮，或发送一条新消息。",
 	"chat.removeAllAnnotations": "Remove all annotations",

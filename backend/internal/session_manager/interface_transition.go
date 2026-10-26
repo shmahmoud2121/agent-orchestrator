@@ -890,6 +890,7 @@ func (m *Manager) preflightInterfaceTarget(
 		return err
 	}
 	config := restoredAgentConfig(rec, project.Config)
+	config.Permissions = domain.WorkerLaunchPermission(rec.Kind, config.Permissions)
 	env := m.runtimeEnv(rec.ID, rec.ProjectID, rec.IssueID, project.Config.Env)
 	pinRuntimePermissionEnv(env, config.Permissions)
 	m.augmentAgentRuntimeEnv(agent, env)
@@ -932,6 +933,7 @@ func (m *Manager) preflightTerminalLaunch(
 		return err
 	}
 	config := restoredAgentConfig(rec, project.Config)
+	config.Permissions = domain.WorkerLaunchPermission(rec.Kind, config.Permissions)
 	workerSandbox := workerSandboxLaunchFields(rec.Kind, project.Config)
 	var cmd []string
 	if nativeConversationID == "" {

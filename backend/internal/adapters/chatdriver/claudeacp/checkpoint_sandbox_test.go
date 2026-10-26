@@ -58,8 +58,8 @@ func TestCheckpointDriverKeepsBypassWhenSandboxOff(t *testing.T) {
 		Kind:          domain.KindWorker,
 		WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &disabled},
 	})
-	if inner.startPerms != ports.PermissionModeBypassPermissions {
-		t.Fatalf("Start Permissions = %q, want bypassPermissions", inner.startPerms)
+	if inner.startPerms != ports.PermissionModeAcceptEdits {
+		t.Fatalf("Start Permissions = %q, want acceptEdits", inner.startPerms)
 	}
 }
 

@@ -1293,8 +1293,8 @@ func TestUnrealSpawnDefaultsToChatWithBypassPermissions(t *testing.T) {
 	if len(launcher.preflightPermissions) != 1 || launcher.preflightPermissions[0] != ports.PermissionModeBypassPermissions {
 		t.Fatalf("preflight permissions = %v, want bypass-permissions", launcher.preflightPermissions)
 	}
-	if len(launcher.started) != 1 || launcher.started[0].Permissions != ports.PermissionModeBypassPermissions {
-		t.Fatalf("started controllers = %#v, want one bypass-permissions controller", launcher.started)
+	if len(launcher.started) != 1 || launcher.started[0].Permissions != ports.PermissionModeAcceptEdits {
+		t.Fatalf("started controllers = %#v, want one accept-edits controller", launcher.started)
 	}
 }
 
@@ -1951,7 +1951,9 @@ func TestChatSpawnFailsWhenHookInstallFails(t *testing.T) {
 // the first prompt preamble instead, so this asserts hook installation — not
 // Chat delivery.
 func TestChatSpawnWritesCommandCodeSessionStartHook(t *testing.T) {
-	if !retiredTestAgentsAvailable { t.Skip("Command Code is retired in this build") }
+	if !retiredTestAgentsAvailable {
+		t.Skip("Command Code is retired in this build")
+	}
 	dataDir := t.TempDir()
 	wsDir := t.TempDir()
 	launcher := &recordingLauncher{}

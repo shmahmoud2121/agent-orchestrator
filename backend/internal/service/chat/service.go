@@ -13,7 +13,6 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 	reportsvc "github.com/aoagents/agent-orchestrator/backend/internal/service/report"
@@ -730,9 +729,17 @@ func (s *Service) Start(ctx context.Context, cfg StartConfig) (*Controller, erro
 	if cfg.ProviderConversationID != "" && conversation.Settings.ApprovalMode != "" {
 		cfg.Permissions = conversation.Settings.ApprovalMode
 	}
-	// Remap before recording and before the driver launches so the durable
-	// approval mode matches session/set_mode (bypass→acceptEdits when sandboxed).
+	// Remap before recording and before the driver launches so a worker never
+	// starts in bypass. Log once, only when the mode actually changes.
+	requestedPermission := cfg.Permissions
 	cfg.Permissions = effectiveChatPermission(cfg)
+	if cfg.Kind == domain.KindWorker && requestedPermission != cfg.Permissions {
+		log := s.log
+		if log == nil {
+			log = slog.Default()
+		}
+		log.Info("worker bypass permissions launch as accept-edits", "sessionID", cfg.SessionID)
+	}
 	if cfg.ProviderConversationID == "" {
 		if err := capabilityAdmissionError(cfg.Harness, caps, cfg.Permissions); err != nil {
 			return nil, err
@@ -2541,9 +2548,8 @@ func (s *Service) setTurnSettings(ctx context.Context, controller *Controller, o
 		return domain.ConversationSettings{}, ErrReviewerPermissionsFixed
 	}
 	if ports.NormalizePermissionMode(settings.ApprovalMode) == ports.PermissionModeBypassPermissions &&
-		s.sandboxedClaudeWorker(owner) {
-		return domain.ConversationSettings{}, fmt.Errorf("%w: %w",
-			ports.ErrChatPermissionModeUnsupported, ports.ErrChatSandboxBypassDisabled)
+		s.ownerIsWorker(owner) {
+		return domain.ConversationSettings{}, ports.ErrWorkerBypassForbidden
 	}
 	settings.OpenCodeMode = previous.OpenCodeMode
 	if err := controller.SetSettings(ctx, settings); err != nil {
@@ -2630,14 +2636,26 @@ func (s *Service) StopChat(ctx context.Context, id domain.SessionID) error {
 	return s.Stop(ctx, id)
 }
 
-// effectiveChatPermission remaps bypass→acceptEdits for sandboxed Claude Code
-// workers. The worker sandbox is Claude-only, so other harnesses keep the
-// requested mode.
+// effectiveChatPermission remaps bypass→acceptEdits for a worker on every harness.
 func effectiveChatPermission(cfg StartConfig) ports.PermissionMode {
-	if cfg.Harness != domain.HarnessClaudeCode {
-		return cfg.Permissions
+	return domain.WorkerLaunchPermission(cfg.Kind, cfg.Permissions)
+}
+
+// ownerIsWorker reports whether this conversation belongs to a worker.
+// Unknown owners are not refused: a caller that never recorded a start
+// config, and is not a stored worker session, keeps today's behavior.
+func (s *Service) ownerIsWorker(owner domain.ConversationOwner) bool {
+	s.mu.Lock()
+	cfg, ok := s.startConfigs[owner]
+	s.mu.Unlock()
+	if ok {
+		return cfg.Kind == domain.KindWorker
 	}
-	return claudecode.EffectiveWorkerPermission(cfg.Kind, cfg.WorkerSandbox, cfg.Permissions)
+	if s.sessions == nil || owner.Kind != domain.ConversationOwnerSession {
+		return false
+	}
+	rec, found, err := s.sessions.GetSession(context.Background(), domain.SessionID(owner.ID))
+	return err == nil && found && rec.Kind == domain.KindWorker
 }
 
 // sandboxedClaudeWorker reports whether the live controller was started as a
@@ -2658,10 +2676,10 @@ func (s *Service) refuseSandboxedBypassConfig(
 	if configID != "mode" || value.Select != "bypassPermissions" {
 		return nil
 	}
-	if !s.sandboxedClaudeWorker(owner) {
+	if !s.ownerIsWorker(owner) {
 		return nil
 	}
-	return fmt.Errorf("%w: %w", ports.ErrChatPermissionModeUnsupported, ports.ErrChatSandboxBypassDisabled)
+	return ports.ErrWorkerBypassForbidden
 }
 
 // permissionConfigOptions annotates only provider controls whose semantics are

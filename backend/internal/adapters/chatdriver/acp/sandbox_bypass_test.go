@@ -74,8 +74,8 @@ func TestUnsandboxedWorkerStartKeepsBypassMode(t *testing.T) {
 		t.Fatalf("Start: %v", err)
 	}
 	defer conv.Close()
-	if agent.mode != "bypassPermissions" {
-		t.Fatalf("session/set_mode = %q, want bypassPermissions", agent.mode)
+	if agent.mode != "acceptEdits" {
+		t.Fatalf("session/set_mode = %q, want acceptEdits", agent.mode)
 	}
 }
 
@@ -117,23 +117,27 @@ func TestSandboxedWorkerRefusesMidSessionBypassSwitch(t *testing.T) {
 		if option.ID != "mode" {
 			continue
 		}
+		foundBypass := false
 		for _, choice := range option.Choices {
 			if choice.Value == "bypassPermissions" {
-				t.Fatal("bypassPermissions still offered in picker for sandboxed worker")
+				foundBypass = true
 			}
+		}
+		if !foundBypass {
+			t.Fatal("bypassPermissions should stay visible so the picker can disable it")
 		}
 	}
 
 	_, err = configurer.SetConfigOption(context.Background(), "mode", ports.ChatConfigOptionValue{Select: "bypassPermissions"})
-	if !errors.Is(err, ports.ErrChatSandboxBypassDisabled) {
-		t.Fatalf("SetConfigOption bypass error = %v, want ErrChatSandboxBypassDisabled", err)
+	if !errors.Is(err, ports.ErrWorkerBypassForbidden) || err.Error() != "Workers can't bypass permissions." {
+		t.Fatalf("SetConfigOption bypass error = %v", err)
 	}
 
 	conv := opened.(*conversation)
 	if err := conv.applyTurnSettings(context.Background(), ports.ChatTurnSettings{
 		Approval: ports.PermissionModeBypassPermissions,
-	}); !errors.Is(err, ports.ErrChatSandboxBypassDisabled) {
-		t.Fatalf("applyTurnSettings bypass error = %v, want ErrChatSandboxBypassDisabled", err)
+	}); !errors.Is(err, ports.ErrWorkerBypassForbidden) || err.Error() != "Workers can't bypass permissions." {
+		t.Fatalf("applyTurnSettings bypass error = %v", err)
 	}
 }
 
@@ -158,12 +162,12 @@ func TestSandboxedNonClaudeWorkerKeepsBypassMode(t *testing.T) {
 		t.Fatalf("Start: %v", err)
 	}
 	defer opened.Close()
-	if agent.mode != "bypassPermissions" {
-		t.Fatalf("session/set_mode = %q, want bypassPermissions", agent.mode)
+	if agent.mode != "acceptEdits" {
+		t.Fatalf("session/set_mode = %q, want acceptEdits", agent.mode)
 	}
 	if err := opened.(*conversation).applyTurnSettings(context.Background(), ports.ChatTurnSettings{
 		Approval: ports.PermissionModeBypassPermissions,
-	}); errors.Is(err, ports.ErrChatSandboxBypassDisabled) {
-		t.Fatalf("non-Claude worker refused bypass: %v", err)
+	}); !errors.Is(err, ports.ErrWorkerBypassForbidden) {
+		t.Fatalf("non-Claude worker bypass = %v, want refusal", err)
 	}
 }

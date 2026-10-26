@@ -69,3 +69,16 @@ func (c AgentConfig) Validate() error {
 	}
 	return fmt.Errorf("invalid permissions %q: choose a supported permission mode", c.Permissions)
 }
+
+// WorkerLaunchPermission is the mode a session may launch with.
+// A worker is never bypass-permissions: a stored or inherited bypass (project
+// setting, legacy import, role override, or a spawn request) launches as
+// accept-edits. The project setting itself may stay bypass, because it also
+// applies to the orchestrator. Orchestrators, reviewers, and any other kind
+// keep the requested mode. An empty kind is not a worker.
+func WorkerLaunchPermission(kind SessionKind, requested PermissionMode) PermissionMode {
+	if kind == KindWorker && requested == PermissionModeBypassPermissions {
+		return PermissionModeAcceptEdits
+	}
+	return requested
+}

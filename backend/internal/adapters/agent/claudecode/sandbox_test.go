@@ -84,8 +84,14 @@ func TestGetLaunchCommandWorkerSandboxOn(t *testing.T) {
 	if perms["defaultMode"] != "acceptEdits" {
 		t.Fatalf("defaultMode = %#v", perms["defaultMode"])
 	}
-	if _, ok := perms["deny"]; ok {
-		t.Fatalf("Edit deny rules must be absent; acceptEdits scopes cwd: %#v", perms)
+	deny := asStringSlice(t, perms["deny"])
+	for _, rule := range deny {
+		if strings.Contains(rule, "Edit") {
+			t.Fatalf("Edit deny rules must be absent; acceptEdits scopes cwd: %#v", perms)
+		}
+	}
+	if !containsAll(deny, "Bash(ao project set-config)", "Bash(ao project trust)") {
+		t.Fatalf("ao config and trust must be denied: %#v", deny)
 	}
 	allow := asStringSlice(t, perms["allow"])
 	if !containsAll(allow, "Bash(ao)", "Bash(ao *)") {
@@ -277,8 +283,8 @@ func TestEffectiveWorkerPermissionRemapsBypass(t *testing.T) {
 	if got := EffectiveWorkerPermission(domain.KindWorker, domain.WorkerSandboxConfig{}, ports.PermissionModeBypassPermissions); got != ports.PermissionModeAcceptEdits {
 		t.Fatalf("sandboxed worker bypass = %q, want acceptEdits", got)
 	}
-	if got := EffectiveWorkerPermission(domain.KindWorker, domain.WorkerSandboxConfig{Enabled: boolPtr(false)}, ports.PermissionModeBypassPermissions); got != ports.PermissionModeBypassPermissions {
-		t.Fatalf("sandbox off = %q", got)
+	if got := EffectiveWorkerPermission(domain.KindWorker, domain.WorkerSandboxConfig{Enabled: boolPtr(false)}, ports.PermissionModeBypassPermissions); got != ports.PermissionModeAcceptEdits {
+		t.Fatalf("sandbox off worker = %q, want acceptEdits", got)
 	}
 	if got := EffectiveWorkerPermission(domain.KindOrchestrator, domain.WorkerSandboxConfig{}, ports.PermissionModeBypassPermissions); got != ports.PermissionModeBypassPermissions {
 		t.Fatalf("orchestrator = %q", got)
@@ -298,6 +304,10 @@ func TestSandboxSettingsAllowAOBashRules(t *testing.T) {
 	allow := asStringSlice(t, perms["allow"])
 	if !containsAll(allow, "Bash(ao)", "Bash(ao *)") {
 		t.Fatalf("allow=%v", allow)
+	}
+	deny := asStringSlice(t, perms["deny"])
+	if !containsAll(deny, "Bash(ao project set-config)", "Bash(ao project set-config *)", "Bash(ao project trust)", "Bash(ao project trust *)") {
+		t.Fatalf("deny=%v", deny)
 	}
 	if perms["disableBypassPermissionsMode"] != "disable" {
 		t.Fatalf("disableBypassPermissionsMode = %#v, want disable", perms["disableBypassPermissionsMode"])

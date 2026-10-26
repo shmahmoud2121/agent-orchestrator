@@ -587,6 +587,67 @@ func TestResolveConversationApprovalDecodesEscapedACPRequestID(t *testing.T) {
 	}
 }
 
+type approvalCallers struct {
+	kind domain.SessionKind
+	ok   bool
+}
+
+func (a approvalCallers) GetSession(_ context.Context, id domain.SessionID) (domain.SessionRecord, bool, error) {
+	if !a.ok {
+		return domain.SessionRecord{}, false, nil
+	}
+	return domain.SessionRecord{ID: id, Kind: a.kind, ProjectID: "p"}, true, nil
+}
+
+func TestSessionCallerCannotResolveApprovals(t *testing.T) {
+	paths := []string{
+		"/api/v1/sessions/p1-1/conversation/approvals/request-1/resolve",
+		"/api/v1/sessions/p1-1/conversation/side-chats/side-1/approvals/request-1/resolve",
+		"/api/v1/reviews/review-1/conversation/approvals/request-1/resolve",
+	}
+	callers := []struct {
+		name   string
+		header string
+		kind   domain.SessionKind
+		known  bool
+	}{
+		{name: "worker", header: "worker-1", kind: domain.KindWorker, known: true},
+		{name: "orchestrator", header: "orch-1", kind: domain.KindOrchestrator, known: true},
+		{name: "unknown", header: "missing", known: false},
+	}
+	for _, path := range paths {
+		for _, caller := range callers {
+			t.Run(caller.name+" "+path, func(t *testing.T) {
+				service := &fakeConversationService{}
+				log := slog.New(slog.NewTextHandler(io.Discard, nil))
+				server := httptest.NewServer(httpd.NewRouterWithControl(config.Config{}, log, nil, httpd.APIDeps{
+					Sessions: newFakeSessionService(), Conversations: service,
+					SessionCatalog: approvalCallers{kind: caller.kind, ok: caller.known},
+				}, httpd.ControlDeps{}))
+				t.Cleanup(server.Close)
+				request, err := http.NewRequest(http.MethodPost, server.URL+path, bytes.NewReader([]byte(`{"decisionId":"allow-once"}`)))
+				if err != nil {
+					t.Fatal(err)
+				}
+				request.Header.Set("Content-Type", "application/json")
+				request.Header.Set("X-AO-Session-ID", caller.header)
+				response, err := http.DefaultClient.Do(request)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer func() { _ = response.Body.Close() }()
+				body, _ := io.ReadAll(response.Body)
+				if response.StatusCode != http.StatusForbidden {
+					t.Fatalf("status = %d, body = %s", response.StatusCode, body)
+				}
+				if service.approvalRequestID != "" {
+					t.Fatal("session caller resolved an approval")
+				}
+			})
+		}
+	}
+}
+
 func TestResolveConversationInputDecodesEscapedACPRequestID(t *testing.T) {
 	service := &fakeConversationService{}
 	server := conversationTestServer(t, service)
