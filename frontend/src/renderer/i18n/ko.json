@@ -44,6 +44,8 @@
 	"chat.team.sandboxed": "샌드박스",
 	"chat.team.notSandboxed": "샌드박스 없음",
 	"chat.team.notSandboxedHint": "이 워커는 OS 샌드박스 없이 실행됩니다.",
+	"chat.team.modeOn": "팀: 매니저가 워커에게 일을 맡길 수 있습니다",
+	"chat.team.modeOff": "팀 끄기: 매니저가 혼자 작업합니다",
 	"chat.accountSwitched": "{{email}}(으)로 전환됨",
 	"chat.accountSwitchedDetail": "전환 때문에 에이전트가 여기서 멈췄습니다. 계속을 눌러 이 턴을 재개하거나 새 메시지를 보내세요.",
 	"chat.removeAllAnnotations": "Remove all annotations",

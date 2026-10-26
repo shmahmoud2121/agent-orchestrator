@@ -384,6 +384,9 @@ func (s *Service) spawn(ctx context.Context, cfg ports.SpawnConfig) (domain.Sess
 			return domain.Session{}, 0, 0, apierr.Invalid("HARNESS_REQUIRED", "harness is required for a standalone session", nil)
 		}
 	}
+	if err := s.refuseWorkerSpawnWhenTeamModeOff(ctx, cfg, project); err != nil {
+		return domain.Session{}, 0, 0, err
+	}
 	if s.agentReadiness != nil && cfg.Harness != "" {
 		readiness, err := s.agentReadiness.EnsureAgentReadiness(ctx, string(cfg.Harness), domain.AgentReadinessPurposeLaunch)
 		if err != nil {
@@ -456,6 +459,26 @@ func (s *Service) invalidateAgentReadinessAfterLaunchFailure(harness domain.Agen
 	if invalidated {
 		s.agentReadiness.RecheckAgent(id)
 	}
+}
+
+const teamModeOffMessage = "Team mode is off for this project. Do this task yourself instead of starting a worker."
+
+// refuseWorkerSpawnWhenTeamModeOff stops the project's orchestrator from
+// starting a worker while team mode is off. A request with no session header
+// is the person and is always allowed. An unset team mode stays on.
+func (s *Service) refuseWorkerSpawnWhenTeamModeOff(ctx context.Context, cfg ports.SpawnConfig, project domain.ProjectRecord) error {
+	caller := strings.TrimSpace(string(cfg.CallerSessionID))
+	if cfg.Kind != domain.KindWorker || caller == "" || project.Config.TeamModeEnabled() || s.store == nil {
+		return nil
+	}
+	sess, ok, err := s.store.GetSession(ctx, domain.SessionID(caller))
+	if err != nil {
+		return apierr.Internal("SESSION_LOAD_FAILED", "Failed to load the calling session")
+	}
+	if !ok || sess.Kind != domain.KindOrchestrator || sess.ProjectID != cfg.ProjectID {
+		return nil
+	}
+	return apierr.Forbidden("TEAM_MODE_OFF", teamModeOffMessage)
 }
 
 // requireProject verifies the project is registered before any spawn write

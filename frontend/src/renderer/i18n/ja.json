@@ -44,6 +44,8 @@
 	"chat.team.sandboxed": "サンドボックス内",
 	"chat.team.notSandboxed": "サンドボックスなし",
 	"chat.team.notSandboxedHint": "このワーカーは OS サンドボックスなしで動いています。",
+	"chat.team.modeOn": "チーム: マネージャーはワーカーに仕事を渡せます",
+	"chat.team.modeOff": "チームオフ: マネージャーが単独で作業します",
 	"chat.accountSwitched": "{{email}} に切り替えました",
 	"chat.accountSwitchedDetail": "切り替えのため、エージェントはここで停止しました。続行を押してこのターンを再開するか、新しいメッセージを送ってください。",
 	"chat.removeAllAnnotations": "Remove all annotations",

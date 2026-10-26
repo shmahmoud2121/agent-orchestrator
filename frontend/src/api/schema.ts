@@ -5854,6 +5854,7 @@ export interface components {
             reviewers?: components["schemas"]["DomainReviewerConfig"][];
             sessionPrefix?: string;
             symlinks?: string[];
+            teamMode?: null | boolean;
             trackerIntake?: components["schemas"]["TrackerIntakeConfig"];
             trustedRepoConfigFingerprint?: string;
             verifyCommand?: string[];

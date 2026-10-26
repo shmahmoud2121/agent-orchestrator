@@ -75,6 +75,11 @@ type ProjectConfig struct {
 	// drifting out of sync with a project-config list.
 	ContainerReap ContainerReapConfig `json:"containerReap,omitempty"`
 
+	// TeamMode is whether the manager may start workers. Nil means on, the
+	// default for a project saved before the toggle existed. Off, the manager
+	// does the task itself.
+	TeamMode *bool `json:"teamMode,omitempty"`
+
 	// AutoReview controls whether new worker sessions spawned for this project
 	// have automatic PR review enabled by default. The default (false) leaves
 	// sessions with auto-review off; enabling it copies the setting into each
@@ -212,6 +217,12 @@ func DefaultProjectConfig() ProjectConfig {
 	return ProjectConfig{
 		DefaultBranch: DefaultBranchAuto,
 	}
+}
+
+// TeamModeEnabled reports whether the manager may start workers. An unset
+// value stays on, which is the default.
+func (c ProjectConfig) TeamModeEnabled() bool {
+	return c.TeamMode == nil || *c.TeamMode
 }
 
 // WithDefaults overlays DefaultProjectConfig onto c, filling only fields the

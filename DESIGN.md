@@ -340,6 +340,7 @@ The manager chat is home for a project. The person talks to one manager. Workers
 **Composer**
 - A context strip sits directly above the input, attached to it: project, where it runs (local worktree or main checkout), and a branch chip with a dropdown. It's mono for the branch and muted for everything else.
 - The input is one composed surface: placeholder "Describe a task…", then a single row of controls under the text: `+` (attach), model picker, permission mode, Team toggle, and the send button on the right. Nothing else goes in it.
+- The Team toggle decides whether the manager may hand work to workers. Off, the manager does the task itself. It is on by default and is saved per project.
 - Context size ("200K context") sits as muted text under the right edge of the composer, shown only when known.
 - `Enter` sends. While the manager is working, `Enter` queues the message, and `Ctrl/⌘ Enter` interrupts and steers. The send button's icon and tooltip reflect which one will happen.
 
@@ -502,3 +503,4 @@ Approve only when the answer to every applicable check is yes. Otherwise classif
 | 2026-10-26 | Workers never run in Bypass on any agent; only the person can change permissions, the sandbox, repository trust or answer approvals | Enforced in the daemon so neither a worker nor a misled manager can widen its own access. |
 | 2026-10-26 | The team card sits once at the end of the manager timeline and lists this conversation's workers; worker chats keep their composer for now | One card avoids repeats per turn; a read-only worker view needs its own step. |
 | 2026-10-26 | "Approve all" approves only edits inside the asking session's workspace; everything else needs its own click | A conservative rule the daemon can check; the manager allowlist comes later. |
+| 2026-10-26 | The Team toggle is a per-project setting enforced in the daemon; off means the manager may not start workers | Enforcing it in the daemon makes the toggle trustworthy, not just a hint to the model. |

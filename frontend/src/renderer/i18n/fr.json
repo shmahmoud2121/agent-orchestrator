@@ -46,6 +46,8 @@
 	"chat.team.sandboxed": "Dans le bac à sable",
 	"chat.team.notSandboxed": "Sans bac à sable",
 	"chat.team.notSandboxedHint": "Ce worker s'exécute sans bac à sable du système.",
+	"chat.team.modeOn": "Équipe : le manager peut confier le travail aux workers",
+	"chat.team.modeOff": "Équipe désactivée : le manager travaille seul",
 	"chat.accountSwitched": "Passé à {{email}}",
 	"chat.accountSwitchedDetail": "L'agent s'est arrêté ici pour le changement. Appuyez sur Continuer pour reprendre ce tour, ou envoyez un nouveau message.",
 	"chat.removeAllAnnotations": "Remove all annotations",
