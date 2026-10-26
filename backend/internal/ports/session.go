@@ -28,6 +28,10 @@ type SpawnConfig struct {
 	// through `ao spawn`. The daemon validates this reference and derives any
 	// inherited settings itself; callers never supply an inherited policy.
 	ParentSessionID domain.SessionID
+	// CallerSessionID is the X-AO-Session-ID header. It is not a body field.
+	// An empty value is the person. Team mode uses it to refuse a manager
+	// that tries to start a worker while the toggle is off.
+	CallerSessionID domain.SessionID
 	// TrackerProvider is the issue-tracker provider hint from the CLI's
 	// --tracker-provider flag (defaults to "github"). It is used as a fallback
 	// when the project's SCM origin cannot be classified by the configured

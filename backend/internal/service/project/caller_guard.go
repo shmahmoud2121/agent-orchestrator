@@ -21,6 +21,7 @@ type callerChange struct {
 	permissions bool
 	sandbox     bool
 	trust       bool
+	teamMode    bool
 	// anyWrite is a project config write. Workers are refused even when the
 	// sensitive fields above are unchanged. Orchestrators may change the rest.
 	anyWrite bool
@@ -43,7 +44,7 @@ func (m *Service) authorizeCaller(ctx context.Context, projectID domain.ProjectI
 	case domain.KindWorker:
 		return apierr.Forbidden("PROJECT_SETTINGS_FORBIDDEN", workerSettingsRefusal(change))
 	case domain.KindOrchestrator:
-		if change.permissions || change.sandbox || change.trust {
+		if change.permissions || change.sandbox || change.trust || change.teamMode {
 			return apierr.Forbidden("PROJECT_SETTINGS_FORBIDDEN", orchestratorSettingsRefusal(change))
 		}
 		return nil
@@ -61,6 +62,8 @@ func workerSettingsRefusal(change callerChange) string {
 		return "Only the person can change the worker sandbox. You are a worker: ask the person in your report."
 	case change.trust:
 		return "Only the person can change repository trust. You are a worker: ask the person in your report."
+	case change.teamMode:
+		return "Only the person can change team mode. You are a worker: ask the person in your report."
 	default:
 		return "Only the person can change project settings. You are a worker: ask the person in your report."
 	}
@@ -74,6 +77,8 @@ func orchestratorSettingsRefusal(change callerChange) string {
 		return "Only the person can change the worker sandbox. You are the manager and can be misled by worker output. Ask the person in your report."
 	case change.trust:
 		return "Only the person can change repository trust. You are the manager and can be misled by worker output. Ask the person in your report."
+	case change.teamMode:
+		return "Only the person can change team mode. You are the manager and can be misled by worker output. Ask the person in your report."
 	default:
 		return "Only the person can change project settings. You are the manager and can be misled by worker output. Ask the person in your report."
 	}
@@ -87,5 +92,6 @@ func sensitiveConfigChange(before, after domain.ProjectConfig) callerChange {
 			before.Orchestrator.AgentConfig.Permissions != after.Orchestrator.AgentConfig.Permissions,
 		sandbox: before.WorkerSandbox.IsEnabled() != after.WorkerSandbox.IsEnabled() ||
 			!slices.Equal(before.WorkerSandbox.AllowedDomains, after.WorkerSandbox.AllowedDomains),
+		teamMode: before.TeamModeEnabled() != after.TeamModeEnabled(),
 	}
 }

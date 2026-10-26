@@ -17145,6 +17145,10 @@ components:
           items:
             type: string
           type: array
+        teamMode:
+          type:
+          - "null"
+          - boolean
         trackerIntake:
           $ref: '#/components/schemas/TrackerIntakeConfig'
         trustedRepoConfigFingerprint:

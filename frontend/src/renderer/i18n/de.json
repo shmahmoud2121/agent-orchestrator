@@ -44,6 +44,8 @@
 	"chat.team.sandboxed": "Sandbox",
 	"chat.team.notSandboxed": "Keine Sandbox",
 	"chat.team.notSandboxedHint": "Dieser Worker läuft ohne Betriebssystem-Sandbox.",
+	"chat.team.modeOn": "Team: der Manager kann Arbeit an Worker übergeben",
+	"chat.team.modeOff": "Team aus: der Manager arbeitet allein",
 	"chat.accountSwitched": "Zu {{email}} gewechselt",
 	"chat.accountSwitchedDetail": "Der Agent hat hier für den Wechsel angehalten. Drücke Fortsetzen, um diesen Schritt wieder aufzunehmen, oder sende eine neue Nachricht.",
 	"chat.removeAllAnnotations": "Remove all annotations",

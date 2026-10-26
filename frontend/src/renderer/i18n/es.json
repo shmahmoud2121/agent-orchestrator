@@ -46,6 +46,8 @@
 	"chat.team.sandboxed": "Con sandbox",
 	"chat.team.notSandboxed": "Sin sandbox",
 	"chat.team.notSandboxedHint": "Este worker se ejecuta sin un sandbox del sistema.",
+	"chat.team.modeOn": "Equipo: el manager puede encargar trabajo a los workers",
+	"chat.team.modeOff": "Equipo apagado: el manager trabaja solo",
 	"chat.accountSwitched": "Cambiado a {{email}}",
 	"chat.accountSwitchedDetail": "El agente se detuvo aquí por el cambio. Pulsa Continuar para retomar este turno o envía un mensaje nuevo.",
 	"chat.removeAllAnnotations": "Remove all annotations",

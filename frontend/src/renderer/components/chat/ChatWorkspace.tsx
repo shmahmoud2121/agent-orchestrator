@@ -43,6 +43,7 @@ import { LOCAL_HOST } from "../../lib/hosts";
 import { projectNavigateTarget, sessionNavigateTarget } from "../../lib/navigate-to-session";
 import { ProjectApprovalBar, WorkerApprovalNotice } from "./ProjectApprovalBar";
 import { TeamCard, useHasQueryClient, useManagerOrchestrator, WhenQueryClient } from "./TeamCard";
+import { TeamModeToggle } from "./TeamModeToggle";
 import { useChatSelectionPosition } from "../../hooks/useChatSelectionPosition";
 import { actionMenuContentClass, actionMenuItemClass } from "../ui/menu-styles";
 import { NAV_ROW_HIGHLIGHT_HOST_CLASS, NavRowHighlight } from "../NavRowHighlight";
@@ -1901,7 +1902,15 @@ function ChatWorkspaceContent({
 										onInterrupt={turn && !newWorkDisabled ? stableInterrupt : undefined}
 										onContinue={canContinue && !queueEdit ? onContinueTurn : undefined}
 										commandError={queueDraftError ?? (queueEdit && !queueEdit.clientMessageId && !queuedMessages.some((entry) => entry.turnId === queueEdit.turnId) ? "chat.draft.queueMissing" : commandError)}
-										settings={<><ContextMeter usage={snapshot.usage} />{composerSettings}</>}
+										settings={<>
+											<ContextMeter usage={snapshot.usage} />
+											{composerSettings}
+											{sessionRole === "orchestrator" ? (
+												<WhenQueryClient>
+													<TeamModeToggle projectId={session?.workspaceId} hostId={activeRemoteHostId} />
+												</WhenQueryClient>
+											) : null}
+										</>}
 										busy={busy}
 										willQueue={Boolean(turn) || (sessionRole !== "orchestrator" && session?.provisionState === "provisioning")}
 										queuePlaceholder={

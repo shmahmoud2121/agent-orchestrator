@@ -44,6 +44,8 @@
 	"chat.team.sandboxed": "已沙箱",
 	"chat.team.notSandboxed": "未沙箱",
 	"chat.team.notSandboxedHint": "此工作者在没有操作系统沙箱的情况下运行。",
+	"chat.team.modeOn": "团队：管理者可以把工作交给工作者",
+	"chat.team.modeOff": "团队关闭：管理者独自完成工作",
 	"chat.accountSwitched": "已切换到 {{email}}",
 	"chat.accountSwitchedDetail": "智能体因切换在此停止。按“继续”恢复此轮，或发送一条新消息。",
 	"chat.removeAllAnnotations": "Remove all annotations",
