@@ -7,6 +7,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/httpd/apierr"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
@@ -43,6 +44,9 @@ type Inventory struct {
 // Readiness is the normalized, daemon-owned readiness response.
 type Readiness struct {
 	Agents []domain.AgentReadinessSnapshot `json:"agents"`
+	// WorkerSandboxAvailable is whether this host can enforce Claude Code's OS
+	// sandbox. Native Windows is false. Never omit: false is the Windows value.
+	WorkerSandboxAvailable bool `json:"workerSandboxAvailable" description:"Whether this host can enforce Claude Code's OS sandbox for workers. Native Windows is false."`
 }
 
 // CachedReadiness returns the current in-memory snapshots without native work.
@@ -128,7 +132,7 @@ func (s *Service) WarmReadiness() <-chan struct{} { return s.readiness.Warm() }
 
 func (s *Service) withReadinessUsage(ctx context.Context, snapshots []domain.AgentReadinessSnapshot) (Readiness, error) {
 	if s.sessions == nil {
-		return Readiness{Agents: snapshots}, nil
+		return withWorkerSandboxAvailable(Readiness{Agents: snapshots}), nil
 	}
 	records, err := s.sessions.ListAllSessions(ctx)
 	if err != nil {
@@ -154,7 +158,12 @@ func (s *Service) withReadinessUsage(ctx context.Context, snapshots []domain.Age
 			snapshots[i].LastUsedAt = &lastUsedAt
 		}
 	}
-	return Readiness{Agents: snapshots}, nil
+	return withWorkerSandboxAvailable(Readiness{Agents: snapshots}), nil
+}
+
+func withWorkerSandboxAvailable(r Readiness) Readiness {
+	r.WorkerSandboxAvailable = claudecode.CheckSandboxAvailability() == nil
+	return r
 }
 
 // List is the legacy projection of the cached readiness snapshot. It never

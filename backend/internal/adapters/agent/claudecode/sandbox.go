@@ -24,21 +24,34 @@ import (
 // back to an unsandboxed worker.
 var ErrSandboxUnavailable = errors.New("claude-code worker sandbox unavailable")
 
+// ErrSandboxUnavailableWindows is the native-Windows form of
+// ErrSandboxUnavailable. Claude Code's OS sandbox does not run on Windows.
+var ErrSandboxUnavailableWindows = errors.New("claude-code worker sandbox does not run on Windows")
+
 // ErrSandboxClaudeTooOld is returned when the installed Claude Code binary is
 // older than the release that confines worktree sandbox writes to the shared
 // .git directory (hooks/ and config still denied). Widening allowWrite ourselves
 // would re-open those paths.
-var ErrSandboxClaudeTooOld = errors.New("claude-code worker sandbox requires Claude Code 2.1.149 or newer")
+var ErrSandboxClaudeTooOld = errors.New("claude-code worker sandbox requires Claude Code 2.1.268 or newer")
 
-// sandboxUnavailableMessage is the actionable error shown in the UI and logs.
-const sandboxUnavailableMessage = "Claude Code worker sandbox cannot be enforced on this system " +
+// SandboxUnavailableMessage is the actionable error shown in the UI and logs
+// when the OS sandbox cannot be enforced (missing bubblewrap or socat, or
+// Claude Code too old). Native Windows uses ErrSandboxUnavailableWindows
+// instead of this text.
+const SandboxUnavailableMessage = "Claude Code worker sandbox cannot be enforced on this system " +
 	"(needs macOS Seatbelt, or bubblewrap and socat on Linux/WSL2). " +
 	"Install bubblewrap and socat, or turn off the worker sandbox for this project."
 
-// minWorktreeSandboxVersion is Claude Code v2.1.149, which fixed linked-worktree
-// sandboxing so writes go only to the shared main-repo .git (with hooks/ and
-// config denied). See https://github.com/anthropics/claude-code/releases/tag/v2.1.149
-var minWorktreeSandboxVersion = [3]int{2, 1, 149}
+// minWorktreeSandboxVersion is Claude Code v2.1.268. v2.1.149 fixed
+// linked-worktree sandboxing so writes go only to the shared main-repo .git
+// (with hooks/ and config denied); see
+// https://github.com/anthropics/claude-code/releases/tag/v2.1.149. The
+// protected-file rules need v2.1.224, which stopped a trailing slash from
+// opening a denyRead folder, and v2.1.268, which applies Read deny rules at a
+// symlinked folder's real location
+// (https://code.claude.com/docs/en/settings-reference#sandbox-path-prefixes,
+// https://code.claude.com/docs/en/permissions).
+var minWorktreeSandboxVersion = [3]int{2, 1, 268}
 
 // sandboxAvailability caches the one-shot platform probe used at daemon start
 // and again at each worker launch.
@@ -104,7 +117,7 @@ func ForceSandboxReadyForTest() (restore func()) {
 	restoreAvail := OverrideSandboxAvailabilityForTest(func() error { return nil })
 	prevVersion := claudeVersionCommand
 	claudeVersionCommand = func(context.Context, string) ([]byte, error) {
-		return []byte("2.1.233 (Claude Code)\n"), nil
+		return []byte("2.1.308 (Claude Code)\n"), nil
 	}
 	return func() {
 		claudeVersionCommand = prevVersion
@@ -137,17 +150,37 @@ func probeSandboxAvailability(goos string) error {
 	case "linux":
 		if _, err := lookPath("bwrap"); err != nil {
 			if _, err2 := lookPath("bubblewrap"); err2 != nil {
-				return fmt.Errorf("%w: %s", ErrSandboxUnavailable, sandboxUnavailableMessage)
+				return fmt.Errorf("%w: %s", ErrSandboxUnavailable, SandboxUnavailableMessage)
 			}
 		}
 		if _, err := lookPath("socat"); err != nil {
-			return fmt.Errorf("%w: %s", ErrSandboxUnavailable, sandboxUnavailableMessage)
+			return fmt.Errorf("%w: %s", ErrSandboxUnavailable, SandboxUnavailableMessage)
 		}
 		return nil
 	default:
 		// Native Windows (and anything else) cannot enforce the sandbox.
-		return fmt.Errorf("%w: %s", ErrSandboxUnavailable, sandboxUnavailableMessage)
+		return WindowsSandboxUnavailableError()
 	}
+}
+
+// WindowsSandboxUnavailableError is the probe failure for native Windows.
+// Tests fake this with OverrideSandboxAvailabilityForTest.
+func WindowsSandboxUnavailableError() error {
+	return fmt.Errorf("%w: %w", ErrSandboxUnavailable, ErrSandboxUnavailableWindows)
+}
+
+// WorkerSandboxOSState reports whether this host can sandbox workers and the
+// 409 body to use when it cannot. available is true iff CheckSandboxAvailability
+// succeeds.
+func WorkerSandboxOSState() (available bool, message string) {
+	err := CheckSandboxAvailability()
+	if err == nil {
+		return true, ""
+	}
+	if errors.Is(err, ErrSandboxUnavailableWindows) {
+		return false, domain.WorkerSandboxRequiredWindowsMessage
+	}
+	return false, SandboxUnavailableMessage + " " + domain.WorkerSandboxRequiredSettingSentence
 }
 
 // resetSandboxAvailabilityForTest clears the availability cache between tests.
@@ -228,6 +261,7 @@ func buildWorkerSandboxSettings(
 	sandbox domain.WorkerSandboxConfig,
 ) (map[string]any, error) {
 	domains := append([]string(nil), sandbox.AllowedDomains...)
+	denyRead, readRules := readDenySettings(workerReadDenyPaths(sandbox), runtime.GOOS)
 
 	sandboxBlock := map[string]any{
 		"enabled":                  true,
@@ -250,6 +284,11 @@ func buildWorkerSandboxSettings(
 			// hosts outside the allowlist without a prompt.
 			"strictAllowlist": true,
 		},
+		// Shell commands may not read the protected files. The excluded ao CLI
+		// runs outside the sandbox, so it still reads the API token.
+		"filesystem": map[string]any{
+			"denyRead": denyRead,
+		},
 	}
 
 	// acceptEdits auto-approves Edit/Write only inside the working directory
@@ -267,14 +306,14 @@ func buildWorkerSandboxSettings(
 		// Deny wins over the ao allow rules. A worker can otherwise clear
 		// AO_SESSION_ID and run `ao project set-config` or `ao project trust`
 		// outside the sandbox, where the daemon would see no session header.
-		"deny": []string{
+		"deny": append([]string{
 			"Bash(ao project set-config)",
 			"Bash(ao project set-config *)",
 			"Bash(ao project set-config:*)",
 			"Bash(ao project trust)",
 			"Bash(ao project trust *)",
 			"Bash(ao project trust:*)",
-		},
+		}, readRules...),
 		"disableBypassPermissionsMode": "disable",
 	}
 	if flag := agentruntime.ClaudePermissionArgs(policy); len(flag) == 2 {

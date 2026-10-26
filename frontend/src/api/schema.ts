@@ -4179,6 +4179,8 @@ export interface components {
         };
         AgentReadinessResponse: {
             agents: components["schemas"]["AgentReadinessSnapshot"][];
+            /** @description Whether this host can enforce Claude Code's OS sandbox for workers. Native Windows is false. */
+            workerSandboxAvailable: boolean;
         };
         AgentReadinessSnapshot: {
             authentication: components["schemas"]["AgentAuthenticationObservation"];
@@ -5860,6 +5862,7 @@ export interface components {
             verifyCommand?: string[];
             verifyTimeoutSeconds?: number;
             worker?: components["schemas"]["RoleOverride"];
+            workerEnvKeep?: string[];
             workerSandbox?: components["schemas"]["WorkerSandboxConfig"];
             workersRequestReview?: boolean;
         };
@@ -7076,6 +7079,8 @@ export interface components {
         WorkerSandboxConfig: {
             allowedDomains?: string[];
             enabled?: null | boolean;
+            protectedPaths?: string[];
+            requireSandbox?: null | boolean;
         };
         WorkspaceCommitSummary: {
             author: string;

@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 )
 
 func TestMergeInheritsDaemonEnvironmentAndAppliesOverlay(t *testing.T) {
@@ -38,6 +40,25 @@ func TestMergeInheritsDaemonEnvironmentAndAppliesOverlay(t *testing.T) {
 	}
 	if len(want) != 0 {
 		t.Fatalf("missing environment values: %v", want)
+	}
+}
+
+func TestMergeWorkerOverlayDropsInheritedSecrets(t *testing.T) {
+	environ := []string{"HOME=/h", "FAKE_SERVICE_TOKEN=CANARY", "OPENAI_API_KEY=sk", "PROJECT_TOKEN=inherited"}
+	worker := merge(environ, map[string]string{
+		domain.WorkerEnvKeepVar: "OPENAI_API_KEY,CODEX_*",
+		"PROJECT_TOKEN":         "chosen",
+	}, false)
+	for _, entry := range worker {
+		if strings.Contains(entry, "CANARY") || entry == "PROJECT_TOKEN=inherited" {
+			t.Fatalf("worker env leaked %q: %v", entry, worker)
+		}
+	}
+	if !slices.Contains(worker, "OPENAI_API_KEY=sk") || !slices.Contains(worker, "PROJECT_TOKEN=chosen") || !slices.Contains(worker, "HOME=/h") {
+		t.Fatalf("worker env lost a kept variable: %v", worker)
+	}
+	if manager := merge(environ, map[string]string{"AO_SESSION_ID": "m"}, false); !slices.Contains(manager, "FAKE_SERVICE_TOKEN=CANARY") {
+		t.Fatalf("non-worker env must stay whole: %v", manager)
 	}
 }
 

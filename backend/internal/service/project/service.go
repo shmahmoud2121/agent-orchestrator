@@ -735,6 +735,9 @@ func (m *Service) UpdateSettings(ctx context.Context, id domain.ProjectID, in Up
 	if err := m.authorizeCaller(ctx, id, in.CallerSessionID, sensitiveConfigChange(row.Config, in.Config)); err != nil {
 		return Project{}, err
 	}
+	if err := validateProtectedPathsForProject(row.Path, in.Config); err != nil {
+		return Project{}, err
+	}
 	if utf8.RuneCountInString(inDisplayName) > maxDisplayNameLen && inDisplayName != strings.TrimSpace(projectDisplayName(row)) {
 		return Project{}, apierr.Invalid("DISPLAY_NAME_TOO_LONG", fmt.Sprintf("Display name must be %d characters or fewer", maxDisplayNameLen), nil)
 	}
@@ -787,6 +790,9 @@ func (m *Service) SetConfig(ctx context.Context, id domain.ProjectID, in SetConf
 	if err := m.authorizeCaller(ctx, id, in.CallerSessionID, sensitiveConfigChange(row.Config, in.Config)); err != nil {
 		return Project{}, err
 	}
+	if err := validateProtectedPathsForProject(row.Path, in.Config); err != nil {
+		return Project{}, err
+	}
 	if row.Kind.WithDefault() == domain.ProjectKindScratch {
 		if err := validateScratchProjectConfig(in.Config); err != nil {
 			return Project{}, apierr.Invalid("INVALID_PROJECT_CONFIG", err.Error(), nil)
@@ -802,6 +808,16 @@ func (m *Service) SetConfig(ctx context.Context, id domain.ProjectID, in SetConf
 	}
 	m.modelScopeChanged(row.ID)
 	return m.projectFromRow(ctx, row), nil
+}
+
+// validateProtectedPathsForProject refuses absolute and home protected paths
+// that would cover this project's .git folder, which workers need.
+func validateProtectedPathsForProject(projectPath string, cfg domain.ProjectConfig) error {
+	home, _ := os.UserHomeDir()
+	if err := cfg.WorkerSandbox.ValidateForProject(projectPath, home); err != nil {
+		return apierr.Invalid("INVALID_PROJECT_CONFIG", err.Error(), nil)
+	}
+	return nil
 }
 
 func validateScratchProjectConfig(cfg domain.ProjectConfig) error {

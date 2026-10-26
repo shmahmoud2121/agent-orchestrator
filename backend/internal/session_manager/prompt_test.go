@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 )
 
@@ -499,5 +500,52 @@ func TestOrchestratorSystemPromptTeamMode(t *testing.T) {
 	const heading = "## Operating Rules\n\n"
 	if want := strings.Replace(unset, heading, heading+sentence+"\n\n", 1); got != want {
 		t.Fatalf("team mode off prompt differs from the current prompt plus the sentence")
+	}
+}
+
+func TestOrchestratorSystemPromptRequireSandbox(t *testing.T) {
+	const sentence = "This project only runs sandboxed workers: start them with `ao spawn --agent claude-code`. Do not start workers on other AIs unless the person turns that setting off."
+	required := orchestratorSystemPrompt(promptProjectContext("mer", domain.ProjectRecord{ID: "mer", DisplayName: "Mercury"}))
+	if !strings.Contains(required, sentence) {
+		t.Fatalf("default require-sandbox prompt missing %q", sentence)
+	}
+	if strings.Contains(required, requireSandboxUnavailablePrompt) {
+		t.Fatal("a host that can sandbox must not tell the manager workers cannot start")
+	}
+	off := false
+	allowed := orchestratorSystemPrompt(promptProjectContext("mer", domain.ProjectRecord{ID: "mer", DisplayName: "Mercury",
+		Config: domain.ProjectConfig{WorkerSandbox: domain.WorkerSandboxConfig{RequireSandbox: &off}}}))
+	if strings.Contains(allowed, sentence) {
+		t.Fatal("a project that allows unsandboxed workers must not tell the manager to spawn only Claude Code")
+	}
+}
+
+func TestOrchestratorSystemPromptRequireSandboxHostUnavailable(t *testing.T) {
+	restore := claudecode.OverrideSandboxAvailabilityForTest(func() error {
+		return claudecode.WindowsSandboxUnavailableError()
+	})
+	t.Cleanup(restore)
+
+	const sentence = `Workers can't start on this computer while "Only allow sandboxed workers" is on. Do the task yourself, or ask the person to turn that setting off.`
+	got := orchestratorSystemPrompt(promptProjectContext("mer", domain.ProjectRecord{ID: "mer", DisplayName: "Mercury"}))
+	if !strings.Contains(got, sentence) {
+		t.Fatalf("host-unavailable prompt missing %q", sentence)
+	}
+	if strings.Contains(got, "start them with `ao spawn --agent claude-code`") {
+		t.Fatal("a host that cannot sandbox must not tell the manager to start workers with Claude Code")
+	}
+}
+
+func TestOrchestratorSystemPromptProtectedFiles(t *testing.T) {
+	const sentence = "If you notice a file with passwords, keys or private data that workers should not read, add it to the project's protected files with `ao project set-config mer --add-protected-path <path>`; you can add protected files but never remove them."
+	sandboxed := orchestratorSystemPrompt(promptProjectContext("mer", domain.ProjectRecord{ID: "mer", DisplayName: "Mercury"}))
+	if !strings.Contains(sandboxed, sentence) {
+		t.Fatalf("default worker sandbox prompt missing %q", sentence)
+	}
+	off := false
+	unsandboxed := orchestratorSystemPrompt(promptProjectContext("mer", domain.ProjectRecord{ID: "mer", DisplayName: "Mercury",
+		Config: domain.ProjectConfig{WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &off}}}))
+	if strings.Contains(unsandboxed, "--add-protected-path") {
+		t.Fatal("a project without a worker sandbox has no protected files to add")
 	}
 }

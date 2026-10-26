@@ -12,6 +12,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 type projectAddOptions struct {
@@ -162,6 +163,9 @@ type projectSetConfigOptions struct {
 	configJSON        string
 	clear             bool
 	json              bool
+	// addProtectedPaths edits only workerSandbox.protectedPaths, keeping every
+	// other stored setting, so the manager can protect a file safely.
+	addProtectedPaths []string
 }
 
 type projectListResult struct {
@@ -319,19 +323,28 @@ func newProjectSetConfigCommand(ctx *commandContext) *cobra.Command {
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := strings.TrimSpace(args[0])
-			config, err := buildProjectConfig(opts)
-			if err != nil {
-				return err
-			}
-			req := setConfigRequest{Config: config}
 			var res projectResult
-			if err := ctx.putJSON(cmd.Context(), "projects/"+url.PathEscape(id)+"/config", req, &res); err != nil {
-				return err
+			if len(opts.addProtectedPaths) > 0 {
+				if err := onlyFlagsChanged(cmd, "add-protected-path", "json"); err != nil {
+					return err
+				}
+				if err := addProtectedPaths(cmd, ctx, id, opts.addProtectedPaths, &res); err != nil {
+					return err
+				}
+			} else {
+				config, err := buildProjectConfig(opts)
+				if err != nil {
+					return err
+				}
+				req := setConfigRequest{Config: config}
+				if err := ctx.putJSON(cmd.Context(), "projects/"+url.PathEscape(id)+"/config", req, &res); err != nil {
+					return err
+				}
 			}
 			if opts.json {
 				return writeJSON(cmd.OutOrStdout(), res)
 			}
-			_, err = fmt.Fprintf(cmd.OutOrStdout(), "updated config for project %s\n", res.Project.ID)
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "updated config for project %s\n", res.Project.ID)
 			return err
 		},
 	}
@@ -356,7 +369,67 @@ func newProjectSetConfigCommand(ctx *commandContext) *cobra.Command {
 	f.StringVar(&opts.configJSON, "config-json", "", "Full config as a JSON object (overrides field flags)")
 	f.BoolVar(&opts.clear, "clear", false, "Clear all config")
 	f.BoolVar(&opts.json, "json", false, "Output the updated project as JSON")
+	f.StringArrayVar(&opts.addProtectedPaths, "add-protected-path", nil, "Add a file workers may not read (project-relative, ~/, or absolute; repeatable). Keeps all other settings; cannot be combined with other config flags")
 	return cmd
+}
+
+// onlyFlagsChanged refuses any changed flag outside allowed.
+func onlyFlagsChanged(cmd *cobra.Command, allowed ...string) error {
+	var other []string
+	cmd.Flags().Visit(func(flag *pflag.Flag) {
+		for _, name := range allowed {
+			if flag.Name == name {
+				return
+			}
+		}
+		other = append(other, "--"+flag.Name)
+	})
+	if len(other) > 0 {
+		return usageError{fmt.Errorf("--add-protected-path cannot be combined with %s", strings.Join(other, ", "))}
+	}
+	return nil
+}
+
+// addProtectedPaths appends entries to the stored workerSandbox.protectedPaths
+// and writes the config back. It edits the raw stored JSON rather than the
+// projectConfig mirror so settings the mirror does not model survive.
+func addProtectedPaths(cmd *cobra.Command, ctx *commandContext, id string, paths []string, res *projectResult) error {
+	var current struct {
+		Project struct {
+			Config map[string]any `json:"config"`
+		} `json:"project"`
+	}
+	if err := ctx.getJSON(cmd.Context(), "projects/"+url.PathEscape(id), &current); err != nil {
+		return err
+	}
+	config := current.Project.Config
+	if config == nil {
+		config = map[string]any{}
+	}
+	sandbox, _ := config["workerSandbox"].(map[string]any)
+	if sandbox == nil {
+		sandbox = map[string]any{}
+	}
+	existing, _ := sandbox["protectedPaths"].([]any)
+	have := make(map[string]bool, len(existing))
+	for _, entry := range existing {
+		if s, ok := entry.(string); ok {
+			have[s] = true
+		}
+	}
+	for _, raw := range paths {
+		entry := strings.TrimSpace(raw)
+		if entry == "" {
+			return usageError{errors.New("--add-protected-path must not be empty")}
+		}
+		if !have[entry] {
+			existing = append(existing, entry)
+			have[entry] = true
+		}
+	}
+	sandbox["protectedPaths"] = existing
+	config["workerSandbox"] = sandbox
+	return ctx.putJSON(cmd.Context(), "projects/"+url.PathEscape(id)+"/config", map[string]any{"config": config}, res)
 }
 
 // buildProjectConfig turns the set-config flags into the typed config sent to

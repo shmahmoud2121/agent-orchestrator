@@ -842,7 +842,7 @@ func newTransitionManager(t *testing.T, mode domain.SessionMode) (*Manager, *tra
 	// sandbox tests cover Claude chat ACP settings separately.
 	sandboxOff := false
 	store.projects["proj"] = domain.ProjectRecord{ID: "proj", Path: "/repo", Config: domain.ProjectConfig{
-		WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &sandboxOff},
+		WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &sandboxOff, RequireSandbox: &sandboxOff},
 	}}
 	metadata := domain.SessionMetadata{
 		WorkspacePath: "/ws/session-1", Branch: "ao/session-1", AgentSessionID: "native-1",
@@ -1524,7 +1524,7 @@ func TestInterfaceTransitionProviderHistoryRecoverySurvivesDaemonRestart(t *test
 	sandboxOff := false
 	if err := beforeRestart.UpsertProject(ctx, domain.ProjectRecord{
 		ID: "proj", Path: "/repo", RegisteredAt: now,
-		Config: domain.ProjectConfig{WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &sandboxOff}},
+		Config: domain.ProjectConfig{WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &sandboxOff, RequireSandbox: &sandboxOff}},
 	}); err != nil {
 		t.Fatalf("seed project: %v", err)
 	}
@@ -3175,7 +3175,7 @@ func TestRecoverInterruptedClaudeTUIToChatPreservesPoisonedCheckpointThroughResu
 	sandboxOff := false
 	if err := st.UpsertProject(ctx, domain.ProjectRecord{
 		ID: "proj", Path: "/repo", RegisteredAt: now,
-		Config: domain.ProjectConfig{WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &sandboxOff}},
+		Config: domain.ProjectConfig{WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &sandboxOff, RequireSandbox: &sandboxOff}},
 	}); err != nil {
 		t.Fatalf("seed project: %v", err)
 	}

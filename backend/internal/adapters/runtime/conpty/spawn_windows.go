@@ -16,6 +16,8 @@ import (
 	"time"
 
 	"golang.org/x/sys/windows"
+
+	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 )
 
 // boundedBuffer is a thread-safe io.Writer that retains up to max bytes of what
@@ -70,7 +72,9 @@ func defaultSpawnHost(ctx context.Context, sessionID, cwd string, argv []string,
 	}
 
 	// Merge and normalize the environment for an interactive true-color PTY.
-	merged := interactiveTerminalEnv(os.Environ(), env, envAssignments)
+	// A worker launch first drops inherited secrets; Windows names ignore case.
+	base, _ := domain.FilterWorkerEnv(os.Environ(), env, true)
+	merged := interactiveTerminalEnv(base, env, envAssignments)
 
 	cmd := exec.CommandContext(ctx, exe, args...) //nolint:forbidigo // detached ConPTY host requires specialized creation flags
 	cmd.Dir = cwd

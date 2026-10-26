@@ -14,6 +14,8 @@ export type SettingsOption<T extends string> = {
 	label: string;
 	icon?: ReactNode;
 	disabled?: boolean;
+	/** Native tooltip, used for why a disabled option cannot be chosen. */
+	title?: string;
 	/** Heading for a run of consecutive options; shown above the first of each run. */
 	group?: string;
 };
@@ -154,6 +156,7 @@ export function SettingsOptionMenu<T extends string>({
 							{option.group && option.group !== visibleOptions[index - 1]?.group ? <DropdownMenuLabel>{option.group}</DropdownMenuLabel> : null}
 							<DropdownMenuItem
 								disabled={option.disabled}
+								title={option.title}
 								onSelect={() => onChange(option.value)}
 								onFocus={onHighlight ? () => onHighlight(option.value) : undefined}
 								className={cn(

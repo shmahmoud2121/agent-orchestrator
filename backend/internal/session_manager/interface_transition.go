@@ -552,6 +552,7 @@ func (m *Manager) runInterfaceTransition(
 			}
 			env := m.runtimeEnv(rec.ID, rec.ProjectID, rec.IssueID, project.Config.Env)
 			m.augmentAgentRuntimeEnv(bridge, env)
+			markWorkerEnv(env, rec.Kind, rec.Harness, project.Config)
 			if bridgeErr := storageBridge.PrepareInterfaceHandoffStorage(ctx, ports.SessionRef{
 				ID: string(rec.ID), WorkspacePath: rec.Metadata.WorkspacePath,
 				Metadata: map[string]string{ports.MetadataKeyAgentSessionID: transition.NativeConversationID},
@@ -844,6 +845,7 @@ func (m *Manager) persistedNativeConversationID(
 		return "", err
 	}
 	env := m.runtimeEnv(rec.ID, rec.ProjectID, rec.IssueID, project.Config.Env)
+	markWorkerEnv(env, rec.Kind, rec.Harness, project.Config)
 	exists, err := probe.NativeConversationExists(ctx, ports.SessionRef{
 		ID:            string(rec.ID),
 		WorkspacePath: rec.Metadata.WorkspacePath,
@@ -878,6 +880,9 @@ func (m *Manager) preflightInterfaceTarget(
 		if err != nil {
 			return err
 		}
+		if err := refuseUnsandboxedWorkerForProject(project, rec.Kind, rec.Harness, false); err != nil {
+			return err
+		}
 		permissions := effectiveAgentConfig(rec.Harness, rec.Kind, project.Config).Permissions
 		return m.chat.PreflightChat(ctx, rec.Harness, permissions)
 	}
@@ -889,11 +894,15 @@ func (m *Manager) preflightInterfaceTarget(
 	if err != nil {
 		return err
 	}
+	if err := refuseUnsandboxedWorkerForProject(project, rec.Kind, rec.Harness, false); err != nil {
+		return err
+	}
 	config := restoredAgentConfig(rec, project.Config)
 	config.Permissions = domain.WorkerLaunchPermission(rec.Kind, config.Permissions)
 	env := m.runtimeEnv(rec.ID, rec.ProjectID, rec.IssueID, project.Config.Env)
 	pinRuntimePermissionEnv(env, config.Permissions)
 	m.augmentAgentRuntimeEnv(agent, env)
+	markWorkerEnv(env, rec.Kind, rec.Harness, project.Config)
 	if err := m.preflightLaunchAuth(ctx, agent, rec, env); err != nil {
 		return err
 	}
@@ -934,7 +943,7 @@ func (m *Manager) preflightTerminalLaunch(
 	}
 	config := restoredAgentConfig(rec, project.Config)
 	config.Permissions = domain.WorkerLaunchPermission(rec.Kind, config.Permissions)
-	workerSandbox := workerSandboxLaunchFields(rec.Kind, project.Config)
+	workerSandbox := m.workerSandboxLaunchFields(rec.Kind, project, rec.Metadata.WorkspacePath)
 	var cmd []string
 	if nativeConversationID == "" {
 		cmd, _, _, err = freshLaunchArgv(ctx, agent, rec.ID, rec.Metadata.WorkspacePath,

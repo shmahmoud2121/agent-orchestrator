@@ -21,6 +21,7 @@ import (
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/modelcatalog"
 	"github.com/aoagents/agent-orchestrator/backend/internal/agentlaunch"
+	"github.com/aoagents/agent-orchestrator/backend/internal/apitoken"
 	"github.com/aoagents/agent-orchestrator/backend/internal/attachmentstore"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
@@ -1005,6 +1006,16 @@ func (m *Manager) Spawn(ctx context.Context, cfg ports.SpawnConfig) (domain.Sess
 	if cfg.Harness == "" {
 		return domain.SessionRecord{}, 0, 0, fmt.Errorf("spawn: %w: configure project %s.agent or pass --harness", ErrMissingHarness, roleConfigName(cfg.Kind))
 	}
+	// Reject an unknown harness before any durable state is created. Doing this
+	// after CreateSession would leave a terminated orphan row and waste a
+	// worktree on a spawn that can never launch. Name this before the sandbox
+	// gate so a retired or unknown agent is not reported as WORKER_SANDBOX_REQUIRED.
+	if _, ok := m.agents.Agent(cfg.Harness); !ok {
+		return domain.SessionRecord{}, 0, 0, fmt.Errorf("spawn: %w", unavailableHarnessError(cfg.Harness))
+	}
+	if err := refuseUnsandboxedWorkerForProject(project, cfg.Kind, cfg.Harness, false); err != nil {
+		return domain.SessionRecord{}, 0, 0, fmt.Errorf("spawn: %w", err)
+	}
 	releaseHarness, err := m.beginHarnessUse(cfg.Harness)
 	if err != nil {
 		return domain.SessionRecord{}, 0, 0, fmt.Errorf("spawn: %w", err)
@@ -1014,12 +1025,6 @@ func (m *Manager) Spawn(ctx context.Context, cfg ports.SpawnConfig) (domain.Sess
 			releaseHarness()
 		}
 	}()
-	// Reject an unknown harness before any durable state is created. Doing this
-	// after CreateSession would leave a terminated orphan row and waste a
-	// worktree on a spawn that can never launch.
-	if _, ok := m.agents.Agent(cfg.Harness); !ok {
-		return domain.SessionRecord{}, 0, 0, fmt.Errorf("spawn: %w", unavailableHarnessError(cfg.Harness))
-	}
 	// Unreal Agent has no terminal interface or interactive approval channel.
 	// Selecting the harness therefore supplies its only valid launch defaults;
 	// an explicit caller-supplied mode or permission remains authoritative and
@@ -1445,6 +1450,7 @@ func (m *Manager) Spawn(ctx context.Context, cfg ports.SpawnConfig) (domain.Sess
 		}
 	}
 	m.augmentAgentRuntimeEnv(agent, env)
+	markWorkerEnv(env, cfg.Kind, cfg.Harness, project.Config)
 	m.clampWorkerLaunchPermission(cfg.Kind, id, &adapterConfig.Permissions)
 	pinRuntimePermissionEnv(env, adapterConfig.Permissions)
 	if validator, ok := agent.(ports.AgentLaunchAuthValidator); ok {
@@ -1461,7 +1467,7 @@ func (m *Manager) Spawn(ctx context.Context, cfg ports.SpawnConfig) (domain.Sess
 		m.rollbackSeedSpawnWorkspace(ctx, rec, ws, workspaceProject, false, false)
 		return domain.SessionRecord{}, 0, 0, wrapSpawnStage(id, ErrSpawnPrepare, err)
 	}
-	workerSandbox := workerSandboxLaunchFields(cfg.Kind, project.Config)
+	workerSandbox := m.workerSandboxLaunchFields(cfg.Kind, project, ws.Path)
 	launchCfg := ports.LaunchConfig{
 		DataDir:          m.dataDir,
 		SessionID:        string(id),
@@ -2989,6 +2995,9 @@ func (m *Manager) RestoreWithMode(ctx context.Context, id domain.SessionID) (Res
 	if err != nil {
 		return RestoreResult{}, fmt.Errorf("restore %s: %w", id, err)
 	}
+	if err := refuseUnsandboxedWorkerForProject(project, rec.Kind, rec.Harness, true); err != nil {
+		return RestoreResult{}, fmt.Errorf("restore %s: %w", id, err)
+	}
 	// Mirror Kill's incomplete-handle guard: a session whose spawn failed before
 	// the workspace landed has neither WorkspacePath nor Branch, and there is
 	// nothing meaningful to restore from. Surface this as a typed 409 instead of
@@ -3537,6 +3546,7 @@ func (m *Manager) relaunchSessionWithPolicyAndGeneration(ctx context.Context, op
 		}
 	}
 	m.augmentAgentRuntimeEnv(agent, env)
+	markWorkerEnv(env, rec.Kind, rec.Harness, project.Config)
 	m.clampWorkerLaunchPermission(rec.Kind, rec.ID, &agentConfig.Permissions)
 	pinRuntimePermissionEnv(env, agentConfig.Permissions)
 	if validator, ok := agent.(ports.AgentLaunchAuthValidator); ok {
@@ -3562,7 +3572,7 @@ func (m *Manager) relaunchSessionWithPolicyAndGeneration(ctx context.Context, op
 			}
 		}
 	}
-	workerSandbox := workerSandboxLaunchFields(rec.Kind, project.Config)
+	workerSandbox := m.workerSandboxLaunchFields(rec.Kind, project, ws.Path)
 	var argv []string
 	var initialization ports.NativeRestoreInitialization
 	var delivery ports.PromptDeliveryStrategy
@@ -5668,6 +5678,7 @@ func promptProjectContext(projectID domain.ProjectID, project domain.ProjectReco
 
 		WorkersRequestReview: cfg.WorkersRequestReview,
 		TeamMode:             cfg.TeamMode,
+		WorkerSandbox:        cfg.WorkerSandbox,
 	}
 }
 
@@ -6212,6 +6223,22 @@ func pinRuntimePermissionEnv(env map[string]string, mode domain.PermissionMode) 
 		return
 	}
 	env[EnvPermissionMode] = string(ports.NormalizePermissionMode(mode))
+}
+
+// markWorkerEnv makes every launch path drop inherited secret-looking daemon
+// variables from a worker's environment (domain.FilterWorkerEnv), keeping the
+// harness's login, the project env and workerEnvKeep. Other kinds stay
+// unmarked: the manager and the person's terminals keep the full environment.
+func markWorkerEnv(env map[string]string, kind domain.SessionKind, harness domain.AgentHarness, cfg domain.ProjectConfig) {
+	if env == nil || kind != domain.KindWorker {
+		return
+	}
+	env[domain.WorkerEnvKeepVar] = domain.WorkerEnvKeepList(harness, cfg, func(name string) string {
+		if value, ok := env[name]; ok {
+			return value
+		}
+		return os.Getenv(name)
+	})
 }
 
 func (m *Manager) launchRuntimeEnv(id domain.SessionID, project domain.ProjectID, issue domain.IssueID, projectEnv map[string]string) (map[string]string, string, error) {
@@ -7115,10 +7142,22 @@ func firstNonEmptyString(values ...string) string {
 }
 
 // workerSandboxLaunchFields returns the project sandbox policy for worker
-// launches. Non-workers get a zero policy so adapters leave them unsandboxed.
-func workerSandboxLaunchFields(kind domain.SessionKind, cfg domain.ProjectConfig) domain.WorkerSandboxConfig {
+// launches, with the paths its protected-file rules are built from. Every
+// launch and restore calls it, so the rules always match the current paths.
+// Non-workers get a zero policy so adapters leave them unsandboxed.
+func (m *Manager) workerSandboxLaunchFields(kind domain.SessionKind, project domain.ProjectRecord, workspacePath string) domain.WorkerSandboxConfig {
 	if kind != domain.KindWorker {
 		return domain.WorkerSandboxConfig{}
 	}
-	return cfg.WorkerSandbox
+	sandbox := project.Config.WorkerSandbox
+	home, _ := os.UserHomeDir()
+	sandbox.Launch = domain.WorkerSandboxLaunch{
+		ProjectPath:   project.Path,
+		WorkspacePath: workspacePath,
+		HomeDir:       home,
+	}
+	if m.dataDir != "" {
+		sandbox.Launch.APITokenPath = apitoken.Path(m.dataDir)
+	}
+	return sandbox
 }

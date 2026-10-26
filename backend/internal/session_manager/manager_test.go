@@ -89,6 +89,12 @@ func (f *fakeStore) GetProject(_ context.Context, id string) (domain.ProjectReco
 		return domain.ProjectRecord{}, false, f.getProjectErr
 	}
 	r, ok := f.projects[id]
+	if ok && r.Config.WorkerSandbox.RequireSandbox == nil {
+		// Production nil means on. Fixtures that are not about that gate opt
+		// out so Codex/FX workers keep covering their own behavior.
+		off := false
+		r.Config.WorkerSandbox.RequireSandbox = &off
+	}
 	return r, ok, nil
 }
 func (f *fakeStore) ListWorkspaceRepos(_ context.Context, projectID string) ([]domain.WorkspaceRepoRecord, error) {
@@ -1667,7 +1673,7 @@ func testRoleAgents() domain.ProjectConfig {
 	return domain.ProjectConfig{
 		Worker:        domain.RoleOverride{Harness: domain.HarnessClaudeCode},
 		Orchestrator:  domain.RoleOverride{Harness: domain.HarnessClaudeCode},
-		WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &sandboxOff},
+		WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &sandboxOff, RequireSandbox: &sandboxOff},
 	}
 }
 
@@ -1817,6 +1823,30 @@ func TestSpawn_IgnoresNonOrchestratorParent(t *testing.T) {
 	}
 	if got := rt.lastCfg.Env[EnvPermissionMode]; got != string(domain.PermissionModeAuto) {
 		t.Fatalf("worker permission environment = %q, want project default %q", got, domain.PermissionModeAuto)
+	}
+}
+
+func TestSpawn_MarksOnlyWorkerEnvForSecretFiltering(t *testing.T) {
+	m, st, rt, _ := newManager()
+	cfg := st.projects["mer"]
+	cfg.Config.Env = map[string]string{"PROJECT_TOKEN": "chosen"}
+	cfg.Config.WorkerEnvKeep = []string{"NPM_TOKEN"}
+	st.projects["mer"] = cfg
+	if _, _, _, err := m.Spawn(ctx, ports.SpawnConfig{ProjectID: "mer", Kind: domain.KindWorker}); err != nil {
+		t.Fatal(err)
+	}
+	keep, ok := rt.lastCfg.Env[domain.WorkerEnvKeepVar]
+	if !ok || !strings.Contains(keep, "ANTHROPIC_API_KEY") {
+		t.Fatalf("worker launch env %s = %q, want the Claude Code login kept", domain.WorkerEnvKeepVar, keep)
+	}
+	if !strings.Contains(keep, "PROJECT_TOKEN") || !strings.Contains(keep, "NPM_TOKEN") {
+		t.Fatalf("worker keep list %q must include the project --env and workerEnvKeep entries", keep)
+	}
+	if _, _, _, err := m.Spawn(ctx, ports.SpawnConfig{ProjectID: "mer", Kind: domain.KindOrchestrator}); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := rt.lastCfg.Env[domain.WorkerEnvKeepVar]; ok {
+		t.Fatal("the manager keeps the daemon environment; its launch must not be marked")
 	}
 }
 

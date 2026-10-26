@@ -165,6 +165,7 @@ const agentCatalogResponse = {
 			agentReadiness("opencode", "OpenCode"),
 			agentReadiness("pi", "Pi"),
 		],
+		workerSandboxAvailable: true,
 	},
 	error: undefined,
 };
@@ -263,6 +264,7 @@ describe("ProjectSettingsForm", () => {
 					agentReadiness("cursor", "Cursor"),
 					agentReadiness("opencode", "OpenCode"),
 				],
+				workerSandboxAvailable: true,
 			},
 			error: undefined,
 		});
@@ -590,6 +592,31 @@ describe("ProjectSettingsForm", () => {
 		});
 	});
 
+	it("adds and removes protected files and keeps the built-in list collapsed", async () => {
+		mockProject({
+			id: "proj-1", name: "Project One", kind: "single_repo", path: "/repo/project-one",
+			repo: "", defaultBranch: "main", config: {
+				worker: { agent: "claude-code" },
+				orchestrator: { agent: "claude-code" },
+				workerSandbox: { protectedPaths: ["config/prod.yml"] },
+			},
+		});
+		renderSettings("proj-1", undefined, "agents");
+		expect(await screen.findByText("Protected files")).toBeInTheDocument();
+		expect(screen.getByText("Workers can't read these files.")).toBeInTheDocument();
+		const builtin = screen.getByRole("button", { name: "Always protected" });
+		expect(builtin).toHaveAttribute("aria-expanded", "false");
+		expect(screen.queryByText("In your home folder")).not.toBeInTheDocument();
+		await userEvent.click(builtin);
+		expect(screen.getByText("In your home folder")).toBeInTheDocument();
+		expect(screen.getByText(/~\/\.ssh/)).toBeInTheDocument();
+
+		await userEvent.type(screen.getByRole("textbox", { name: "File or folder to protect" }), "exports/{Enter}");
+		await userEvent.click(screen.getByRole("button", { name: "Remove config/prod.yml" }));
+		submitSettings();
+		await waitFor(() => expect(putMock.mock.calls.at(-1)?.[1].body.config.workerSandbox).toEqual({ enabled: true, protectedPaths: ["exports/"] }));
+	});
+
 	it("shows not sandboxed for non-Claude Code workers", async () => {
 		mockProject({
 			id: "proj-1", name: "Project One", kind: "single_repo", path: "/repo/project-one",
@@ -601,6 +628,65 @@ describe("ProjectSettingsForm", () => {
 		renderSettings("proj-1", undefined, "agents");
 		expect(await screen.findByText("Not sandboxed")).toBeInTheDocument();
 		expect(screen.queryByRole("switch", { name: "Worker OS sandbox" })).not.toBeInTheDocument();
+	});
+
+	it("persists turning off required sandbox with a warning", async () => {
+		mockProject({
+			id: "proj-1", name: "Project One", kind: "single_repo", path: "/repo/project-one",
+			repo: "", defaultBranch: "main", config: {
+				worker: { agent: "claude-code" },
+				orchestrator: { agent: "claude-code" },
+			},
+		});
+		renderSettings("proj-1", undefined, "agents");
+		const toggle = await screen.findByRole("switch", { name: "Only allow sandboxed workers" });
+		expect(toggle).toBeChecked();
+		await userEvent.click(toggle);
+		expect(toggle).not.toBeChecked();
+		expect(screen.getByText("Workers on other AIs can read any file and reach the internet.")).toBeInTheDocument();
+		submitSettings();
+		await waitFor(() => expect(putMock).toHaveBeenCalledTimes(1));
+		expect(putMock.mock.calls[0][1].body.config.workerSandbox).toEqual({ enabled: true, requireSandbox: false });
+	});
+
+	it("disables non-Claude worker harnesses while sandboxed workers are required", async () => {
+		mockProject({
+			id: "proj-1", name: "Project One", kind: "single_repo", path: "/repo/project-one",
+			repo: "", defaultBranch: "main", config: {
+				worker: { agent: "claude-code" },
+				orchestrator: { agent: "claude-code" },
+			},
+		});
+		renderSettings("proj-1", undefined, "agents");
+		await userEvent.click(await screen.findByRole("button", { name: "Worker agent" }));
+		const codex = await screen.findByRole("menuitem", { name: /codex/i });
+		expect(codex).toHaveAttribute("aria-disabled", "true");
+		expect(codex).toHaveAttribute("title", "This project only runs sandboxed workers. Use Claude Code, or ask the person to allow unsandboxed workers in project settings.");
+	});
+
+	it("disables Claude Code and notes that this computer cannot sandbox", async () => {
+		mockProject(
+			{
+				id: "proj-1", name: "Project One", kind: "single_repo", path: "/repo/project-one",
+				repo: "", defaultBranch: "main", config: {
+					worker: { agent: "claude-code" },
+					orchestrator: { agent: "claude-code" },
+				},
+			},
+			{
+				data: { ...agentCatalogResponse.data, workerSandboxAvailable: false },
+				error: undefined,
+			},
+		);
+		renderSettings("proj-1", undefined, "agents");
+		expect(await screen.findByText("This computer can't sandbox workers, so no worker will start while this is on.")).toBeInTheDocument();
+		await userEvent.click(await screen.findByRole("button", { name: "Worker agent" }));
+		const claude = await screen.findByRole("menuitem", { name: /Claude Code/ });
+		expect(claude).toHaveAttribute("aria-disabled", "true");
+		expect(claude).toHaveAttribute(
+			"title",
+			'This computer can\'t sandbox workers: Claude Code\'s sandbox does not run on Windows. To use workers in this project, the person can turn off "Only allow sandboxed workers" in project settings. Workers will then be able to read any file and reach the internet.',
+		);
 	});
 
 	it("persists turning the worker sandbox off as unsafe", async () => {
@@ -696,6 +782,7 @@ describe("ProjectSettingsForm", () => {
 					agent: "codex",
 					agentConfig: { model: "worker-model" },
 				},
+				workerSandbox: { requireSandbox: false },
 				orchestrator: { agent: "claude-code" },
 				agentConfig: {
 					model: "claude-opus-4-5",
@@ -1654,6 +1741,7 @@ describe("ProjectSettingsForm", () => {
 			config: {
 				worker: { agent: "codex" },
 				orchestrator: { agent: "claude-code" },
+				workerSandbox: { requireSandbox: false },
 			},
 		});
 

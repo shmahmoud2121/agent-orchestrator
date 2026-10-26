@@ -22,6 +22,11 @@ type callerChange struct {
 	sandbox     bool
 	trust       bool
 	teamMode    bool
+	// protectedRemoved drops a protected file. Orchestrators may add protected
+	// files, which only narrows what workers read, but never remove one.
+	protectedRemoved bool
+	// envKeep changes which secret-looking variables workers inherit.
+	envKeep bool
 	// anyWrite is a project config write. Workers are refused even when the
 	// sensitive fields above are unchanged. Orchestrators may change the rest.
 	anyWrite bool
@@ -44,8 +49,11 @@ func (m *Service) authorizeCaller(ctx context.Context, projectID domain.ProjectI
 	case domain.KindWorker:
 		return apierr.Forbidden("PROJECT_SETTINGS_FORBIDDEN", workerSettingsRefusal(change))
 	case domain.KindOrchestrator:
-		if change.permissions || change.sandbox || change.trust || change.teamMode {
+		if change.permissions || change.sandbox || change.trust || change.teamMode || change.envKeep {
 			return apierr.Forbidden("PROJECT_SETTINGS_FORBIDDEN", orchestratorSettingsRefusal(change))
+		}
+		if change.protectedRemoved {
+			return apierr.Forbidden("PROJECT_SETTINGS_FORBIDDEN", protectedRemovalRefusal)
 		}
 		return nil
 	default:
@@ -64,6 +72,8 @@ func workerSettingsRefusal(change callerChange) string {
 		return "Only the person can change repository trust. You are a worker: ask the person in your report."
 	case change.teamMode:
 		return "Only the person can change team mode. You are a worker: ask the person in your report."
+	case change.envKeep:
+		return "Only the person can change which secret variables workers keep. You are a worker: ask the person in your report."
 	default:
 		return "Only the person can change project settings. You are a worker: ask the person in your report."
 	}
@@ -79,10 +89,14 @@ func orchestratorSettingsRefusal(change callerChange) string {
 		return "Only the person can change repository trust. You are the manager and can be misled by worker output. Ask the person in your report."
 	case change.teamMode:
 		return "Only the person can change team mode. You are the manager and can be misled by worker output. Ask the person in your report."
+	case change.envKeep:
+		return "Only the person can change which secret variables workers keep. You are the manager and can be misled by worker output. Ask the person in your report."
 	default:
 		return "Only the person can change project settings. You are the manager and can be misled by worker output. Ask the person in your report."
 	}
 }
+
+const protectedRemovalRefusal = "Only the person can remove a protected file. You are the manager: you may add protected files, not remove them. Ask the person in your report."
 
 func sensitiveConfigChange(before, after domain.ProjectConfig) callerChange {
 	return callerChange{
@@ -91,7 +105,20 @@ func sensitiveConfigChange(before, after domain.ProjectConfig) callerChange {
 			before.Worker.AgentConfig.Permissions != after.Worker.AgentConfig.Permissions ||
 			before.Orchestrator.AgentConfig.Permissions != after.Orchestrator.AgentConfig.Permissions,
 		sandbox: before.WorkerSandbox.IsEnabled() != after.WorkerSandbox.IsEnabled() ||
+			before.WorkerSandbox.IsRequired() != after.WorkerSandbox.IsRequired() ||
 			!slices.Equal(before.WorkerSandbox.AllowedDomains, after.WorkerSandbox.AllowedDomains),
-		teamMode: before.TeamModeEnabled() != after.TeamModeEnabled(),
+		teamMode:         before.TeamModeEnabled() != after.TeamModeEnabled(),
+		protectedRemoved: !containsEvery(after.WorkerSandbox.ProtectedPaths, before.WorkerSandbox.ProtectedPaths),
+		envKeep:          !slices.Equal(before.WorkerEnvKeep, after.WorkerEnvKeep),
 	}
+}
+
+// containsEvery reports whether have keeps every entry of want.
+func containsEvery(have, want []string) bool {
+	for _, entry := range want {
+		if !slices.Contains(have, entry) {
+			return false
+		}
+	}
+	return true
 }

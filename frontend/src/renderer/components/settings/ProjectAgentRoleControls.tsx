@@ -186,6 +186,17 @@ export function ProjectPushAfterMergeToggle({ checked, onCheckedChange }: { chec
 	return <ProjectToggleRow id="project-push-after-merge" label={t("settings.project.pushAfterMergeToggle")} description={t("settings.project.pushAfterMergeDescription")} checked={checked} onCheckedChange={onCheckedChange} />;
 }
 
+export function ProjectWorkerSandboxRequireToggle({ checked, onCheckedChange }: { checked: boolean; onCheckedChange: (checked: boolean) => void }) {
+	const { t } = useTranslation();
+	return <ProjectToggleRow
+		id="project-worker-sandbox-required"
+		label={t("settings.project.workerSandboxRequireToggle")}
+		description={t("settings.project.workerSandboxRequireDescription")}
+		checked={checked}
+		onCheckedChange={onCheckedChange}
+	/>;
+}
+
 export function ProjectWorkerSandboxToggle({ checked, onCheckedChange, unsafe }: { checked: boolean; onCheckedChange: (checked: boolean) => void; unsafe?: boolean }) {
 	const { t } = useTranslation();
 	return <ProjectToggleRow

@@ -964,7 +964,10 @@ func newSwitchTestManager(t *testing.T, runtime runtimeController) (*Manager, *s
 		t.Fatal(err)
 	}
 	store := newSwitchTestStore()
-	store.projects["proj"] = domain.ProjectRecord{ID: "proj", Path: root}
+	requireOff := false
+	store.projects["proj"] = domain.ProjectRecord{ID: "proj", Path: root, Config: domain.ProjectConfig{
+		WorkerSandbox: domain.WorkerSandboxConfig{RequireSandbox: &requireOff},
+	}}
 	store.sessions["proj-1"] = domain.SessionRecord{
 		ID: "proj-1", ProjectID: "proj", Kind: domain.KindWorker, Harness: domain.HarnessClaudeCode,
 		Activity: domain.Activity{State: domain.ActivityExited, LastActivityAt: time.Now().UTC()},

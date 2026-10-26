@@ -23,6 +23,9 @@ export type RoleSession = Pick<WorkspaceSession, "id" | "provider" | "kind" | "c
 export const ROLE_HISTORY_WINDOW_MS = 48 * 60 * 60 * 1000;
 
 export const DEFAULT_AGENT_PRIORITY = ["claude-code", "codex", "cursor", "opencode", "grok", "gemini"] as const;
+
+/** Harnesses that can actually run a sandboxed worker. Keep in sync with domain.SandboxedWorkerHarnesses. */
+export const SANDBOXED_WORKER_HARNESSES = new Set(["claude-code"]);
 export const DEFAULT_AGENT_PRIORITY_RANK = new Map<string, number>(
 	DEFAULT_AGENT_PRIORITY.map((agent, index) => [agent, index]),
 );

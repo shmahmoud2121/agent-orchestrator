@@ -125,6 +125,8 @@ go test -race ./...        # with race detection
 go test -v ./internal/cli/ # a specific package
 ```
 
+From the repository root, `npm run canary` runs the live worker-secrets check against an authenticated `claude` CLI. Run it before each release.
+
 ### Lint
 
 ```bash

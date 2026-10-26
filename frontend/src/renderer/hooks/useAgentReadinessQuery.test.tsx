@@ -76,8 +76,9 @@ describe("agent readiness query", () => {
 		const staleCodex = agentReadiness("codex", "Codex", { freshness: "stale" });
 		const freshCodex = agentReadiness("codex", "Codex");
 
-		expect(mergeAgentReadiness({ agents: [claude, staleCodex] }, { agents: [freshCodex] })).toEqual({
+		expect(mergeAgentReadiness({ agents: [claude, staleCodex], workerSandboxAvailable: true }, { agents: [freshCodex], workerSandboxAvailable: true })).toEqual({
 			agents: [claude, freshCodex],
+			workerSandboxAvailable: true,
 		});
 	});
 

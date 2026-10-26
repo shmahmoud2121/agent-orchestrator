@@ -543,6 +543,31 @@ func TestBuildLaunchCommandPreservesExplicitNoColor(t *testing.T) {
 	}
 }
 
+func TestBuildLaunchCommandUnsetsWorkerSecrets(t *testing.T) {
+	oldEnviron := environ
+	environ = func() []string {
+		return []string{"PATH=/bin", "FAKE_SERVICE_TOKEN=CANARY", "ANTHROPIC_API_KEY=sk", "BASH_FUNC_x%%=() {}", "HOME=/h"}
+	}
+	defer func() { environ = oldEnviron }()
+
+	worker := buildLaunchCommand(ports.RuntimeConfig{
+		WorkspacePath: "/tmp/ws",
+		Argv:          []string{"claude"},
+		Env:           map[string]string{domain.WorkerEnvKeepVar: "ANTHROPIC_API_KEY"},
+	})
+	if !strings.Contains(worker, "unset FAKE_SERVICE_TOKEN;") {
+		t.Fatalf("worker launch must unset inherited secrets: %q", worker)
+	}
+	if strings.Contains(worker, "CANARY") || strings.Contains(worker, "unset ANTHROPIC_API_KEY") {
+		t.Fatalf("launch must name, never print, secrets and keep the harness login: %q", worker)
+	}
+
+	manager := buildLaunchCommand(ports.RuntimeConfig{WorkspacePath: "/tmp/ws", Argv: []string{"claude"}})
+	if strings.Contains(manager, "unset FAKE_SERVICE_TOKEN") {
+		t.Fatalf("non-worker launches keep the daemon environment: %q", manager)
+	}
+}
+
 func TestCreateDestroysAndReturnsErrorWhenPaneCWDDoesNotMatch(t *testing.T) {
 	r, fr := newTestRuntime(0)
 	// new-session, then a stale pane cwd on every one of the paneCwdVerifyAttempts
@@ -2267,6 +2292,9 @@ func TestReapPaneSessionsSkipsWaitWhenSessionMatcherUnsupported(t *testing.T) {
 }
 
 func TestIsUnsupportedMatcher(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("exitCodeErr uses POSIX sh")
+	}
 	if isUnsupportedMatcher(nil) {
 		t.Fatal("a successful match is supported")
 	}

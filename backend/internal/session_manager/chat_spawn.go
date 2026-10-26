@@ -145,6 +145,11 @@ func (m *Manager) runRecordBackgroundTask(ctx context.Context, rec domain.Sessio
 	// so its prompt and response cannot be projected into the worker's history.
 	deleteProtectedEnv(env, EnvSessionID, envKeysCaseInsensitive)
 	pinRuntimePermissionEnv(env, config.Permissions)
+	cfg := domain.ProjectConfig{}
+	if project, err := m.loadProject(ctx, rec.ProjectID); err == nil {
+		cfg = project.Config
+	}
+	markWorkerEnv(env, rec.Kind, rec.Harness, cfg)
 
 	return run(ctx, rec.Harness, ports.ChatStartConfig{
 		DataDir:       m.dataDir,
@@ -239,6 +244,7 @@ func (m *Manager) launchChatController(ctx context.Context, in chatSpawn) (domai
 			return domain.SessionRecord{}, wrapSpawnStage(id, ErrSpawnPrepare, err)
 		}
 	}
+	markWorkerEnv(env, in.cfg.Kind, in.cfg.Harness, in.project.Config)
 
 	var (
 		controllerCommitted bool
@@ -256,7 +262,7 @@ func (m *Manager) launchChatController(ctx context.Context, in chatSpawn) (domai
 		Model:                   agentConfig.Model,
 		Effort:                  agentConfig.Effort,
 		Permissions:             agentConfig.Permissions,
-		WorkerSandbox:           workerSandboxLaunchFields(in.cfg.Kind, in.project.Config),
+		WorkerSandbox:           m.workerSandboxLaunchFields(in.cfg.Kind, in.project, in.workspace.Path),
 		SystemPrompt:            in.systemPrompt,
 		AdditionalDirectories:   workspaceProjectDirectories(in.workspace.Path, in.workspaceProject),
 		MCPServers:              m.aoMCPServers(in.cfg.Harness, env),
@@ -271,6 +277,7 @@ func (m *Manager) launchChatController(ctx context.Context, in chatSpawn) (domai
 			if agent, ok := m.agents.Agent(in.cfg.Harness); ok {
 				m.augmentAgentRuntimeEnv(agent, launchEnv)
 			}
+			markWorkerEnv(launchEnv, in.cfg.Kind, in.cfg.Harness, in.project.Config)
 			in.record = prepared
 			return launchEnv, nil
 		},
@@ -515,6 +522,7 @@ func (m *Manager) resumeChatController(
 	if agent, ok := m.agents.Agent(rec.Harness); ok {
 		m.augmentAgentRuntimeEnv(agent, env)
 	}
+	markWorkerEnv(env, rec.Kind, rec.Harness, project.Config)
 	historyMode := ports.ChatHistoryImport
 	var providerHandoff *domain.ChatProviderHandoff
 	if requireNativeHistory {
@@ -550,7 +558,7 @@ func (m *Manager) resumeChatController(
 		Model:                   agentConfig.Model,
 		Effort:                  agentConfig.Effort,
 		Permissions:             agentConfig.Permissions,
-		WorkerSandbox:           workerSandboxLaunchFields(rec.Kind, project.Config),
+		WorkerSandbox:           m.workerSandboxLaunchFields(rec.Kind, project, ws.Path),
 		SystemPrompt:            systemPrompt,
 		AdditionalDirectories:   additionalDirectories,
 		MCPServers:              m.aoMCPServers(rec.Harness, env),
@@ -565,6 +573,7 @@ func (m *Manager) resumeChatController(
 			if agent, ok := m.agents.Agent(rec.Harness); ok {
 				m.augmentAgentRuntimeEnv(agent, launchEnv)
 			}
+			markWorkerEnv(launchEnv, rec.Kind, rec.Harness, project.Config)
 			rec = prepared
 			return launchEnv, nil
 		},

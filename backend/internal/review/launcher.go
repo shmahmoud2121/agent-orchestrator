@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/agentlaunch"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
@@ -90,6 +91,9 @@ type LaunchSpec struct {
 	// prompt. The engine uses this while replacing a live reviewer so the old
 	// process can be stopped before the replacement receives executable work.
 	DeferInitialMessage bool
+	// WorkerSandbox is the project's worker sandbox policy. Reviewers that run
+	// as workers must meet RequireSandbox the same way a spawn does.
+	WorkerSandbox domain.WorkerSandboxConfig
 }
 
 // LaunchResult is the terminal/runtime state created by a reviewer launch.
@@ -215,6 +219,11 @@ func WithRunFilePath(path string) LauncherOption {
 	return func(l *agentLauncher) {
 		l.runFile = path
 	}
+}
+
+func refuseUnsandboxedReviewer(spec LaunchSpec) error {
+	available, message := claudecode.WorkerSandboxOSState()
+	return domain.RefuseUnsandboxedWorker(domain.KindWorker, domain.AgentHarness(spec.Harness), spec.WorkerSandbox, available, false, message)
 }
 
 // NewLauncher builds the production reviewer launcher.
@@ -466,6 +475,9 @@ func (l *agentLauncher) Spawn(ctx context.Context, spec LaunchSpec) (LaunchResul
 			return LaunchResult{}, err
 		}
 	}
+	if err := refuseUnsandboxedReviewer(spec); err != nil {
+		return LaunchResult{}, err
+	}
 	inv, err := l.prepareInvocation(ctx, spec)
 	if err != nil {
 		return LaunchResult{}, err
@@ -487,6 +499,9 @@ func (l *agentLauncher) RestoreTerminal(ctx context.Context, spec LaunchSpec) (L
 		if err := l.repoTrustCheck(ctx, spec.ProjectID, spec.WorkspacePath); err != nil {
 			return LaunchResult{}, err
 		}
+	}
+	if err := refuseUnsandboxedReviewer(spec); err != nil {
+		return LaunchResult{}, err
 	}
 	inv, err := l.prepareIdleInvocation(spec)
 	if err != nil {

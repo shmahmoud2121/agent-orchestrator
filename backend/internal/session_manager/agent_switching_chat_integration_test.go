@@ -291,10 +291,12 @@ func newChatSwitchIntegrationFixture(t *testing.T, stale bool) *chatSwitchIntegr
 	store := sqlitetest.MustOpenAt(t, dataDir)
 	clock := &integrationClock{now: time.Date(2026, 8, 28, 10, 0, 0, 0, time.UTC)}
 
+	requireOff := false
 	if err := store.UpsertProject(ctx, domain.ProjectRecord{
 		ID:           string(chatSwitchIntegrationProject),
 		Path:         dataDir,
 		RegisteredAt: clock.Next(),
+		Config:       domain.ProjectConfig{WorkerSandbox: domain.WorkerSandboxConfig{RequireSandbox: &requireOff}},
 	}); err != nil {
 		t.Fatalf("seed integration project: %v", err)
 	}

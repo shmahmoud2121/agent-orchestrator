@@ -172,7 +172,9 @@ function SettingsBody({ project, projectId, hostId, hostConnected, onSaved, sect
 		intakeRepo: intake.repo ?? "",
 		intakeAssignee: intake.assignee ?? "",
 		workerSandboxEnabled: config.workerSandbox?.enabled !== false,
+		workerSandboxRequireSandbox: config.workerSandbox?.requireSandbox !== false,
 		workerSandboxAllowedDomains: (config.workerSandbox?.allowedDomains ?? []).join("\n"),
+		workerSandboxProtectedPaths: config.workerSandbox?.protectedPaths ?? [],
 		...(verifiable && {
 			verifyCommand: formatVerifyCommand(config.verifyCommand),
 			verifyTimeoutSeconds: config.verifyTimeoutSeconds ? String(config.verifyTimeoutSeconds) : "",
@@ -338,7 +340,7 @@ function SettingsBody({ project, projectId, hostId, hostConnected, onSaved, sect
 		}
 	};
 	return <><ProjectSettingsEditor initialValues={initialValues} section={section} disabled={!hostConnected}
-		capabilities={{ workflow: !isScratchProject, sessionPrefix: !isScratchProject, intake: intakeVisible, reviewer: !isScratchProject, requiredAgents: true, workersRequestReview: !isScratchProject, verifyCommand: verifiable, pushAfterMerge: verifiable }}
+		capabilities={{ workflow: !isScratchProject, sessionPrefix: !isScratchProject, intake: intakeVisible, reviewer: !isScratchProject, requiredAgents: true, workersRequestReview: !isScratchProject, verifyCommand: verifiable, pushAfterMerge: verifiable, workerSandboxAvailable: agentsQuery.data?.workerSandboxAvailable }}
 		details={[{ label: t("settings.project.path"), value: project.path, href: hostId ? undefined : `file://${encodeURI(project.path)}` }, { label: t("settings.project.repo"), value: project.repo || "—", href: project.repo ? repositoryHref(project.repo) : undefined }]}
 		workspaceRepos={project.kind === "workspace" ? project.workspaceRepos ?? [] : undefined} repository={project.repo}
 		modelScope={() => projectId} defaultReviewer={(draft) => WORKER_DEFAULT_REVIEWERS[draft.workerAgent] ?? "claude-code"}
@@ -355,7 +357,7 @@ function LocalAgentPicker({ role, draft, value, invalid, onChange, projectId, ho
 	const agents = hostId ? agentsQuery.data?.agents.filter(isLaunchableAgent) : agentsQuery.data?.agents;
 	return role === "reviewer"
 		? <ReviewerSelect value={value} model={draft.reviewerModel} mode={draft.reviewerMode} projectId={projectId} hostId={hostId} harnessOnly defaultHarness={WORKER_DEFAULT_REVIEWERS[draft.workerAgent] ?? "claude-code"} triggerClassName="w-full" onChange={onChange} ariaLabel={t("settings.project.defaultReviewer")} agents={agents} disabled={disabled} />
-		: <RequiredAgentField id={`${role}Agent`} variant="settings-control" value={value} placeholder={t(role === "worker" ? "settings.project.selectWorker" : "settings.project.selectOrchestrator")} label={t(role === "worker" ? "settings.project.defaultWorker" : "settings.project.defaultOrchestrator")} agents={agents} hostId={hostId} disabled={disabled} invalid={invalid} onChange={onChange} />;
+		: <RequiredAgentField id={`${role}Agent`} variant="settings-control" value={value} placeholder={t(role === "worker" ? "settings.project.selectWorker" : "settings.project.selectOrchestrator")} label={t(role === "worker" ? "settings.project.defaultWorker" : "settings.project.defaultOrchestrator")} agents={agents} hostId={hostId} disabled={disabled} invalid={invalid} sandboxRequired={role === "worker" && draft.workerSandboxRequireSandbox !== false} sandboxAvailable={agentsQuery.data?.workerSandboxAvailable} onChange={onChange} />;
 }
 
 function repositoryHref(repository: string): string | undefined {
@@ -424,15 +426,19 @@ function parseSandboxDomains(raw: string | undefined): string[] {
 	return [...new Set(raw.split(/[\n,]+/).map((entry) => entry.trim()).filter(Boolean))];
 }
 
-/** Persist only when the policy differs from the default (enabled, no domains). */
-function workerSandboxConfig(values: ProjectSettingsDraft): { workerSandbox?: { enabled: boolean; allowedDomains?: string[] } } {
+/** Persist only when the policy differs from the default (enabled, no domains, no extra protected files). */
+function workerSandboxConfig(values: ProjectSettingsDraft): { workerSandbox?: { enabled: boolean; requireSandbox?: boolean; allowedDomains?: string[]; protectedPaths?: string[] } } {
 	const enabled = values.workerSandboxEnabled !== false;
+	const requireSandbox = values.workerSandboxRequireSandbox !== false;
 	const allowedDomains = parseSandboxDomains(values.workerSandboxAllowedDomains);
-	if (enabled && allowedDomains.length === 0) return {};
+	const protectedPaths = values.workerSandboxProtectedPaths ?? [];
+	if (enabled && requireSandbox && allowedDomains.length === 0 && protectedPaths.length === 0) return { workerSandbox: undefined };
 	return {
 		workerSandbox: {
 			enabled,
+			...(!requireSandbox ? { requireSandbox: false } : {}),
 			...(allowedDomains.length > 0 ? { allowedDomains } : {}),
+			...(protectedPaths.length > 0 ? { protectedPaths } : {}),
 		},
 	};
 }

@@ -666,6 +666,7 @@ func (e *Engine) TriggerWithOptions(ctx stdctx.Context, workerID domain.SessionI
 		}
 		launchSpec := reviewLaunchSpec(worker, harness, config, launchRun, queue, 0, launchAgentSessionID, launchID)
 		launchSpec.ProjectEnv = projectEnv
+		launchSpec.WorkerSandbox = e.workerSandbox(ctx, worker.ProjectID)
 		launchSpec.InterfaceMode = selectedMode
 		launchSpec.DeferInitialMessage = deferInitialMessage
 		if selectedMode == domain.ReviewerInterfaceChat && !hasConfigOverride {
@@ -1080,7 +1081,7 @@ func (e *Engine) restorePersistedChatReviewerLocked(ctx stdctx.Context, worker d
 		return RestoreReviewerResult{}, err
 	}
 	defer releaseHarness()
-	launch, err := e.launcher.RestoreTerminal(ctx, LaunchSpec{ReviewSessionID: review.ID, LaunchID: launchID, WorkerID: worker.ID, ProjectID: worker.ProjectID, ProjectEnv: projectEnv, Harness: review.Harness, WorkspacePath: worker.Metadata.WorkspacePath, AgentSessionID: review.AgentSessionID, ProviderConversationID: review.ProviderConversationID, PreviousRuns: previousRuns, InterfaceMode: review.InterfaceMode})
+	launch, err := e.launcher.RestoreTerminal(ctx, LaunchSpec{ReviewSessionID: review.ID, LaunchID: launchID, WorkerID: worker.ID, ProjectID: worker.ProjectID, ProjectEnv: projectEnv, WorkerSandbox: e.workerSandbox(ctx, worker.ProjectID), Harness: review.Harness, WorkspacePath: worker.Metadata.WorkspacePath, AgentSessionID: review.AgentSessionID, ProviderConversationID: review.ProviderConversationID, PreviousRuns: previousRuns, InterfaceMode: review.InterfaceMode})
 	if err != nil {
 		return RestoreReviewerResult{}, fmt.Errorf("restore reviewer: %w", err)
 	}
@@ -1210,6 +1211,7 @@ func (e *Engine) restoreReviewerLocked(
 		WorkerID:             worker.ID,
 		ProjectID:            worker.ProjectID,
 		ProjectEnv:           projectEnv,
+		WorkerSandbox:        e.workerSandbox(ctx, worker.ProjectID),
 		Harness:              harness,
 		AgentConfig:          config,
 		WorkspacePath:        worker.Metadata.WorkspacePath,
@@ -1954,6 +1956,17 @@ func (e *Engine) projectEnv(ctx stdctx.Context, id domain.ProjectID) (map[string
 		return nil, err
 	}
 	return project.Config.Env, nil
+}
+
+func (e *Engine) workerSandbox(ctx stdctx.Context, id domain.ProjectID) domain.WorkerSandboxConfig {
+	if e.projects == nil {
+		return domain.WorkerSandboxConfig{}
+	}
+	project, ok, err := e.projects.GetProject(ctx, string(id))
+	if err != nil || !ok {
+		return domain.WorkerSandboxConfig{}
+	}
+	return project.Config.WorkerSandbox
 }
 
 func (e *Engine) upsertReview(ctx stdctx.Context, worker domain.SessionRecord, harness domain.ReviewerHarness, handleID, agentSessionID, reviewerLaunchID string, activityState domain.ActivityState, now time.Time) (domain.Review, error) {

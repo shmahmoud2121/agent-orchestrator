@@ -37,7 +37,10 @@ export function mergeAgentReadiness(
 	if (!current || next.agents.length === 0) return next;
 	const byID = new Map(current.agents.map((agent) => [agent.id, agent]));
 	for (const agent of next.agents) byID.set(agent.id, agent);
-	return { agents: [...byID.values()].sort((a, b) => a.id.localeCompare(b.id)) };
+	return {
+		agents: [...byID.values()].sort((a, b) => a.id.localeCompare(b.id)),
+		workerSandboxAvailable: next.workerSandboxAvailable ?? current.workerSandboxAvailable ?? true,
+	};
 }
 
 export function cacheAgentReadiness(queryClient: QueryClient, next: AgentReadiness, hostId?: string): void {
