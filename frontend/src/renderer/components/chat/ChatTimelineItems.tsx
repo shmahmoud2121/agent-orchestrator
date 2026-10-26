@@ -82,6 +82,7 @@ import {
 	exploredFileCount,
 	isNonzeroCommandExit,
 } from "./activity-command";
+import { Button } from "../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { ChatAnnotationSummary } from "./ChatAnnotationSummary";
 import {
@@ -2898,11 +2899,11 @@ function resolvedApprovalOutcome(
 /* -------------------------------------------------------------------------- */
 
 /** Single letter per change kind, which is how a diff list is normally read. */
-const diffStatusMark: Record<DiffStatus, { mark: string; tone: string; label: string }> = {
-	added: { mark: "A", tone: "text-success", label: "added" },
-	modified: { mark: "M", tone: "text-accent", label: "modified" },
-	deleted: { mark: "D", tone: "text-destructive", label: "deleted" },
-	renamed: { mark: "R", tone: "text-muted-foreground", label: "renamed" },
+const diffStatusMark: Record<DiffStatus, { mark: string; label: string }> = {
+	added: { mark: "A", label: "added" },
+	modified: { mark: "M", label: "modified" },
+	deleted: { mark: "D", label: "deleted" },
+	renamed: { mark: "R", label: "renamed" },
 };
 
 /** Match the daemon's file_change summary verbs (Created/Deleted/Renamed/Edited). */
@@ -2923,8 +2924,9 @@ function fileChangeVerb(status: DiffStatus): string {
  * What a turn changed on disk.
  *
  * A bordered summary card at the end of the turn (kept near rollback), not the
- * compact explore line used for mid-turn activity. Always shows the changed
- * files; Review opens the Files rail, and clicking a row focuses that path.
+ * compact explore line used for mid-turn activity. Open by default so the owner
+ * sees what changed; Open diff opens the Files rail, and clicking a row focuses
+ * that path.
  *
  * Rendered only when the daemon reported a diff. An agent that cannot report one
  * gets no empty panel implying it changed nothing.
@@ -2949,107 +2951,81 @@ export function TurnChangedFiles({
 	 */
 	items?: ConversationItem[];
 }) {
-	const [expanded, setExpanded] = useState(false);
+	const { t } = useTranslation();
+	const [open, setOpen] = useState(true);
+	const [showAll, setShowAll] = useState(false);
 	const pathHints = useMemo(() => turnPathHints(items), [items]);
 	if (diff.files.length === 0) return null;
 
 	const previewLimit = 4;
 	const hidden = Math.max(0, diff.files.length - previewLimit);
-	const visible = expanded ? diff.files : diff.files.slice(0, previewLimit);
+	const visible = showAll ? diff.files : diff.files.slice(0, previewLimit);
+	const totalAdditions = diff.files.reduce((sum, file) => sum + file.additions, 0);
+	const totalDeletions = diff.files.reduce((sum, file) => sum + file.deletions, 0);
 
 	return (
 		<div className="overflow-hidden rounded-lg bg-surface">
 			<div className="flex items-center gap-2 px-3 py-2">
-				<span className="shrink-0 text-xs text-muted-foreground">
-					{diff.files.length === 1 ? "1 File Changed" : `${diff.files.length} Files Changed`}
-				</span>
-				{live ? (
-					<Loader2
-						aria-label="still changing"
-						className="size-3 shrink-0 animate-spin text-muted-foreground/60"
+				<button
+					type="button"
+					onClick={() => setOpen((prev) => !prev)}
+					aria-expanded={open}
+					className="flex min-w-0 items-center gap-1.5 text-left"
+				>
+					<ChevronRight
+						aria-hidden="true"
+						className={cn(
+							"size-3.5 shrink-0 text-muted-foreground transition-transform duration-200",
+							open && "rotate-90",
+						)}
 					/>
-				) : null}
+					<span className="shrink-0 text-xs text-muted-foreground">
+						{t("chat.changedFiles.count", { count: diff.files.length })}
+					</span>
+					{totalAdditions > 0 ? (
+						<span className="shrink-0 font-mono text-caption tabular-nums text-success">
+							+{totalAdditions}
+						</span>
+					) : null}
+					{totalDeletions > 0 ? (
+						<span className="shrink-0 font-mono text-caption tabular-nums text-destructive">
+							&minus;{totalDeletions}
+						</span>
+					) : null}
+					{live ? (
+						<Loader2
+							aria-label={t("chat.changedFiles.stillChanging")}
+							className="size-3 shrink-0 animate-spin text-muted-foreground/60"
+						/>
+					) : null}
+				</button>
 				<span className="flex-1" />
 				{onReview ? (
-					<button
-						type="button"
-						onClick={onReview}
-						className="shrink-0 text-xs text-muted-foreground transition-colors hover:text-foreground"
-					>
-						Review
-					</button>
+					<Button type="button" variant="ghost" size="sm" onClick={onReview} className="shrink-0">
+						{t("chat.changedFiles.openDiff")}
+					</Button>
 				) : null}
 			</div>
 
-			<ul className="flex flex-col px-1.5 pb-1.5">
-				{visible.map((file) => {
-					const status = diffStatusMark[file.status] ?? diffStatusMark.modified;
-					const rowClass =
-						"flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-interactive-hover";
-					const tooltipPath = resolveTurnFilePath(file.path, pathHints);
-					const tooltipOldPath = file.oldPath
-						? resolveTurnFilePath(file.oldPath, pathHints)
-						: undefined;
-					const openPath = turnFileOpenPath(file.path, pathHints);
-					const location = fileLocationLabel(tooltipPath, tooltipOldPath);
+			{open ? (
+				<>
+					<ul className="flex flex-col px-1.5 pb-1.5">
+						{visible.map((file) => {
+							const status = diffStatusMark[file.status] ?? diffStatusMark.modified;
+							const rowClass =
+								"flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-interactive-hover";
+							const tooltipPath = resolveTurnFilePath(file.path, pathHints);
+							const tooltipOldPath = file.oldPath
+								? resolveTurnFilePath(file.oldPath, pathHints)
+								: undefined;
+							const openPath = turnFileOpenPath(file.path, pathHints);
+							const location = fileLocationLabel(tooltipPath, tooltipOldPath);
 
-					const body = (
-						<>
-							<span className="sr-only">{status.label}</span>
-							<FileIcon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
-							<span
-								className="min-w-0 flex-1 truncate text-xs text-foreground/80"
-								title=""
-							>
-								{fileBasename(file.path)}
-							</span>
-							{file.additions > 0 ? (
-								<span className="shrink-0 font-mono text-caption tabular-nums text-success">
-									+{file.additions}
-								</span>
-							) : null}
-							{file.deletions > 0 ? (
-								<span className="shrink-0 font-mono text-caption tabular-nums text-destructive">
-									&minus;{file.deletions}
-								</span>
-							) : null}
-							{file.additions === 0 && file.deletions === 0 ? (
-								<span className="shrink-0 font-mono text-caption tabular-nums text-muted-foreground/50">
-									0
-								</span>
-							) : null}
-						</>
-					);
-
-					return (
-						<li key={`${file.status}-${file.oldPath ?? ""}-${file.path}`}>
-							{onOpenFile ? (
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<button
-											type="button"
-											onClick={() => onOpenFile(tooltipPath)}
-											aria-label={`Open ${openPath} in Files`}
-											className={rowClass}
-										>
-											{body}
-										</button>
-									</TooltipTrigger>
-									<TooltipContent side="top" className="max-w-[min(28rem,90vw)] font-mono text-caption font-normal">
-										{location}
-									</TooltipContent>
-								</Tooltip>
-							) : (
-								<div className={rowClass}>
-									<span className="sr-only">{status.label}</span>
-									<FileIcon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
-									<FileLocationLabel
-										path={file.path}
-										oldPath={file.oldPath}
-										locationPath={tooltipPath}
-										locationOldPath={tooltipOldPath}
-										className="min-w-0 flex-1 truncate text-xs text-foreground/80"
-									/>
+							const counts = (
+								<>
+									<span aria-hidden="true" className="shrink-0 font-mono text-caption text-muted-foreground">
+										{status.mark}
+									</span>
 									{file.additions > 0 ? (
 										<span className="shrink-0 font-mono text-caption tabular-nums text-success">
 											+{file.additions}
@@ -3065,29 +3041,79 @@ export function TurnChangedFiles({
 											0
 										</span>
 									) : null}
-								</div>
-							)}
-						</li>
-					);
-				})}
-			</ul>
+								</>
+							);
 
-			{hidden > 0 ? (
-				<button
-					type="button"
-					onClick={() => setExpanded((prev) => !prev)}
-					aria-expanded={expanded}
-					className="flex w-full items-center gap-1.5 px-3 pb-2 text-left text-xs text-muted-foreground transition-colors hover:text-foreground"
-				>
-					{expanded ? "Show less" : `Show ${hidden} more`}
-				</button>
-			) : null}
+							const body = (
+								<>
+									<span className="sr-only">{status.label}</span>
+									<FileIcon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+									<span
+										className="min-w-0 flex-1 truncate text-xs text-foreground/80"
+										title=""
+									>
+										{fileBasename(file.path)}
+									</span>
+									{counts}
+								</>
+							);
 
-			{diff.truncated ? (
-				<p className="px-3 pb-2 text-xs leading-relaxed text-warning">
-					This turn changed more files than AO lists here.
-					{onReview ? " Use Review for the whole change." : " Open the Files tab for the whole change."}
-				</p>
+							return (
+								<li key={`${file.status}-${file.oldPath ?? ""}-${file.path}`}>
+									{onOpenFile ? (
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<button
+													type="button"
+													onClick={() => onOpenFile(tooltipPath)}
+													aria-label={`Open ${openPath} in Files`}
+													className={rowClass}
+												>
+													{body}
+												</button>
+											</TooltipTrigger>
+											<TooltipContent side="top" className="max-w-[min(28rem,90vw)] font-mono text-caption font-normal">
+												{location}
+											</TooltipContent>
+										</Tooltip>
+									) : (
+										<div className={rowClass}>
+											<span className="sr-only">{status.label}</span>
+											<FileIcon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+											<FileLocationLabel
+												path={file.path}
+												oldPath={file.oldPath}
+												locationPath={tooltipPath}
+												locationOldPath={tooltipOldPath}
+												className="min-w-0 flex-1 truncate text-xs text-foreground/80"
+											/>
+											{counts}
+										</div>
+									)}
+								</li>
+							);
+						})}
+					</ul>
+
+					{hidden > 0 ? (
+						<button
+							type="button"
+							onClick={() => setShowAll((prev) => !prev)}
+							aria-expanded={showAll}
+							className="flex w-full items-center gap-1.5 px-3 pb-2 text-left text-xs text-muted-foreground transition-colors hover:text-foreground"
+						>
+							{showAll ? t("chat.changedFiles.showLess") : t("chat.changedFiles.showMore", { count: hidden })}
+						</button>
+					) : null}
+
+					{diff.truncated ? (
+						<p className="px-3 pb-2 text-xs leading-relaxed text-warning">
+							{onReview
+								? t("chat.changedFiles.truncatedReview")
+								: t("chat.changedFiles.truncatedFiles")}
+						</p>
+					) : null}
+				</>
 			) : null}
 		</div>
 	);
