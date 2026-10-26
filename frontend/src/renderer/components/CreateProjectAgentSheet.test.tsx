@@ -327,6 +327,45 @@ describe("CreateProjectAgentSheet", () => {
 		expect(screen.getByRole("option", { name: /Codex/ })).toHaveAttribute("aria-disabled", "true");
 	});
 
+	it("marks unwatched worker AIs only when asked", async () => {
+		const agents = [
+			agentReadiness("claude-code", "Claude Code"),
+			agentReadiness("codex", "Codex"),
+			agentReadiness("cursor", "Cursor"),
+		];
+		const { rerender } = render(
+			<RequiredAgentField
+				id="agent"
+				label="Worker agent"
+				placeholder="Choose agent"
+				value="claude-code"
+				agents={agents}
+				onChange={() => undefined}
+			/>,
+		);
+		await userEvent.click(screen.getByLabelText("Worker agent"));
+		expect(screen.getByRole("option", { name: /Cursor/ })).not.toHaveTextContent("Not watched");
+		await userEvent.keyboard("{Escape}");
+
+		rerender(
+			<RequiredAgentField
+				id="agent"
+				label="Worker agent"
+				placeholder="Choose agent"
+				value="claude-code"
+				showUnwatched
+				agents={agents}
+				onChange={() => undefined}
+			/>,
+		);
+		await userEvent.click(screen.getByLabelText("Worker agent"));
+		const cursor = screen.getByRole("option", { name: /Cursor/ });
+		expect(cursor).toHaveTextContent("Not watched");
+		expect(cursor).toHaveAttribute("title", "AO can't check what this AI reads. It could read protected files.");
+		expect(screen.getByRole("option", { name: /Claude Code/ })).not.toHaveTextContent("Not watched");
+		expect(screen.getByRole("option", { name: /Codex/ })).not.toHaveTextContent("Not watched");
+	});
+
 	it("disables every harness on RequiredAgentField when the host cannot sandbox", async () => {
 		render(
 			<RequiredAgentField

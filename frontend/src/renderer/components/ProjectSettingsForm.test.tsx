@@ -132,8 +132,10 @@ function renderSettings(projectId = "proj-1", workspaces?: WorkspaceSummary[], s
 
 async function chooseOption(trigger: HTMLElement, optionName: string) {
 	await userEvent.click(trigger);
-	const escaped = optionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-	await userEvent.click(await screen.findByRole("menuitem", { name: new RegExp(`^${escaped}$`, "i") }));
+	const wanted = optionName.toLowerCase();
+	await userEvent.click(await screen.findByRole("menuitem", {
+		name: (name) => name.replace(/not watched/ig, "").trim().toLowerCase() === wanted,
+	}));
 }
 
 async function chooseCustomModel(label: string, model: string) {
@@ -643,10 +645,35 @@ describe("ProjectSettingsForm", () => {
 		expect(toggle).toBeChecked();
 		await userEvent.click(toggle);
 		expect(toggle).not.toBeChecked();
-		expect(screen.getByText("Workers on other AIs can read any file and reach the internet.")).toBeInTheDocument();
+		expect(screen.getByText("Workers aren't sandboxed. The watchdog blocks reading protected files, but workers can reach the internet.")).toBeInTheDocument();
 		submitSettings();
 		await waitFor(() => expect(putMock).toHaveBeenCalledTimes(1));
 		expect(putMock.mock.calls[0][1].body.config.workerSandbox).toEqual({ enabled: true, requireSandbox: false });
+	});
+
+	it("marks unwatched AIs in the worker picker only after sandboxed workers are turned off", async () => {
+		mockProject({
+			id: "proj-1", name: "Project One", kind: "single_repo", path: "/repo/project-one",
+			repo: "", defaultBranch: "main", config: {
+				worker: { agent: "claude-code" },
+				orchestrator: { agent: "claude-code" },
+			},
+		});
+		renderSettings("proj-1", undefined, "agents");
+		await userEvent.click(await screen.findByRole("button", { name: "Worker agent" }));
+		expect(await screen.findByRole("menuitem", { name: /Cursor/ })).not.toHaveTextContent("Not watched");
+		await userEvent.keyboard("{Escape}");
+		await userEvent.click(screen.getByRole("switch", { name: "Only allow sandboxed workers" }));
+		expect(screen.getByText("Workers aren't sandboxed. The watchdog blocks reading protected files, but workers can reach the internet.")).toBeInTheDocument();
+		await userEvent.click(screen.getByRole("button", { name: "Worker agent" }));
+		const cursor = await screen.findByRole("menuitem", { name: /Cursor/ });
+		expect(cursor).toHaveTextContent("Not watched");
+		expect(cursor).toHaveAttribute("title", "AO can't check what this AI reads. It could read protected files.");
+		expect(screen.getByRole("menuitem", { name: /Claude Code/ })).not.toHaveTextContent("Not watched");
+		expect(screen.getByRole("menuitem", { name: /Codex/ })).not.toHaveTextContent("Not watched");
+		await userEvent.keyboard("{Escape}");
+		await userEvent.click(screen.getByRole("button", { name: "Orchestrator agent" }));
+		expect(await screen.findByRole("menuitem", { name: /Cursor/ })).not.toHaveTextContent("Not watched");
 	});
 
 	it("disables non-Claude worker harnesses while sandboxed workers are required", async () => {
@@ -1753,13 +1780,13 @@ describe("ProjectSettingsForm", () => {
 		expect(options.map((option) => option.textContent)).toEqual([
 			"Claude Code",
 			"Codex",
-			"Cursor",
-			"OpenCode",
-			"GitHub Copilot",
-			"Goose",
-			"Kilo Code",
-			"Pi",
-			"KiroAuth unknown",
+			"CursorNot watched",
+			"OpenCodeNot watched",
+			"GitHub CopilotNot watched",
+			"GooseNot watched",
+			"Kilo CodeNot watched",
+			"PiNot watched",
+			"KiroNot watchedAuth unknown",
 			"Manage agents…",
 		]);
 		expect(options[8]).not.toHaveAttribute("aria-disabled", "true");

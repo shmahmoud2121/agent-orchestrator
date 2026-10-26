@@ -26,6 +26,9 @@ export const DEFAULT_AGENT_PRIORITY = ["claude-code", "codex", "cursor", "openco
 
 /** Harnesses that can actually run a sandboxed worker. Keep in sync with domain.SandboxedWorkerHarnesses. */
 export const SANDBOXED_WORKER_HARNESSES = new Set(["claude-code"]);
+
+/** Harnesses whose tool calls the watchdog can refuse. Codex is included because its PreToolUse hook can deny a call. */
+export const WATCHED_WORKER_HARNESSES = new Set(["claude-code", "codex"]);
 export const DEFAULT_AGENT_PRIORITY_RANK = new Map<string, number>(
 	DEFAULT_AGENT_PRIORITY.map((agent, index) => [agent, index]),
 );

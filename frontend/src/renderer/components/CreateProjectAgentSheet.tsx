@@ -18,6 +18,7 @@ import {
 	isLaunchableAgent,
 	DEFAULT_AGENT_PRIORITY_RANK,
 	SANDBOXED_WORKER_HARNESSES,
+	WATCHED_WORKER_HARNESSES,
 	defaultAuthorizedAgentForRole,
 	type AgentInfo,
 	unknownAgentReadiness,
@@ -425,6 +426,7 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 	variant = "stacked",
 	sandboxRequired = false,
 	sandboxAvailable,
+	showUnwatched = false,
 }: {
 	agents?: AgentInfo[];
 	disabled?: boolean;
@@ -452,6 +454,8 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 	sandboxRequired?: boolean;
 	/** False when this host cannot enforce Claude Code's OS sandbox. */
 	sandboxAvailable?: boolean;
+	/** Marks worker AIs the watchdog cannot check. Only while sandboxed workers are not required. */
+	showUnwatched?: boolean;
 }) {
 	const { t } = useTranslation();
 	// The daemon's readiness response is the registration list. An absent
@@ -480,12 +484,26 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 	const sandboxTitle = hostBlocksAllWorkers
 		? t("settings.project.workerSandboxRequireHostUnavailableReason")
 		: t("settings.project.workerSandboxRequireDisabledReason");
+	const unwatched = (id: string) => showUnwatched && !WATCHED_WORKER_HARNESSES.has(id);
+	const unwatchedTitle = t("agentSelector.notWatchedReason");
 	const withSandbox = (agent: (typeof visibleOptions)[number]) => ({
 		value: agent.id,
 		label: agent.label,
 		disabled: agent.disabled || sandboxBlocked(agent.id),
-		title: sandboxBlocked(agent.id) ? sandboxTitle : undefined,
+		title: sandboxBlocked(agent.id) ? sandboxTitle : unwatched(agent.id) ? unwatchedTitle : undefined,
 	});
+	const agentMenuItem = (agent: (typeof visibleOptions)[number], selected: boolean, disabled: boolean) => (
+		<AgentSelectMenuItem
+			agentId={agent.id}
+			label={agent.label}
+			selected={selected}
+			status={agent.status}
+			statusTone={agent.statusTone}
+			disabled={disabled}
+			note={unwatched(agent.id) ? t("agentSelector.notWatched") : undefined}
+			noteTitle={unwatched(agent.id) ? unwatchedTitle : undefined}
+		/>
+	);
 
 	if (variant === "settings-row" || variant === "settings-control") {
 		const menuOptions = visibleOptions.map(withSandbox);
@@ -515,16 +533,7 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 					renderMenuItem={(option, selected) => {
 						const agent = options.find((entry) => entry.id === option.value);
 						if (!agent) return option.label;
-						return (
-							<AgentSelectMenuItem
-								agentId={agent.id}
-								label={agent.label}
-								selected={selected}
-								status={agent.status}
-								statusTone={agent.statusTone}
-								disabled={option.disabled}
-							/>
-						);
+						return agentMenuItem(agent, selected, Boolean(option.disabled));
 					}}
 				/>
 		);
@@ -575,16 +584,7 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 				renderMenuItem={(option, selected) => {
 					const agent = options.find((entry) => entry.id === option.value);
 					if (!agent) return option.label;
-					return (
-						<AgentSelectMenuItem
-							agentId={agent.id}
-							label={agent.label}
-							selected={selected}
-							status={agent.status}
-							statusTone={agent.statusTone}
-							disabled={option.disabled}
-						/>
-					);
+					return agentMenuItem(agent, selected, Boolean(option.disabled));
 				}}
 			/>
 		);
@@ -635,17 +635,10 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 							key={agent.id}
 							value={agent.id}
 							disabled={agent.disabled || sandboxBlocked(agent.id)}
-							title={sandboxBlocked(agent.id) ? sandboxTitle : undefined}
+							title={sandboxBlocked(agent.id) ? sandboxTitle : unwatched(agent.id) ? unwatchedTitle : undefined}
 							className="[&>span:last-child]:w-full"
 						>
-							<AgentSelectMenuItem
-								agentId={agent.id}
-								label={agent.label}
-								selected={value === agent.id}
-								status={agent.status}
-								statusTone={agent.statusTone}
-								disabled={agent.disabled || sandboxBlocked(agent.id)}
-							/>
+							{agentMenuItem(agent, value === agent.id, agent.disabled || sandboxBlocked(agent.id))}
 						</SelectItem>
 					))}
 					{manageAgents && visibleOptions.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">{t("agentSelector.noneReady")}</p>}
