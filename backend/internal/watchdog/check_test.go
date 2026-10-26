@@ -54,6 +54,20 @@ func TestCheckBlocksProtectedReads(t *testing.T) {
 		{"go test", work, "Bash", `{"command":"go test ./..."}`, false, false, ""},
 		{"ls", work, "Bash", `{"command":"ls"}`, false, false, ""},
 		{"ao command", work, "Bash", `{"command":"ao session send --message hi"}`, false, false, ""},
+		{"ao then cat", work, "Bash", `{"command":"ao status && cat .env"}`, true, false, ".env"},
+		{"ao then cat semicolon", work, "Bash", `{"command":"ao status; cat .env"}`, true, false, ".env"},
+		{"ao then cat pipe", work, "Bash", `{"command":"ao --help | cat .env"}`, true, false, ".env"},
+		{"ao then cat or", work, "Bash", `{"command":"ao status || cat .env"}`, true, false, ".env"},
+		{"ao then cat background", work, "Bash", `{"command":"ao status & cat .env"}`, true, false, ".env"},
+		{"trailing semicolon", work, "Bash", `{"command":"cat .env;"}`, true, false, ".env"},
+		{"pipe stuck to path", work, "Bash", `{"command":"cat .env|head"}`, true, false, ".env"},
+		{"redirect in", work, "Bash", `{"command":"cat<.env"}`, true, false, ".env"},
+		{"redirect out", work, "Bash", `{"command":"cat .env>out"}`, true, false, ".env"},
+		{"ao alone", work, "Bash", `{"command":"ao status"}`, false, false, ""},
+		{"ao then go test", work, "Bash", `{"command":"ao session ls && go test ./..."}`, false, false, ""},
+		{"read hook settings", work, "Read", `{"file_path":".claude/settings.json"}`, false, false, ""},
+		{"grep hook settings", work, "Grep", `{"path":".claude/settings.json","pattern":"hooks"}`, false, false, ""},
+		{"edit committed hook settings", work, "Edit", `{"file_path":".claude/settings.json"}`, true, true, ".claude/settings.json"},
 		{"grep env glob", work, "Grep", `{"path":"src","pattern":"TODO","glob":"**/.env*"}`, true, false, ".env*"},
 		{"grep source", work, "Grep", `{"path":"src","pattern":"password"}`, false, false, ""},
 		{"edit hook settings", work, "Edit", `{"file_path":".claude/settings.local.json"}`, true, true, ".claude/settings.local.json"},
@@ -111,6 +125,10 @@ func TestCheckShellWriteTamper(t *testing.T) {
 	read := Check(nil, work, "Bash", json.RawMessage(`{"command":"type .claude/settings.json"}`))
 	if read.Blocked {
 		t.Fatalf("shell read of hook settings = %+v, want allowed", read)
+	}
+	chained := Check(nil, work, "Bash", json.RawMessage(`{"command":"echo hi; rm .claude/settings.local.json"}`))
+	if !chained.Blocked || !chained.Tamper {
+		t.Fatalf("chained shell write = %+v, want tamper", chained)
 	}
 }
 

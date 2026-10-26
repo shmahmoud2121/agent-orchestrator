@@ -17,7 +17,7 @@ type Result struct {
 	Blocked bool
 	// Path is the short name shown to the person and the agent, such as ".env".
 	Path string
-	// Tamper is true when the call targets AO's own hook settings. One tamper
+	// Tamper is true when the call writes AO's own hook settings. One write
 	// attempt is enough to stop a worker.
 	Tamper bool
 }
@@ -50,6 +50,9 @@ func Check(protected []ReadDeny, workDir, toolName string, input json.RawMessage
 		for _, raw := range fieldStrings(fields, key) {
 			if next := checkPath(protected, workDir, raw); worse(next, hit) {
 				hit = next
+			}
+			if !isWriteTool(name) {
+				continue
 			}
 			if resolved := resolvePath(workDir, raw); isHookConfig(workDir, resolved) {
 				if next := hookHit(displayPath(raw, resolved, workDir)); worse(next, hit) {
@@ -104,13 +107,22 @@ func Check(protected []ReadDeny, workDir, toolName string, input json.RawMessage
 }
 
 func checkShell(protected []ReadDeny, workDir, command string) Result {
-	words := shellWords(command)
-	if len(words) == 0 || isAOCommand(words) {
-		return Result{}
+	var hit Result
+	for _, segment := range shellSegments(shellWords(command)) {
+		if isAOCommand(segment) {
+			continue
+		}
+		if next := checkShellSegment(protected, workDir, segment); worse(next, hit) {
+			hit = next
+		}
 	}
+	return hit
+}
+
+func checkShellSegment(protected []ReadDeny, workDir string, words []string) Result {
 	var hit Result
 	for i, word := range words {
-		if isShellFlag(word) {
+		if isShellFlag(word) || isShellPunctuation(word) {
 			continue
 		}
 		if next := checkPath(protected, workDir, word); worse(next, hit) {
@@ -209,7 +221,7 @@ func isHookConfig(workDir, resolved string) bool {
 
 func isWriteCommand(words []string) bool {
 	for _, word := range words {
-		if isShellFlag(word) || word == "&" || strings.Contains(word, "=") {
+		if isShellFlag(word) || isShellPunctuation(word) || strings.Contains(word, "=") {
 			continue
 		}
 		switch strings.ToLower(filepath.Base(trimRedirect(word))) {
@@ -375,16 +387,18 @@ func samePath(a, b string) bool {
 	return filepath.Clean(a) == filepath.Clean(b)
 }
 
+// isAOCommand reports whether this one command is ao or ao.exe.
+// Only that command is skipped. The caller checks every other segment.
 func isAOCommand(words []string) bool {
 	for _, word := range words {
-		if word == "&&" || word == "||" || word == "|" || word == ";" {
+		if isSegmentBreak(word) {
 			return false
 		}
 		base := strings.TrimSuffix(strings.ToLower(filepath.Base(word)), ".exe")
 		if base == "ao" {
 			return true
 		}
-		if word == "&" || isShellFlag(word) || strings.Contains(word, "=") {
+		if isShellPunctuation(word) || isShellFlag(word) || strings.Contains(word, "=") {
 			continue
 		}
 		return false
@@ -401,6 +415,15 @@ func canonicalTool(name string) string {
 	name = strings.ReplaceAll(name, "-", "")
 	name = strings.ReplaceAll(name, "_", "")
 	return name
+}
+
+func isWriteTool(name string) bool {
+	switch name {
+	case "edit", "write", "multiedit", "notebookedit", "applypatch":
+		return true
+	default:
+		return false
+	}
 }
 
 func isShellTool(name string) bool {
@@ -496,7 +519,9 @@ func shellWords(command string) []string {
 		words = append(words, b.String())
 		b.Reset()
 	}
-	for _, r := range command {
+	runes := []rune(command)
+	for i := 0; i < len(runes); i++ {
+		r := runes[i]
 		switch {
 		case quote != 0:
 			if r == quote {
@@ -509,11 +534,106 @@ func shellWords(command string) []string {
 		case r == ' ' || r == '\t' || r == '\n' || r == '\r':
 			flush()
 		default:
-			b.WriteRune(r)
+			op, n, peel := shellOperator(runes, i, b.String())
+			if n == 0 {
+				b.WriteRune(r)
+				continue
+			}
+			if peel > 0 {
+				pending := b.String()
+				b.Reset()
+				if keep := pending[:len(pending)-peel]; keep != "" {
+					words = append(words, keep)
+				}
+			} else {
+				flush()
+			}
+			words = append(words, op)
+			i += n - 1
 		}
 	}
 	flush()
 	return words
+}
+
+// shellOperator returns the operator at runes[i], how many runes it uses, and
+// how many trailing bytes of pending belong to a redirect such as 2>.
+func shellOperator(runes []rune, i int, pending string) (string, int, int) {
+	has := func(s string) bool {
+		if i+len(s) > len(runes) {
+			return false
+		}
+		return string(runes[i:i+len(s)]) == s
+	}
+	switch runes[i] {
+	case ';':
+		return ";", 1, 0
+	case '|':
+		if has("||") {
+			return "||", 2, 0
+		}
+		return "|", 1, 0
+	case '&':
+		if has("&&") {
+			return "&&", 2, 0
+		}
+		if has("&>") {
+			return "&>", 2, 0
+		}
+		return "&", 1, 0
+	case '<':
+		return "<", 1, 0
+	case '>':
+		op, n := ">", 1
+		if has(">>") {
+			op, n = ">>", 2
+		}
+		if pending == "1" || pending == "2" {
+			return pending + op, n, len(pending)
+		}
+		return op, n, 0
+	default:
+		return "", 0, 0
+	}
+}
+
+func shellSegments(words []string) [][]string {
+	var segments [][]string
+	var current []string
+	flush := func() {
+		if len(current) == 0 {
+			return
+		}
+		segments = append(segments, current)
+		current = nil
+	}
+	for _, word := range words {
+		if isSegmentBreak(word) {
+			flush()
+			continue
+		}
+		current = append(current, word)
+	}
+	flush()
+	return segments
+}
+
+func isSegmentBreak(word string) bool {
+	switch word {
+	case "&&", "||", "|", ";", "&":
+		return true
+	default:
+		return false
+	}
+}
+
+func isShellPunctuation(word string) bool {
+	switch word {
+	case "&&", "||", "|", ";", "&", "<", ">", ">>", "1>", "2>", "&>", "1>>", "2>>":
+		return true
+	default:
+		return false
+	}
 }
 
 func splitSlash(p string) []string {
