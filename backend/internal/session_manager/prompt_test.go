@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 )
 
 func TestBuildTaskPrompt_IssueContextStaysInTaskPrompt(t *testing.T) {
@@ -473,5 +475,29 @@ func TestBuildSystemPrompt_OrchestratorIsTheLocalIntegrator(t *testing.T) {
 		if strings.Contains(got, forbidden) {
 			t.Fatalf("orchestrator prompt retained %q", forbidden)
 		}
+	}
+}
+
+func TestOrchestratorSystemPromptTeamMode(t *testing.T) {
+	const sentence = "Team mode is off for this project: do every task yourself and do not run `ao spawn`. If the person turns Team mode back on, you may hand work to workers again."
+	record := func(teamMode *bool) domain.ProjectRecord {
+		return domain.ProjectRecord{ID: "mer", DisplayName: "Mercury", Config: domain.ProjectConfig{TeamMode: teamMode}}
+	}
+	unset := orchestratorSystemPrompt(promptProjectContext("mer", record(nil)))
+	on := true
+	if got := orchestratorSystemPrompt(promptProjectContext("mer", record(&on))); got != unset {
+		t.Fatal("team mode on changed the orchestrator prompt")
+	}
+	if strings.Contains(unset, sentence) {
+		t.Fatal("unset team mode changed the orchestrator prompt")
+	}
+	off := false
+	got := orchestratorSystemPrompt(promptProjectContext("mer", record(&off)))
+	if !strings.Contains(got, sentence) {
+		t.Fatalf("team mode off prompt missing %q:\n%s", sentence, got)
+	}
+	const heading = "## Operating Rules\n\n"
+	if want := strings.Replace(unset, heading, heading+sentence+"\n\n", 1); got != want {
+		t.Fatalf("team mode off prompt differs from the current prompt plus the sentence")
 	}
 }
