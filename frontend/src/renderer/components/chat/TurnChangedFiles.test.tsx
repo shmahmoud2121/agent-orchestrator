@@ -45,19 +45,79 @@ function commandActivity(
 describe("TurnChangedFiles", () => {
 	it("shows the bordered summary with files visible", () => {
 		render(<TurnChangedFiles diff={diff()} />);
-		expect(screen.getByText("2 Files Changed")).toBeInTheDocument();
+		const header = screen.getByRole("button", { name: /2 changed files/ });
+		expect(header).toHaveTextContent("2 changed files");
+		expect(header).toHaveTextContent("+52");
+		expect(header).toHaveTextContent("−3");
 		expect(screen.getByText("a.ts")).toBeInTheDocument();
 		expect(screen.getByText("new.ts")).toBeInTheDocument();
 		expect(screen.getByText("+12")).toBeInTheDocument();
 		expect(screen.getByText("+40")).toBeInTheDocument();
-		expect(screen.getByText("−3")).toBeInTheDocument();
 	});
 
-	it("offers Review when a handler is provided", async () => {
+	it("uses a singular header for one file", () => {
+		render(
+			<TurnChangedFiles
+				diff={diff({ files: [{ path: "src/a.ts", additions: 1, deletions: 0, status: "added" }] })}
+			/>,
+		);
+		const header = screen.getByRole("button", { name: /1 changed file/ });
+		expect(header).toHaveTextContent("1 changed file");
+		expect(header).toHaveTextContent("+1");
+		expect(header.textContent).not.toMatch(/−/);
+	});
+
+	it("hides a zero total from the header", () => {
+		render(
+			<TurnChangedFiles
+				diff={diff({
+					files: [
+						{ path: "src/a.ts", additions: 4, deletions: 0, status: "modified" },
+						{ path: "src/b.ts", additions: 2, deletions: 0, status: "added" },
+					],
+				})}
+			/>,
+		);
+		const header = screen.getByRole("button", { name: /2 changed files/ });
+		expect(header).toHaveTextContent("+6");
+		expect(header.textContent).not.toMatch(/−/);
+	});
+
+	it("shows a muted status letter before the line counts", () => {
+		render(<TurnChangedFiles diff={diff()} />);
+		const modifiedMark = screen.getByText("M");
+		const addedMark = screen.getByText("A");
+		expect(modifiedMark).toHaveAttribute("aria-hidden", "true");
+		expect(addedMark).toHaveAttribute("aria-hidden", "true");
+		expect(modifiedMark).toHaveClass("text-muted-foreground", "font-mono", "text-caption");
+		expect(addedMark).toHaveClass("text-muted-foreground", "font-mono", "text-caption");
+		expect(screen.getByText("a.ts").closest("li")).toContainElement(modifiedMark);
+		expect(screen.getByText("new.ts").closest("li")).toContainElement(addedMark);
+	});
+
+	it("collapses and reopens the file list from the header", async () => {
+		const user = userEvent.setup();
+		render(<TurnChangedFiles diff={diff()} />);
+		expect(screen.getByText("a.ts")).toBeInTheDocument();
+		const toggle = screen.getByRole("button", { name: /2 changed files/ });
+		expect(toggle).toHaveAttribute("aria-expanded", "true");
+		await user.click(toggle);
+		expect(toggle).toHaveAttribute("aria-expanded", "false");
+		expect(screen.queryByText("a.ts")).not.toBeInTheDocument();
+		await user.click(toggle);
+		expect(toggle).toHaveAttribute("aria-expanded", "true");
+		expect(screen.getByText("a.ts")).toBeInTheDocument();
+	});
+
+	it("offers Open diff when a handler is provided without collapsing", async () => {
 		const onReview = vi.fn();
+		const user = userEvent.setup();
 		render(<TurnChangedFiles diff={diff()} onReview={onReview} />);
-		await userEvent.click(screen.getByRole("button", { name: "Review" }));
+		expect(screen.getByText("a.ts")).toBeInTheDocument();
+		await user.click(screen.getByRole("button", { name: "Open diff" }));
 		expect(onReview).toHaveBeenCalledTimes(1);
+		expect(screen.getByText("a.ts")).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /2 changed files/ })).toHaveAttribute("aria-expanded", "true");
 	});
 
 	it("opens a file in the Files panel when clicked", async () => {
@@ -218,7 +278,7 @@ describe("TurnChangedFiles", () => {
 				}}
 			/>,
 		);
-		expect(screen.getByText("1 File Changed")).toBeInTheDocument();
+		expect(screen.getByText("1 changed file")).toBeInTheDocument();
 		expect(screen.getByText("new.ts")).toBeInTheDocument();
 		await user.hover(screen.getByText("new.ts"));
 		expect(await screen.findByRole("tooltip")).toHaveTextContent("src/old.ts → src/new.ts");
@@ -226,8 +286,31 @@ describe("TurnChangedFiles", () => {
 
 	it("says the list was cut rather than presenting it as the whole change", () => {
 		render(<TurnChangedFiles diff={diff({ truncated: true })} onReview={() => {}} />);
-		expect(screen.getByText(/changed more files than AO lists/i)).toBeInTheDocument();
-		expect(screen.getByText(/Use Review for the whole change/i)).toBeInTheDocument();
+		expect(
+			screen.getByText(
+				"This turn changed more files than AO lists here. Use Open diff for the whole change.",
+			),
+		).toBeInTheDocument();
+	});
+
+	it("hides the list, show-more control, and truncated warning when collapsed", async () => {
+		const user = userEvent.setup();
+		const many: TurnDiff = {
+			files: Array.from({ length: 6 }, (_, i) => ({
+				path: `src/file-${i}.ts`,
+				additions: i + 1,
+				deletions: 0,
+				status: "modified" as const,
+			})),
+			truncated: true,
+		};
+		render(<TurnChangedFiles diff={many} />);
+		expect(screen.getByRole("button", { name: "Show 2 more" })).toBeInTheDocument();
+		expect(screen.getByText(/Open the Files tab for the whole change/i)).toBeInTheDocument();
+		await user.click(screen.getByRole("button", { name: /6 changed files/ }));
+		expect(screen.queryByText("file-0.ts")).not.toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "Show 2 more" })).not.toBeInTheDocument();
+		expect(screen.queryByText(/Open the Files tab for the whole change/i)).not.toBeInTheDocument();
 	});
 
 	it("expands beyond the preview with Show N more", async () => {
