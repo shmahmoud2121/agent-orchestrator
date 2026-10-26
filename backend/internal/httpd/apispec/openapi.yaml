@@ -17161,6 +17161,10 @@ components:
           type: integer
         worker:
           $ref: '#/components/schemas/RoleOverride'
+        workerEnvKeep:
+          items:
+            type: string
+          type: array
         workerSandbox:
           $ref: '#/components/schemas/WorkerSandboxConfig'
         workersRequestReview:

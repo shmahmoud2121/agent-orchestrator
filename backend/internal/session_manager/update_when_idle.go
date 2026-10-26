@@ -140,6 +140,7 @@ func (m *Manager) terminalResumesNatively(ctx context.Context, rec domain.Sessio
 		return false
 	}
 	m.augmentAgentRuntimeEnv(agent, env)
+	markWorkerEnv(env, rec.Kind, rec.Harness, project.Config)
 	return !nativeConversationMissing(ctx, agent, ref, rec.Metadata.AgentSessionID, env)
 }
 

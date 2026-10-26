@@ -13,6 +13,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 )
 
 // defaultSpawnHost launches the current AO executable as a detached pty-host.
@@ -29,7 +31,8 @@ func defaultSpawnHost(ctx context.Context, sessionID, cwd string, argv []string,
 
 	envAssignments, argv := stripEnvAssignments(argv)
 	args := ptyHostArgs(sessionID, cwd, argv, opts)
-	merged := interactiveTerminalEnv(os.Environ(), env, envAssignments)
+	base, _ := domain.FilterWorkerEnv(os.Environ(), env, false)
+	merged := interactiveTerminalEnv(base, env, envAssignments)
 
 	// Deliberately do not use CommandContext: once READY is received the host
 	// must survive cancellation of the request that created it.

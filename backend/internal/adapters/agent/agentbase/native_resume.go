@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
+	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/chatdriver/processenv"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 	aoprocess "github.com/aoagents/agent-orchestrator/backend/internal/process"
 )
@@ -23,10 +23,9 @@ func NativeJSONSessionExists(ctx context.Context, binary string, args []string, 
 	defer cancel()
 	cmd := aoprocess.CommandContext(ctx, binary, args...)
 	cmd.Dir = ref.WorkspacePath
-	cmd.Env = os.Environ()
-	for key, value := range env {
-		cmd.Env = append(cmd.Env, key+"="+value)
-	}
+	// Merge applies domain.FilterWorkerEnv when the overlay is a worker launch
+	// (AO_WORKER_ENV_KEEP). Probes that are not marked inherit the daemon env.
+	cmd.Env = processenv.Merge(env)
 	data, err := cmd.Output()
 	if err != nil {
 		return false, fmt.Errorf("read native conversation %q: %w", nativeID, err)

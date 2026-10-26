@@ -367,6 +367,7 @@ func (m *Manager) executeChatAgentSwitch(
 	}
 	targetLaunchEnv := m.runtimeEnv(id, credentialRecord.ProjectID, credentialRecord.IssueID, project.Config.Env)
 	m.augmentAgentRuntimeEnv(targetAgent, targetLaunchEnv)
+	markWorkerEnv(targetLaunchEnv, rec.Kind, cfg.TargetHarness, project.Config)
 	releaseCodexAdmission, admissionErr := m.acquireCodexControllerAdmission(ctx, cfg.TargetHarness)
 	if admissionErr != nil {
 		return result, fmt.Errorf("switch Chat agent %s: %w", id, admissionErr)
@@ -408,6 +409,7 @@ func (m *Manager) executeChatAgentSwitch(
 			}
 			credentialRecord = prepared
 			m.augmentAgentRuntimeEnv(targetAgent, launchEnv)
+			markWorkerEnv(launchEnv, rec.Kind, cfg.TargetHarness, project.Config)
 			return launchEnv, nil
 		},
 		ProviderConversationID: providerConversationID,

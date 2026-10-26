@@ -299,6 +299,7 @@ func (m *Manager) admitAgentSwitch(ctx context.Context, id domain.SessionID, cfg
 	}
 	sourceEnv := m.runtimeEnv(rec.ID, rec.ProjectID, rec.IssueID, project.Config.Env)
 	m.augmentAgentRuntimeEnv(sourceAgent, sourceEnv)
+	markWorkerEnv(sourceEnv, rec.Kind, rec.Harness, project.Config)
 	sourceRecord := rec
 	if mode == domain.SessionModeChat {
 		sourceRecord.Metadata.AgentSessionID = rec.Metadata.ProviderConversationID
@@ -1386,6 +1387,7 @@ func (m *Manager) prepareTargetActivation(ctx context.Context, store ports.Agent
 	m.clampWorkerLaunchPermission(rec.Kind, rec.ID, &config.Permissions)
 	pinRuntimePermissionEnv(env, config.Permissions)
 	m.augmentAgentRuntimeEnv(agent, env)
+	markWorkerEnv(env, rec.Kind, harness, project.Config)
 	if validator, ok := agent.(ports.AgentLaunchAuthValidator); ok {
 		status, authErr := validator.ValidateLaunchAuth(ctx, rec.Metadata.WorkspacePath, env)
 		if authErr != nil {

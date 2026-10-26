@@ -6,16 +6,20 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+
+	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 )
 
 // Merge overlays session-specific values on the daemon environment and returns
 // the KEY=VALUE form expected by os/exec. Sorting makes launches deterministic
-// enough to inspect and compare in tests and process diagnostics.
+// enough to inspect and compare in tests and process diagnostics. A worker
+// overlay (domain.WorkerEnvKeepVar) first drops inherited secrets.
 func Merge(overlay map[string]string) []string {
 	return merge(os.Environ(), overlay, runtime.GOOS == "windows")
 }
 
 func merge(environ []string, overlay map[string]string, caseInsensitive bool) []string {
+	environ, _ = domain.FilterWorkerEnv(environ, overlay, caseInsensitive)
 	merged := make(map[string]string, len(environ)+len(overlay))
 	for _, entry := range environ {
 		if key, _, ok := strings.Cut(entry, "="); ok {

@@ -115,6 +115,11 @@ type ProjectConfig struct {
 	// empty domain allowlist (no outbound network). Other worker harnesses
 	// ignore it. Orchestrator and reviewer sessions are unchanged.
 	WorkerSandbox WorkerSandboxConfig `json:"workerSandbox,omitempty"`
+
+	// WorkerEnvKeep names inherited daemon variables worker sessions keep even
+	// though they look secret (see IsSecretEnvName). A trailing "*" keeps a
+	// prefix. Every worker harness honors it; only the person may change it.
+	WorkerEnvKeep []string `json:"workerEnvKeep,omitempty"`
 }
 
 // DefaultVerifyTimeoutSeconds bounds a project VerifyCommand without its own
@@ -329,6 +334,9 @@ func (c ProjectConfig) Validate() error {
 		return err
 	}
 	if err := c.WorkerSandbox.Validate(); err != nil {
+		return err
+	}
+	if err := ValidateWorkerEnvKeep(c.WorkerEnvKeep); err != nil {
 		return err
 	}
 	return nil

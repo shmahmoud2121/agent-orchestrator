@@ -3,10 +3,14 @@ package processenv
 import (
 	"context"
 	"os/exec"
+	"runtime"
 	"testing"
 )
 
 func TestMergePreservesVariableSpellingForBash(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("requires a Unix bash that inherits cmd.Env")
+	}
 	bash, err := exec.LookPath("bash")
 	if err != nil {
 		t.Fatal("regression requires Bash: ", err)

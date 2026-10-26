@@ -158,6 +158,42 @@ func TestProtectedPathsCallerGuard(t *testing.T) {
 	}
 }
 
+func TestWorkerEnvKeepCallerGuard(t *testing.T) {
+	ctx := context.Background()
+	store, err := sqlitetest.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	svc := project.NewWithDeps(project.Deps{Store: store, SessionCatalog: catalogSessions{
+		"worker-1": {ID: "worker-1", ProjectID: "proj", Kind: domain.KindWorker},
+		"orch-1":   {ID: "orch-1", ProjectID: "proj", Kind: domain.KindOrchestrator},
+	}})
+	keep := domain.ProjectConfig{WorkerEnvKeep: []string{"NPM_TOKEN"}}
+	for _, tc := range []struct {
+		caller, want string
+	}{
+		{caller: "orch-1", want: "Only the person can change which secret variables workers keep. You are the manager"},
+		{caller: "worker-1", want: "Only the person can change which secret variables workers keep. You are a worker"},
+		{caller: ""},
+	} {
+		if err := store.UpsertProject(ctx, domain.ProjectRecord{ID: "proj", DisplayName: "Proj"}); err != nil {
+			t.Fatal(err)
+		}
+		_, err := svc.SetConfig(ctx, "proj", project.SetConfigInput{Config: keep, CallerSessionID: tc.caller})
+		if tc.want == "" {
+			if err != nil {
+				t.Fatalf("person SetConfig = %v", err)
+			}
+			continue
+		}
+		var api *apierr.Error
+		if !errors.As(err, &api) || api.Kind != apierr.KindForbidden || !strings.Contains(api.Message, tc.want) {
+			t.Fatalf("%s SetConfig = %v, want %q", tc.caller, err, tc.want)
+		}
+	}
+}
+
 func TestProtectedPathsMustNotCoverGit(t *testing.T) {
 	ctx := context.Background()
 	store, err := sqlitetest.Open(t.TempDir())

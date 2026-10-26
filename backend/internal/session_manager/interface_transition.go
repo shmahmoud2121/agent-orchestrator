@@ -552,6 +552,7 @@ func (m *Manager) runInterfaceTransition(
 			}
 			env := m.runtimeEnv(rec.ID, rec.ProjectID, rec.IssueID, project.Config.Env)
 			m.augmentAgentRuntimeEnv(bridge, env)
+			markWorkerEnv(env, rec.Kind, rec.Harness, project.Config)
 			if bridgeErr := storageBridge.PrepareInterfaceHandoffStorage(ctx, ports.SessionRef{
 				ID: string(rec.ID), WorkspacePath: rec.Metadata.WorkspacePath,
 				Metadata: map[string]string{ports.MetadataKeyAgentSessionID: transition.NativeConversationID},
@@ -844,6 +845,7 @@ func (m *Manager) persistedNativeConversationID(
 		return "", err
 	}
 	env := m.runtimeEnv(rec.ID, rec.ProjectID, rec.IssueID, project.Config.Env)
+	markWorkerEnv(env, rec.Kind, rec.Harness, project.Config)
 	exists, err := probe.NativeConversationExists(ctx, ports.SessionRef{
 		ID:            string(rec.ID),
 		WorkspacePath: rec.Metadata.WorkspacePath,
@@ -894,6 +896,7 @@ func (m *Manager) preflightInterfaceTarget(
 	env := m.runtimeEnv(rec.ID, rec.ProjectID, rec.IssueID, project.Config.Env)
 	pinRuntimePermissionEnv(env, config.Permissions)
 	m.augmentAgentRuntimeEnv(agent, env)
+	markWorkerEnv(env, rec.Kind, rec.Harness, project.Config)
 	if err := m.preflightLaunchAuth(ctx, agent, rec, env); err != nil {
 		return err
 	}

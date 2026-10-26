@@ -5860,6 +5860,7 @@ export interface components {
             verifyCommand?: string[];
             verifyTimeoutSeconds?: number;
             worker?: components["schemas"]["RoleOverride"];
+            workerEnvKeep?: string[];
             workerSandbox?: components["schemas"]["WorkerSandboxConfig"];
             workersRequestReview?: boolean;
         };

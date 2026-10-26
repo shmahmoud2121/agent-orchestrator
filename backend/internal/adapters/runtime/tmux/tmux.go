@@ -49,6 +49,11 @@ var sessionIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
 var getenv = os.Getenv
 
+// environ is the daemon environment the tmux server and its panes inherit.
+var environ = os.Environ
+
+var shellNamePattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
 // Options configures a tmux Runtime. Every field has a sensible default (see
 // New), so the zero value is usable.
 type Options struct {
@@ -1662,6 +1667,18 @@ func buildLaunchCommand(cfg ports.RuntimeConfig) string {
 	b.WriteString("cd ")
 	b.WriteString(shellQuote(cfg.WorkspacePath))
 	b.WriteString(" || exit; ")
+	// A pane inherits the tmux server's environment, not cmd.Env, so a worker
+	// launch unsets the secrets domain.FilterWorkerEnv strips.
+	if _, removed := domain.FilterWorkerEnv(environ(), cfg.Env, false); len(removed) > 0 {
+		b.WriteString("unset")
+		for _, name := range removed {
+			if shellNamePattern.MatchString(name) {
+				b.WriteString(" ")
+				b.WriteString(name)
+			}
+		}
+		b.WriteString("; ")
+	}
 	if _, configured := cfg.Env["NO_COLOR"]; !configured {
 		// The daemon may be launched from another agent or CI environment that
 		// sets NO_COLOR for its own captured output. Do not leak that ambient

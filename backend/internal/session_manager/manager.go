@@ -1446,6 +1446,7 @@ func (m *Manager) Spawn(ctx context.Context, cfg ports.SpawnConfig) (domain.Sess
 		}
 	}
 	m.augmentAgentRuntimeEnv(agent, env)
+	markWorkerEnv(env, cfg.Kind, cfg.Harness, project.Config)
 	m.clampWorkerLaunchPermission(cfg.Kind, id, &adapterConfig.Permissions)
 	pinRuntimePermissionEnv(env, adapterConfig.Permissions)
 	if validator, ok := agent.(ports.AgentLaunchAuthValidator); ok {
@@ -3538,6 +3539,7 @@ func (m *Manager) relaunchSessionWithPolicyAndGeneration(ctx context.Context, op
 		}
 	}
 	m.augmentAgentRuntimeEnv(agent, env)
+	markWorkerEnv(env, rec.Kind, rec.Harness, project.Config)
 	m.clampWorkerLaunchPermission(rec.Kind, rec.ID, &agentConfig.Permissions)
 	pinRuntimePermissionEnv(env, agentConfig.Permissions)
 	if validator, ok := agent.(ports.AgentLaunchAuthValidator); ok {
@@ -6214,6 +6216,22 @@ func pinRuntimePermissionEnv(env map[string]string, mode domain.PermissionMode) 
 		return
 	}
 	env[EnvPermissionMode] = string(ports.NormalizePermissionMode(mode))
+}
+
+// markWorkerEnv makes every launch path drop inherited secret-looking daemon
+// variables from a worker's environment (domain.FilterWorkerEnv), keeping the
+// harness's login, the project env and workerEnvKeep. Other kinds stay
+// unmarked: the manager and the person's terminals keep the full environment.
+func markWorkerEnv(env map[string]string, kind domain.SessionKind, harness domain.AgentHarness, cfg domain.ProjectConfig) {
+	if env == nil || kind != domain.KindWorker {
+		return
+	}
+	env[domain.WorkerEnvKeepVar] = domain.WorkerEnvKeepList(harness, cfg, func(name string) string {
+		if value, ok := env[name]; ok {
+			return value
+		}
+		return os.Getenv(name)
+	})
 }
 
 func (m *Manager) launchRuntimeEnv(id domain.SessionID, project domain.ProjectID, issue domain.IssueID, projectEnv map[string]string) (map[string]string, string, error) {
