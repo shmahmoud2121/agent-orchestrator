@@ -394,7 +394,7 @@ func (m *Manager) executeChatAgentSwitch(
 		Model:                   agentConfig.Model,
 		Effort:                  agentConfig.Effort,
 		Permissions:             agentConfig.Permissions,
-		WorkerSandbox:           workerSandboxLaunchFields(rec.Kind, project.Config),
+		WorkerSandbox:           m.workerSandboxLaunchFields(rec.Kind, project, rec.Metadata.WorkspacePath),
 		SystemPrompt:            finalSystemPrompt,
 		AdditionalDirectories:   additionalDirectories,
 		MCPServers:              m.aoMCPServers(cfg.TargetHarness, targetLaunchEnv),

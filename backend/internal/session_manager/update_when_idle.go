@@ -127,7 +127,7 @@ func (m *Manager) terminalResumesNatively(ctx context.Context, rec domain.Sessio
 	}
 	agentConfig := restoredAgentConfig(rec, project.Config)
 	agentConfig.Permissions = domain.WorkerLaunchPermission(rec.Kind, agentConfig.Permissions)
-	workerSandbox := workerSandboxLaunchFields(rec.Kind, project.Config)
+	workerSandbox := m.workerSandboxLaunchFields(rec.Kind, project, rec.Metadata.WorkspacePath)
 	_, ok, err = agent.GetRestoreCommand(ctx, ports.RestoreConfig{
 		Session: ref, Kind: rec.Kind, DataDir: m.dataDir, Config: agentConfig, Permissions: agentConfig.Permissions,
 		WorkerSandbox: workerSandbox,

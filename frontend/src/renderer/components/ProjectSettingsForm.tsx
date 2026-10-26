@@ -173,6 +173,7 @@ function SettingsBody({ project, projectId, hostId, hostConnected, onSaved, sect
 		intakeAssignee: intake.assignee ?? "",
 		workerSandboxEnabled: config.workerSandbox?.enabled !== false,
 		workerSandboxAllowedDomains: (config.workerSandbox?.allowedDomains ?? []).join("\n"),
+		workerSandboxProtectedPaths: config.workerSandbox?.protectedPaths ?? [],
 		...(verifiable && {
 			verifyCommand: formatVerifyCommand(config.verifyCommand),
 			verifyTimeoutSeconds: config.verifyTimeoutSeconds ? String(config.verifyTimeoutSeconds) : "",
@@ -424,15 +425,17 @@ function parseSandboxDomains(raw: string | undefined): string[] {
 	return [...new Set(raw.split(/[\n,]+/).map((entry) => entry.trim()).filter(Boolean))];
 }
 
-/** Persist only when the policy differs from the default (enabled, no domains). */
-function workerSandboxConfig(values: ProjectSettingsDraft): { workerSandbox?: { enabled: boolean; allowedDomains?: string[] } } {
+/** Persist only when the policy differs from the default (enabled, no domains, no extra protected files). */
+function workerSandboxConfig(values: ProjectSettingsDraft): { workerSandbox?: { enabled: boolean; allowedDomains?: string[]; protectedPaths?: string[] } } {
 	const enabled = values.workerSandboxEnabled !== false;
 	const allowedDomains = parseSandboxDomains(values.workerSandboxAllowedDomains);
-	if (enabled && allowedDomains.length === 0) return {};
+	const protectedPaths = values.workerSandboxProtectedPaths ?? [];
+	if (enabled && allowedDomains.length === 0 && protectedPaths.length === 0) return { workerSandbox: undefined };
 	return {
 		workerSandbox: {
 			enabled,
 			...(allowedDomains.length > 0 ? { allowedDomains } : {}),
+			...(protectedPaths.length > 0 ? { protectedPaths } : {}),
 		},
 	};
 }

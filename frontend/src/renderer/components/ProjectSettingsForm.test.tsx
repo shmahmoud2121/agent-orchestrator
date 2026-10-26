@@ -590,6 +590,31 @@ describe("ProjectSettingsForm", () => {
 		});
 	});
 
+	it("adds and removes protected files and keeps the built-in list collapsed", async () => {
+		mockProject({
+			id: "proj-1", name: "Project One", kind: "single_repo", path: "/repo/project-one",
+			repo: "", defaultBranch: "main", config: {
+				worker: { agent: "claude-code" },
+				orchestrator: { agent: "claude-code" },
+				workerSandbox: { protectedPaths: ["config/prod.yml"] },
+			},
+		});
+		renderSettings("proj-1", undefined, "agents");
+		expect(await screen.findByText("Protected files")).toBeInTheDocument();
+		expect(screen.getByText("Workers can't read these files.")).toBeInTheDocument();
+		const builtin = screen.getByRole("button", { name: "Always protected" });
+		expect(builtin).toHaveAttribute("aria-expanded", "false");
+		expect(screen.queryByText("In your home folder")).not.toBeInTheDocument();
+		await userEvent.click(builtin);
+		expect(screen.getByText("In your home folder")).toBeInTheDocument();
+		expect(screen.getByText(/~\/\.ssh/)).toBeInTheDocument();
+
+		await userEvent.type(screen.getByRole("textbox", { name: "File or folder to protect" }), "exports/{Enter}");
+		await userEvent.click(screen.getByRole("button", { name: "Remove config/prod.yml" }));
+		submitSettings();
+		await waitFor(() => expect(putMock.mock.calls.at(-1)?.[1].body.config.workerSandbox).toEqual({ enabled: true, protectedPaths: ["exports/"] }));
+	});
+
 	it("shows not sandboxed for non-Claude Code workers", async () => {
 		mockProject({
 			id: "proj-1", name: "Project One", kind: "single_repo", path: "/repo/project-one",

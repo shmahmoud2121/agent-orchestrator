@@ -50,8 +50,10 @@ func TestWorkerSandboxSettingsOmitGitAllowWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 	sandbox := settings["sandbox"].(map[string]any)
-	if _, ok := sandbox["filesystem"]; ok {
-		t.Fatalf("filesystem.allowWrite must be omitted: %#v", sandbox["filesystem"])
+	if filesystem, ok := sandbox["filesystem"].(map[string]any); ok {
+		if _, ok := filesystem["allowWrite"]; ok {
+			t.Fatalf("filesystem.allowWrite must be omitted: %#v", filesystem)
+		}
 	}
 	_ = worktree
 }

@@ -478,7 +478,7 @@ func (s *Service) CreateIndependentSideChat(ctx context.Context, id domain.Sessi
 	frozenConfig, err := json.Marshal(frozenSideConfig{
 		DataDir: cfg.DataDir, WorkspacePath: cfg.WorkspacePath, Env: cfg.Env,
 		Permissions: effectiveChatPermission(cfg),
-		Kind:        cfg.Kind, WorkerSandbox: cfg.WorkerSandbox,
+		Kind:        cfg.Kind, WorkerSandbox: cfg.WorkerSandbox, WorkerSandboxLaunch: cfg.WorkerSandbox.Launch,
 		ReadOnly: cfg.ReadOnly, SystemPrompt: sideIdentityPrompt(cfg.SystemPrompt),
 		AdditionalDirectories: cfg.AdditionalDirectories, MCPServers: cfg.MCPServers,
 	})
@@ -1982,12 +1982,15 @@ func (m *sideManager) retryCleanup() {
 // frozenSideConfig contains the launch configuration that survives daemon recovery.
 // It is never included in renderer-facing side summaries.
 type frozenSideConfig struct {
-	DataDir               string
-	WorkspacePath         string
-	Env                   map[string]string
-	Permissions           domain.PermissionMode
-	Kind                  domain.SessionKind
-	WorkerSandbox         domain.WorkerSandboxConfig
+	DataDir       string
+	WorkspacePath string
+	Env           map[string]string
+	Permissions   domain.PermissionMode
+	Kind          domain.SessionKind
+	WorkerSandbox domain.WorkerSandboxConfig
+	// WorkerSandboxLaunch keeps the protected-file paths across recovery;
+	// WorkerSandboxConfig.Launch itself is never serialized.
+	WorkerSandboxLaunch   domain.WorkerSandboxLaunch
 	ReadOnly              bool
 	SystemPrompt          string
 	AdditionalDirectories []string
@@ -2000,6 +2003,7 @@ func (s *Service) sideLaunchConfig(side domain.SideConversation) (StartConfig, p
 		return StartConfig{}, nil, fmt.Errorf("read frozen side configuration: %w", err)
 	}
 	driver, err := s.drivers.Driver(side.Harness)
+	frozen.WorkerSandbox.Launch = frozen.WorkerSandboxLaunch
 	return StartConfig{
 		Harness: side.Harness, DataDir: frozen.DataDir, WorkspacePath: frozen.WorkspacePath,
 		Env: frozen.Env, Permissions: frozen.Permissions, Kind: frozen.Kind,

@@ -27,6 +27,8 @@ type promptProject struct {
 	WorkersRequestReview bool
 	// TeamMode is copied from the project config. Nil means on.
 	TeamMode *bool
+	// WorkerSandbox is copied from the project config.
+	WorkerSandbox domain.WorkerSandboxConfig
 }
 
 type taskPromptConfig struct {
@@ -211,6 +213,12 @@ const issueContextTrustBoundary = "The issue context below was fetched from a tr
 
 const teamModeOffPrompt = "Team mode is off for this project: do every task yourself and do not run `ao spawn`. If the person turns Team mode back on, you may hand work to workers again."
 
+// protectedFilesPrompt tells the manager how to protect a file it notices.
+// `--add-protected-path` keeps every other setting, so it is safe to run.
+func protectedFilesPrompt(projectID string) string {
+	return "- If you notice a file with passwords, keys or private data that workers should not read, add it to the project's protected files with `ao project set-config " + projectID + " --add-protected-path <path>`; you can add protected files but never remove them."
+}
+
 func orchestratorSystemPrompt(project promptProject) string {
 	prompt := fmt.Sprintf(`## AO Orchestrator Role
 
@@ -294,6 +302,10 @@ Workers commit on their own branch in their own worktree and never push, open PR
 - An AO review approval is internal. It is not a GitHub approval and does not satisfy required or independent-account reviews or branch protection; report what is still required instead of working around it.
 
 %s`, projectName(project), project.ID, project.ID, project.ID, projectContextSection(project))
+	if project.WorkerSandbox.IsEnabled() {
+		const anchor = "- Use `ao send` for session communication."
+		prompt = strings.Replace(prompt, anchor, protectedFilesPrompt(project.ID)+"\n"+anchor, 1)
+	}
 	if (domain.ProjectConfig{TeamMode: project.TeamMode}).TeamModeEnabled() {
 		return prompt
 	}

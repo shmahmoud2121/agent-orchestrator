@@ -7,6 +7,7 @@ import type { ProjectSettingsSaveState, ProjectSettingsSection as SettingsSectio
 import { deriveRepoHost, deriveRepoPath, IntakeFields, intakeNeedsRule } from "./IntakeFields";
 import { ProductExternalLink } from "./ProductExternalLink";
 import { AgentModelField, ProjectAutoReviewToggle, ProjectPushAfterMergeToggle, ProjectWorkerSandboxToggle, ProjectWorkersRequestReviewToggle } from "./settings/ProjectAgentRoleControls";
+import { ProtectedFilesSettings } from "./settings/ProtectedFilesSettings";
 import { SettingsOptionMenu } from "./settings/SettingsOptionMenu";
 import { SettingsRow } from "./settings/SettingsRow";
 import { Button } from "./ui/button";
@@ -48,6 +49,8 @@ export type ProjectSettingsDraft = {
 	workerSandboxEnabled?: boolean;
 	/** Local-only: sandbox network allowlist; one hostname or *.example.com per line. */
 	workerSandboxAllowedDomains?: string;
+	/** Local-only: files workers may not read, beyond the built-in list. */
+	workerSandboxProtectedPaths?: string[];
 };
 
 const roles = ["worker", "orchestrator", "reviewer"] as const;
@@ -252,9 +255,11 @@ export function ProjectSettingsEditor({ initialValues, section, capabilities, de
 							agent={agent}
 							enabled={draft.workerSandboxEnabled !== false}
 							domains={draft.workerSandboxAllowedDomains ?? ""}
+							protectedPaths={draft.workerSandboxProtectedPaths ?? []}
 							bypassSelected={(draft.workerPermissions || "auto") === "bypass-permissions"}
 							onEnabledChange={(workerSandboxEnabled) => patch({ workerSandboxEnabled })}
 							onDomainsChange={(workerSandboxAllowedDomains) => patch({ workerSandboxAllowedDomains })}
+							onProtectedPathsChange={(workerSandboxProtectedPaths) => patch({ workerSandboxProtectedPaths })}
 						/> : null}
 					</ProjectSettingsSection>;
 				})}
@@ -275,13 +280,15 @@ function ProjectRolePermissions({ role, agent, value, runtimeDefaults, onChange 
 	return <SettingsOptionMenu aria-label={label} value={runtimeDefaults ? value : value === "default" && agent === "codex" ? "bypass-permissions" : value || "auto"} options={options} disabled={runtimeDefaults && !agent} placeholder={t("settings.project.permissionNotReported")} triggerClassName="w-fit" onChange={onChange} />;
 }
 
-function WorkerSandboxSettings({ agent, enabled, domains, bypassSelected, onEnabledChange, onDomainsChange }: {
+function WorkerSandboxSettings({ agent, enabled, domains, protectedPaths, bypassSelected, onEnabledChange, onDomainsChange, onProtectedPathsChange }: {
 	agent: string;
 	enabled: boolean;
 	domains: string;
+	protectedPaths: string[];
 	bypassSelected: boolean;
 	onEnabledChange: (enabled: boolean) => void;
 	onDomainsChange: (domains: string) => void;
+	onProtectedPathsChange: (paths: string[]) => void;
 }) {
 	const { t } = useTranslation();
 	if (agent && agent !== "claude-code") {
@@ -304,6 +311,7 @@ function WorkerSandboxSettings({ agent, enabled, domains, bypassSelected, onEnab
 					onChange={(event) => onDomainsChange(event.target.value)}
 				/>
 			</SettingsRow>
+			<ProtectedFilesSettings paths={protectedPaths} onChange={onProtectedPathsChange} />
 			{bypassSelected ? <p className="px-(--settings-row-inset) text-xs text-settings-muted" role="note">{t("settings.project.workerSandboxBypassNote")}</p> : null}
 		</> : null}
 	</>;

@@ -7076,6 +7076,7 @@ export interface components {
         WorkerSandboxConfig: {
             allowedDomains?: string[];
             enabled?: null | boolean;
+            protectedPaths?: string[];
         };
         WorkspaceCommitSummary: {
             author: string;

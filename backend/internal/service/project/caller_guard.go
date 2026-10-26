@@ -22,6 +22,9 @@ type callerChange struct {
 	sandbox     bool
 	trust       bool
 	teamMode    bool
+	// protectedRemoved drops a protected file. Orchestrators may add protected
+	// files, which only narrows what workers read, but never remove one.
+	protectedRemoved bool
 	// anyWrite is a project config write. Workers are refused even when the
 	// sensitive fields above are unchanged. Orchestrators may change the rest.
 	anyWrite bool
@@ -46,6 +49,9 @@ func (m *Service) authorizeCaller(ctx context.Context, projectID domain.ProjectI
 	case domain.KindOrchestrator:
 		if change.permissions || change.sandbox || change.trust || change.teamMode {
 			return apierr.Forbidden("PROJECT_SETTINGS_FORBIDDEN", orchestratorSettingsRefusal(change))
+		}
+		if change.protectedRemoved {
+			return apierr.Forbidden("PROJECT_SETTINGS_FORBIDDEN", protectedRemovalRefusal)
 		}
 		return nil
 	default:
@@ -84,6 +90,8 @@ func orchestratorSettingsRefusal(change callerChange) string {
 	}
 }
 
+const protectedRemovalRefusal = "Only the person can remove a protected file. You are the manager: you may add protected files, not remove them. Ask the person in your report."
+
 func sensitiveConfigChange(before, after domain.ProjectConfig) callerChange {
 	return callerChange{
 		anyWrite: true,
@@ -92,6 +100,17 @@ func sensitiveConfigChange(before, after domain.ProjectConfig) callerChange {
 			before.Orchestrator.AgentConfig.Permissions != after.Orchestrator.AgentConfig.Permissions,
 		sandbox: before.WorkerSandbox.IsEnabled() != after.WorkerSandbox.IsEnabled() ||
 			!slices.Equal(before.WorkerSandbox.AllowedDomains, after.WorkerSandbox.AllowedDomains),
-		teamMode: before.TeamModeEnabled() != after.TeamModeEnabled(),
+		teamMode:         before.TeamModeEnabled() != after.TeamModeEnabled(),
+		protectedRemoved: !containsEvery(after.WorkerSandbox.ProtectedPaths, before.WorkerSandbox.ProtectedPaths),
 	}
+}
+
+// containsEvery reports whether have keeps every entry of want.
+func containsEvery(have, want []string) bool {
+	for _, entry := range want {
+		if !slices.Contains(have, entry) {
+			return false
+		}
+	}
+	return true
 }

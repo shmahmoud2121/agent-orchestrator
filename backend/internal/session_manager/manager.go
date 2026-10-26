@@ -21,6 +21,7 @@ import (
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/modelcatalog"
 	"github.com/aoagents/agent-orchestrator/backend/internal/agentlaunch"
+	"github.com/aoagents/agent-orchestrator/backend/internal/apitoken"
 	"github.com/aoagents/agent-orchestrator/backend/internal/attachmentstore"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
@@ -1461,7 +1462,7 @@ func (m *Manager) Spawn(ctx context.Context, cfg ports.SpawnConfig) (domain.Sess
 		m.rollbackSeedSpawnWorkspace(ctx, rec, ws, workspaceProject, false, false)
 		return domain.SessionRecord{}, 0, 0, wrapSpawnStage(id, ErrSpawnPrepare, err)
 	}
-	workerSandbox := workerSandboxLaunchFields(cfg.Kind, project.Config)
+	workerSandbox := m.workerSandboxLaunchFields(cfg.Kind, project, ws.Path)
 	launchCfg := ports.LaunchConfig{
 		DataDir:          m.dataDir,
 		SessionID:        string(id),
@@ -3562,7 +3563,7 @@ func (m *Manager) relaunchSessionWithPolicyAndGeneration(ctx context.Context, op
 			}
 		}
 	}
-	workerSandbox := workerSandboxLaunchFields(rec.Kind, project.Config)
+	workerSandbox := m.workerSandboxLaunchFields(rec.Kind, project, ws.Path)
 	var argv []string
 	var initialization ports.NativeRestoreInitialization
 	var delivery ports.PromptDeliveryStrategy
@@ -5668,6 +5669,7 @@ func promptProjectContext(projectID domain.ProjectID, project domain.ProjectReco
 
 		WorkersRequestReview: cfg.WorkersRequestReview,
 		TeamMode:             cfg.TeamMode,
+		WorkerSandbox:        cfg.WorkerSandbox,
 	}
 }
 
@@ -7115,10 +7117,22 @@ func firstNonEmptyString(values ...string) string {
 }
 
 // workerSandboxLaunchFields returns the project sandbox policy for worker
-// launches. Non-workers get a zero policy so adapters leave them unsandboxed.
-func workerSandboxLaunchFields(kind domain.SessionKind, cfg domain.ProjectConfig) domain.WorkerSandboxConfig {
+// launches, with the paths its protected-file rules are built from. Every
+// launch and restore calls it, so the rules always match the current paths.
+// Non-workers get a zero policy so adapters leave them unsandboxed.
+func (m *Manager) workerSandboxLaunchFields(kind domain.SessionKind, project domain.ProjectRecord, workspacePath string) domain.WorkerSandboxConfig {
 	if kind != domain.KindWorker {
 		return domain.WorkerSandboxConfig{}
 	}
-	return cfg.WorkerSandbox
+	sandbox := project.Config.WorkerSandbox
+	home, _ := os.UserHomeDir()
+	sandbox.Launch = domain.WorkerSandboxLaunch{
+		ProjectPath:   project.Path,
+		WorkspacePath: workspacePath,
+		HomeDir:       home,
+	}
+	if m.dataDir != "" {
+		sandbox.Launch.APITokenPath = apitoken.Path(m.dataDir)
+	}
+	return sandbox
 }

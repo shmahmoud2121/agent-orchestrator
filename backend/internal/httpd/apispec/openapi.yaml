@@ -20264,6 +20264,10 @@ components:
           type:
           - "null"
           - boolean
+        protectedPaths:
+          items:
+            type: string
+          type: array
       type: object
     WorkspaceCommitSummary:
       properties:

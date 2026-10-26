@@ -44,6 +44,7 @@ const approvedLiterals: Record<string, readonly string[]> = {
 		"Ctrl+/",
 	],
 	"components/settings/UpdatesSection.tsx": ["PR #"],
+	"components/settings/ProtectedFilesSettings.tsx": ["config/production.yml"],
 };
 
 // The Chat surface predates this coverage gate and is intentionally being

@@ -69,8 +69,12 @@ func TestGetLaunchCommandWorkerSandboxOn(t *testing.T) {
 		sandbox["allowUnsandboxedCommands"] != false || sandbox["autoAllowBashIfSandboxed"] != true {
 		t.Fatalf("sandbox block = %#v", sandbox)
 	}
-	if _, ok := sandbox["filesystem"]; ok {
+	filesystem := sandbox["filesystem"].(map[string]any)
+	if _, ok := filesystem["allowWrite"]; ok {
 		t.Fatalf("must not set filesystem.allowWrite; Claude Code handles worktree .git: %#v", sandbox)
+	}
+	if len(asStringSlice(t, filesystem["denyRead"])) == 0 {
+		t.Fatalf("filesystem.denyRead must list protected files: %#v", filesystem)
 	}
 	network := sandbox["network"].(map[string]any)
 	domains := asStringSlice(t, network["allowedDomains"])
@@ -265,14 +269,14 @@ func TestGetLaunchCommandSandboxClaudeTooOldRefuses(t *testing.T) {
 }
 
 func TestClaudeVersionAtLeast(t *testing.T) {
-	if !claudeVersionAtLeast("2.1.149", minWorktreeSandboxVersion) {
-		t.Fatal("2.1.149 should pass")
+	if !claudeVersionAtLeast("2.1.268", minWorktreeSandboxVersion) {
+		t.Fatal("2.1.268 should pass")
 	}
-	if !claudeVersionAtLeast("Claude Code v2.1.233", minWorktreeSandboxVersion) {
+	if !claudeVersionAtLeast("Claude Code v2.1.308", minWorktreeSandboxVersion) {
 		t.Fatal("banner form should pass")
 	}
-	if claudeVersionAtLeast("2.1.148", minWorktreeSandboxVersion) {
-		t.Fatal("2.1.148 should fail")
+	if claudeVersionAtLeast("2.1.267", minWorktreeSandboxVersion) {
+		t.Fatal("2.1.267 should fail: read-deny rules need 2.1.268")
 	}
 	if claudeVersionAtLeast("not a version", minWorktreeSandboxVersion) {
 		t.Fatal("garbage should fail")
@@ -344,7 +348,7 @@ func forceSandboxAvailable(t *testing.T) {
 	})
 	lookPath = func(file string) (string, error) { return "/usr/bin/" + file, nil }
 	claudeVersionCommand = func(context.Context, string) ([]byte, error) {
-		return []byte("2.1.233 (Claude Code)\n"), nil
+		return []byte("2.1.308 (Claude Code)\n"), nil
 	}
 	if err := CheckSandboxAvailability(); err != nil {
 		t.Fatal(err)

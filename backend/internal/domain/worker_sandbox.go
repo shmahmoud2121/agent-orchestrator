@@ -3,6 +3,7 @@ package domain
 import (
 	"fmt"
 	"net"
+	"path/filepath"
 	"strings"
 	"unicode"
 )
@@ -22,6 +23,28 @@ type WorkerSandboxConfig struct {
 	// loopback daemon. Entries are hostnames or "*.example.com" only — no
 	// schemes, paths, or ports.
 	AllowedDomains []string `json:"allowedDomains,omitempty"`
+	// ProtectedPaths adds files workers may not read to the built-in list
+	// (BuiltinWorkerProtectedPaths). Each entry is relative to the project, a
+	// "~/" path, or absolute. The person and the manager may add entries; only
+	// the person may remove one.
+	ProtectedPaths []string `json:"protectedPaths,omitempty"`
+
+	// Launch is filled in by the session manager for each worker launch and is
+	// never stored or sent over the API.
+	Launch WorkerSandboxLaunch `json:"-"`
+}
+
+// WorkerSandboxLaunch is the per-launch context the read-deny rules are built
+// from. Empty fields contribute no rules.
+type WorkerSandboxLaunch struct {
+	// ProjectPath is the project's registered path (the main checkout).
+	ProjectPath string
+	// WorkspacePath is the worker's own worktree.
+	WorkspacePath string
+	// HomeDir is the real home folder. Empty means os.UserHomeDir.
+	HomeDir string
+	// APITokenPath is AO's install token file (apitoken.Path).
+	APITokenPath string
 }
 
 // IsEnabled reports whether worker sandboxing is on. A missing config (nil
@@ -54,7 +77,66 @@ func (c WorkerSandboxConfig) Validate() error {
 			return fmt.Errorf("workerSandbox.allowedDomains[%d]: %w", i, err)
 		}
 	}
+	if len(c.ProtectedPaths) > MaxWorkerProtectedPaths {
+		return fmt.Errorf("workerSandbox.protectedPaths: at most %d entries", MaxWorkerProtectedPaths)
+	}
+	seen := make(map[string]bool, len(c.ProtectedPaths))
+	for i, raw := range c.ProtectedPaths {
+		if err := ValidateProtectedPath(raw); err != nil {
+			return fmt.Errorf("workerSandbox.protectedPaths[%d]: %w", i, err)
+		}
+		if seen[raw] {
+			return fmt.Errorf("workerSandbox.protectedPaths[%d]: %q is listed twice", i, raw)
+		}
+		seen[raw] = true
+	}
 	return nil
+}
+
+// ValidateForProject refuses absolute and home protected paths that would
+// cover the project's .git folder. Shape checks are in Validate.
+func (c WorkerSandboxConfig) ValidateForProject(projectPath, homeDir string) error {
+	if strings.TrimSpace(projectPath) == "" {
+		return nil
+	}
+	gitDir := filepath.Join(projectPath, ".git")
+	for i, raw := range c.ProtectedPaths {
+		kind, rest := ClassifyProtectedPath(raw)
+		var abs string
+		switch kind {
+		case ProtectedPathAbsolute:
+			abs = raw
+		case ProtectedPathHome:
+			if homeDir == "" {
+				continue
+			}
+			abs = filepath.Join(homeDir, rest)
+		default:
+			continue
+		}
+		if PathCovers(abs, gitDir) {
+			return fmt.Errorf("workerSandbox.protectedPaths[%d]: %q would block the project's .git folder, which workers need", i, raw)
+		}
+	}
+	return nil
+}
+
+// PathCovers reports whether parent is child or one of its ancestors. On
+// Windows filepath.Rel compares without regard to case, like the filesystem.
+func PathCovers(parent, child string) bool {
+	parent = filepath.Clean(parent)
+	child = filepath.Clean(child)
+	rel, err := filepath.Rel(parent, child)
+	if err != nil {
+		return false
+	}
+	if rel == "." {
+		return true
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return false
+	}
+	return !filepath.IsAbs(rel)
 }
 
 // ValidateSandboxDomain accepts a hostname or "*.example.com" wildcard only.

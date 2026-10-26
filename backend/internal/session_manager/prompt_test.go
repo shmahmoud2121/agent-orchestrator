@@ -501,3 +501,17 @@ func TestOrchestratorSystemPromptTeamMode(t *testing.T) {
 		t.Fatalf("team mode off prompt differs from the current prompt plus the sentence")
 	}
 }
+
+func TestOrchestratorSystemPromptProtectedFiles(t *testing.T) {
+	const sentence = "If you notice a file with passwords, keys or private data that workers should not read, add it to the project's protected files with `ao project set-config mer --add-protected-path <path>`; you can add protected files but never remove them."
+	sandboxed := orchestratorSystemPrompt(promptProjectContext("mer", domain.ProjectRecord{ID: "mer", DisplayName: "Mercury"}))
+	if !strings.Contains(sandboxed, sentence) {
+		t.Fatalf("default worker sandbox prompt missing %q", sentence)
+	}
+	off := false
+	unsandboxed := orchestratorSystemPrompt(promptProjectContext("mer", domain.ProjectRecord{ID: "mer", DisplayName: "Mercury",
+		Config: domain.ProjectConfig{WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &off}}}))
+	if strings.Contains(unsandboxed, "--add-protected-path") {
+		t.Fatal("a project without a worker sandbox has no protected files to add")
+	}
+}
