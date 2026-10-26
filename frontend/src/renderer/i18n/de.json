@@ -3235,7 +3235,7 @@
 	"chat.changedFiles.openDiff": "Diff öffnen",
 	"chat.changedFiles.showMore": "{{count}} weitere anzeigen",
 	"chat.changedFiles.showLess": "Weniger anzeigen",
-	"chat.changedFiles.truncatedReview": "Dieser Turn hat mehr Dateien geändert, als AO hier auflistet. Mit Review die gesamte Änderung öffnen.",
+	"chat.changedFiles.truncatedReview": "Dieser Turn hat mehr Dateien geändert, als AO hier auflistet. Mit Diff öffnen die gesamte Änderung öffnen.",
 	"chat.changedFiles.truncatedFiles": "Dieser Turn hat mehr Dateien geändert, als AO hier auflistet. Öffnen Sie den Dateien-Tab für die gesamte Änderung.",
 	"chat.changedFiles.stillChanging": "ändert sich noch",
 	"sideChat.deleteConfirm": "Seitenchat löschen?",

@@ -3235,7 +3235,7 @@
 	"chat.changedFiles.openDiff": "差分を開く",
 	"chat.changedFiles.showMore": "あと {{count}} 件を表示",
 	"chat.changedFiles.showLess": "表示を減らす",
-	"chat.changedFiles.truncatedReview": "このターンは AO がここに一覧するより多くのファイルを変更しました。Review で変更全体を確認してください。",
+	"chat.changedFiles.truncatedReview": "このターンは AO がここに一覧するより多くのファイルを変更しました。差分を開く で変更全体を確認してください。",
 	"chat.changedFiles.truncatedFiles": "このターンは AO がここに一覧するより多くのファイルを変更しました。ファイルタブで変更全体を確認してください。",
 	"chat.changedFiles.stillChanging": "変更中",
 	"sideChat.deleteConfirm": "サイドチャットを削除しますか？",

@@ -288,7 +288,7 @@ describe("TurnChangedFiles", () => {
 		render(<TurnChangedFiles diff={diff({ truncated: true })} onReview={() => {}} />);
 		expect(
 			screen.getByText(
-				"This turn changed more files than AO lists here. Use Review for the whole change.",
+				"This turn changed more files than AO lists here. Use Open diff for the whole change.",
 			),
 		).toBeInTheDocument();
 	});

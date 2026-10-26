@@ -3153,7 +3153,7 @@
 	"chat.changedFiles.openDiff": "Open diff",
 	"chat.changedFiles.showMore": "Show {{count}} more",
 	"chat.changedFiles.showLess": "Show less",
-	"chat.changedFiles.truncatedReview": "This turn changed more files than AO lists here. Use Review for the whole change.",
+	"chat.changedFiles.truncatedReview": "This turn changed more files than AO lists here. Use Open diff for the whole change.",
 	"chat.changedFiles.truncatedFiles": "This turn changed more files than AO lists here. Open the Files tab for the whole change.",
 	"chat.changedFiles.stillChanging": "still changing",
 	"sideChat.deleteConfirm": "Delete side chat?",

@@ -3282,7 +3282,7 @@
 	"chat.changedFiles.openDiff": "Ouvrir le diff",
 	"chat.changedFiles.showMore": "Afficher {{count}} de plus",
 	"chat.changedFiles.showLess": "Afficher moins",
-	"chat.changedFiles.truncatedReview": "Ce tour a modifié plus de fichiers que AO n'en liste ici. Utilisez Review pour tout le changement.",
+	"chat.changedFiles.truncatedReview": "Ce tour a modifié plus de fichiers que AO n'en liste ici. Utilisez Ouvrir le diff pour tout le changement.",
 	"chat.changedFiles.truncatedFiles": "Ce tour a modifié plus de fichiers que AO n'en liste ici. Ouvrez l'onglet Fichiers pour tout le changement.",
 	"chat.changedFiles.stillChanging": "encore en cours de modification",
 	"sideChat.deleteConfirm": "Supprimer le chat latéral ?",
