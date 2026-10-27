@@ -31,8 +31,10 @@ import (
 var releaseRepo = "Untrivial-ai/agent-orchestrator"
 
 // appBundleName is the macOS bundle directory name produced by electron-forge
-// (spaced, per frontend/forge.config.ts).
-const appBundleName = "Agent Orchestrator.app"
+// (frontend/forge.config.ts packagerConfig.name). legacyAppBundleName is the
+// previous name; published zips and existing installs still use it.
+const appBundleName = "Altair.app"
+const legacyAppBundleName = "Agent Orchestrator.app"
 
 // appStateFileName is the marker the desktop app writes under ~/.ao on every
 // launch (spec §5). `ao start` is a read-only consumer of it.
@@ -67,11 +69,11 @@ func newStartCommand(ctx *commandContext) *cobra.Command {
 	opts := startOptions{}
 	cmd := &cobra.Command{
 		Use:   "start",
-		Short: "Fetch (if needed) and open the Agent Orchestrator desktop app",
-		Long: "Fetch (if needed) and open the Agent Orchestrator desktop app.\n\n" +
-			"The desktop app now owns the daemon, state, and updates. `ao start` no\n" +
+		Short: "Fetch (if needed) and open the Altair desktop app",
+		Long: "Fetch (if needed) and open the Altair desktop app.\n\n" +
+			"The desktop app owns the daemon, state, and updates. `altair start` no\n" +
 			"longer runs a daemon: it resolves the installed app (or downloads the\n" +
-			"latest release), opens it, and exits.",
+			"latest release), opens it, and exits. `ao start` is the same command.",
 		Args: noArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ctx.runStart(cmd.Context(), cmd, opts)
@@ -211,23 +213,30 @@ func knownAppLocations() []string {
 		paths := []string{"/Applications/" + appBundleName}
 		if home, err := os.UserHomeDir(); err == nil {
 			paths = append(paths, filepath.Join(home, "Applications", appBundleName))
+			paths = append(paths, filepath.Join(home, "Applications", legacyAppBundleName))
 		}
+		paths = append(paths, "/Applications/"+legacyAppBundleName)
 		return paths
 	case "windows":
 		var paths []string
 		// Default electron-builder NSIS per-user install (perMachine:false).
+		// The current folder is Altair. Upgrades that keep the previous
+		// directory (same appId) and installs that predate the rename are
+		// listed after it.
 		if local := os.Getenv("LOCALAPPDATA"); local != "" {
-			paths = append(paths, windowsInstalledExe(local))
+			paths = append(paths, windowsCandidateExes(local)...)
 		}
-		// Per-machine fallback (if a user chose an all-users install).
 		if pf := os.Getenv("ProgramFiles"); pf != "" {
-			paths = append(paths, filepath.Join(pf, "Agent Orchestrator", "agent-orchestrator.exe"))
+			paths = append(paths, windowsProgramFilesExes(pf)...)
 		}
 		return paths
 	case "linux":
-		paths := []string{linuxAppImagePath()}
+		paths := []string{linuxAppImagePath(), linuxLegacyAppImagePath()}
 		if home, err := os.UserHomeDir(); err == nil {
-			paths = append(paths, filepath.Join(home, "Applications", "agent-orchestrator.AppImage"))
+			paths = append(paths,
+				filepath.Join(home, "Applications", "altair.AppImage"),
+				filepath.Join(home, "Applications", "agent-orchestrator.AppImage"),
+			)
 		}
 		return paths
 	default:
@@ -236,9 +245,30 @@ func knownAppLocations() []string {
 }
 
 // windowsInstalledExe is the default per-user electron-builder NSIS install
-// target for the app exe under %LOCALAPPDATA%.
+// target for a fresh Altair install under %LOCALAPPDATA%.
 func windowsInstalledExe(localAppData string) string {
-	return filepath.Join(localAppData, "Programs", "Agent Orchestrator", "agent-orchestrator.exe")
+	return filepath.Join(localAppData, "Programs", "Altair", "altair.exe")
+}
+
+func windowsCandidateExes(localAppData string) []string {
+	programs := filepath.Join(localAppData, "Programs")
+	return []string{
+		filepath.Join(programs, "Altair", "altair.exe"),
+		filepath.Join(programs, "Orchestrator.inc", "altair.exe"),
+		filepath.Join(programs, "Orchestrator.inc", "agent-orchestrator.exe"),
+		filepath.Join(programs, "Agent Orchestrator", "altair.exe"),
+		filepath.Join(programs, "Agent Orchestrator", "agent-orchestrator.exe"),
+	}
+}
+
+func windowsProgramFilesExes(programFiles string) []string {
+	return []string{
+		filepath.Join(programFiles, "Altair", "altair.exe"),
+		filepath.Join(programFiles, "Orchestrator.inc", "altair.exe"),
+		filepath.Join(programFiles, "Orchestrator.inc", "agent-orchestrator.exe"),
+		filepath.Join(programFiles, "Agent Orchestrator", "altair.exe"),
+		filepath.Join(programFiles, "Agent Orchestrator", "agent-orchestrator.exe"),
+	}
 }
 
 // linuxAppImagePath is the stable location `ao start` downloads the AppImage to
@@ -249,6 +279,15 @@ func linuxAppImagePath() string {
 	if err != nil {
 		// Fall back to a bare filename so a misconfigured state dir surfaces as a
 		// clear "not found" rather than a panic; fetch will re-error on download.
+		return "altair.AppImage"
+	}
+	return filepath.Join(dir, "altair.AppImage")
+}
+
+// linuxLegacyAppImagePath is the download location used before the rename.
+func linuxLegacyAppImagePath() string {
+	dir, err := aoStateDir()
+	if err != nil {
 		return "agent-orchestrator.AppImage"
 	}
 	return filepath.Join(dir, "agent-orchestrator.AppImage")
@@ -294,7 +333,7 @@ func (c *commandContext) registerLinuxProtocolHandler(
 	}
 	entry := fmt.Sprintf(`[Desktop Entry]
 Type=Application
-Name=Agent Orchestrator
+Name=Altair
 Exec=%s %%u
 Terminal=false
 NoDisplay=true
@@ -377,7 +416,7 @@ func (c *commandContext) fetchApp(ctx context.Context, w io.Writer) (string, err
 	case "linux":
 		return c.fetchAppLinux(ctx, w)
 	default:
-		return "", fmt.Errorf("ao start: fetch not supported on %s", runtime.GOOS)
+		return "", fmt.Errorf("altair start: fetch not supported on %s", runtime.GOOS)
 	}
 }
 
@@ -417,11 +456,13 @@ func (c *commandContext) fetchAppDarwin(ctx context.Context, w io.Writer) (strin
 		return "", fmt.Errorf("ditto unpack: %w: %s", err, out)
 	}
 
-	appPath := filepath.Join(staging, appBundleName)
-	if !isUsableBundle(appPath) {
-		return "", fmt.Errorf("ao start: %s not found in unpacked release at %s", appBundleName, staging)
+	for _, name := range []string{appBundleName, legacyAppBundleName} {
+		candidate := filepath.Join(staging, name)
+		if isUsableBundle(candidate) {
+			return candidate, nil
+		}
 	}
-	return appPath, nil
+	return "", fmt.Errorf("altair start: %s not found in unpacked release at %s", appBundleName, staging)
 }
 
 // fetchAppWindows downloads the NSIS installer into staging, runs it silently,
@@ -467,13 +508,14 @@ func (c *commandContext) fetchAppWindows(ctx context.Context, w io.Writer) (stri
 
 	local := os.Getenv("LOCALAPPDATA")
 	if local == "" {
-		return "", fmt.Errorf("ao start: LOCALAPPDATA not set; cannot locate installed app")
+		return "", fmt.Errorf("altair start: LOCALAPPDATA not set; cannot locate installed app")
 	}
-	appPath := windowsInstalledExe(local)
-	if !isUsableBundle(appPath) {
-		return "", fmt.Errorf("ao start: installed app not found at %s", appPath)
+	for _, candidate := range windowsCandidateExes(local) {
+		if isUsableBundle(candidate) {
+			return candidate, nil
+		}
 	}
-	return appPath, nil
+	return "", fmt.Errorf("altair start: installed app not found at %s", windowsInstalledExe(local))
 }
 
 // fetchAppLinux downloads the self-contained AppImage to a stable path under
@@ -507,7 +549,7 @@ func (c *commandContext) fetchAppLinux(ctx context.Context, w io.Writer) (string
 		return "", fmt.Errorf("install AppImage: %w", err)
 	}
 	if !isUsableBundle(appPath) {
-		return "", fmt.Errorf("ao start: AppImage not found at %s", appPath)
+		return "", fmt.Errorf("altair start: AppImage not found at %s", appPath)
 	}
 	return appPath, nil
 }
@@ -542,9 +584,9 @@ func (c *commandContext) download(ctx context.Context, w io.Writer, url, asset, 
 	// percentage is unknown and we report transferred bytes instead.
 	total := resp.ContentLength
 	if total > 0 {
-		_, _ = fmt.Fprintf(w, "Downloading Agent Orchestrator (%s, ~%s) from %s...\n", asset, humanBytes(total), releaseRepo)
+		_, _ = fmt.Fprintf(w, "Downloading Altair (%s, ~%s) from %s...\n", asset, humanBytes(total), releaseRepo)
 	} else {
-		_, _ = fmt.Fprintf(w, "Downloading Agent Orchestrator (%s) from %s...\n", asset, releaseRepo)
+		_, _ = fmt.Fprintf(w, "Downloading Altair (%s) from %s...\n", asset, releaseRepo)
 	}
 
 	f, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
@@ -651,7 +693,7 @@ func assetName() (string, error) {
 		}
 		return "agent-orchestrator-linux-x64.AppImage", nil
 	default:
-		return "", fmt.Errorf("ao start: no release asset for %s", runtime.GOOS)
+		return "", fmt.Errorf("altair start: no release asset for %s", runtime.GOOS)
 	}
 }
 
@@ -660,7 +702,7 @@ func assetName() (string, error) {
 // mirroring assetArch rather than fetching a 404.
 func requireAMD64() (string, error) {
 	if runtime.GOARCH != "amd64" {
-		return "", fmt.Errorf("ao start: unsupported architecture %q on %s (only amd64 is published)", runtime.GOARCH, runtime.GOOS)
+		return "", fmt.Errorf("altair start: unsupported architecture %q on %s (only amd64 is published)", runtime.GOARCH, runtime.GOOS)
 	}
 	return "x64", nil
 }
@@ -673,7 +715,7 @@ func assetArch(goarch string) (string, error) {
 	case "amd64":
 		return "x64", nil
 	default:
-		return "", fmt.Errorf("ao start: unsupported architecture %q", goarch)
+		return "", fmt.Errorf("altair start: unsupported architecture %q", goarch)
 	}
 }
 
@@ -720,9 +762,10 @@ func (c *commandContext) openApp(ctx context.Context, appPath string) (bool, err
 // printDeprecationNotice explains the new role of the npm `ao` binary. Keep it
 // honest: Track B (live auto-update) is not done, so it does not promise it.
 func (c *commandContext) printDeprecationNotice(w io.Writer) {
-	_, _ = fmt.Fprint(w, "Agent Orchestrator is now a desktop app, and the npm `ao` is just its launcher.\n"+
+	_, _ = fmt.Fprint(w, "Altair is a desktop app, and the npm `ao` command is its launcher.\n"+
+		"Formerly Agent Orchestrator (AO). Data still lives in ~/.ao.\n"+
 		"The app is distributed from the website and GitHub Releases; it owns the daemon and updates itself.\n"+
-		"You can keep running `ao start` to fetch (if needed) and open it.\n")
+		"You can keep running `altair start` or `ao start` to fetch (if needed) and open it.\n")
 }
 
 // printManualOpen tells the user how to open the bundle when `ao start` could

@@ -59,7 +59,7 @@ function isLoopbackRedirect(redirectUri: string): boolean {
 // rather than setting ao-app:// as the WorkOS redirect_uri directly — matters for
 // two reasons: the browser lands on a real HTTPS page instead of hanging forever
 // on an unloadable custom-scheme navigation (no stuck "loading" tab), and the OS
-// "open Agent Orchestrator?" prompt is attributed to our own domain (aoagents.dev)
+// "open Altair?" prompt is attributed to our own domain (aoagents.dev)
 // instead of the opaque WorkOS AuthKit subdomain.
 //
 // A development build can't use the ao-app:// deep link (macOS routes it to the
@@ -574,8 +574,8 @@ function startLoopbackCallbackServer(dataDir: string): void {
         res.writeHead(200, { "Content-Type": "text/html" });
         res.end(
           CALLBACK_HTML(
-            "Signed in to AO Cloud",
-            "You can close this tab and return to Agent Orchestrator.",
+            "Signed in to Altair Cloud",
+            "You can close this tab and return to Altair.",
           ),
         );
       } catch (callbackError) {
@@ -584,7 +584,7 @@ function startLoopbackCallbackServer(dataDir: string): void {
         res.end(
           CALLBACK_HTML(
             "Sign-in failed",
-            "Return to Agent Orchestrator and try signing in again.",
+            "Return to Altair and try signing in again.",
           ),
         );
       } finally {
@@ -623,16 +623,16 @@ function signInFailureDetail(error: unknown): string {
     return "The WorkOS response could not be verified. Start sign-in again to continue.";
   }
   if (message.includes("network") || message.includes("fetch")) {
-    return "Agent Orchestrator could not reach WorkOS. Check your connection and try again.";
+    return "Altair could not reach WorkOS. Check your connection and try again.";
   }
-  return "Agent Orchestrator could not complete WorkOS sign-in. Please try again.";
+  return "Altair could not complete WorkOS sign-in. Please try again.";
 }
 
 export async function showCloudSignInFailure(error: unknown): Promise<void> {
   await dialog.showMessageBox({
     type: "error",
-    title: "AO Cloud sign-in failed",
-    message: "Unable to sign in to AO Cloud",
+    title: "Altair Cloud sign-in failed",
+    message: "Unable to sign in to Altair Cloud",
     detail: signInFailureDetail(error),
   });
 }
@@ -660,7 +660,7 @@ export function installCloudIPC(
         title: "WorkOS not configured",
         message: "WorkOS sign-in is not configured.",
         detail:
-          "Set VITE_WORKOS_CLIENT_ID and restart Agent Orchestrator to enable sign-in.",
+          "Set VITE_WORKOS_CLIENT_ID and restart Altair to enable sign-in.",
       });
       return;
     }
@@ -701,7 +701,7 @@ export function installCloudIPC(
     if (base.username !== "" || base.password !== "" || base.search !== "" || base.hash !== "") throw new Error("Cloud control plane URL must not include credentials, a query string, or a fragment.");
     const dataDir = getDataDir();
     const token = await getCloudAccessToken(dataDir);
-    if (!token) throw new Error("Sign in to AO Cloud before connecting a provider.");
+    if (!token) throw new Error("Sign in to Altair Cloud before connecting a provider.");
     
     if (activeProviderAuthAbort) activeProviderAuthAbort.abort();
     activeProviderAuthAbort = new AbortController();
@@ -737,7 +737,7 @@ export function installCloudIPC(
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ credentialType: credential.credentialType, secret: credential.secret }),
     });
-    if (!response.ok) throw new Error("AO Cloud could not save the provider credential.");
+    if (!response.ok) throw new Error("Altair Cloud could not save the provider credential.");
 
     // Persist the captured Claude setup-token locally as a fallback for local
     // sessions, only once the cloud copy is saved: a failed cloud save must not

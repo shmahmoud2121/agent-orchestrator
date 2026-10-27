@@ -27,9 +27,9 @@ const DEFAULT_RELEASE_REPO = "Untrivial-ai/agent-orchestrator";
 // names the exe/ELF from this, and the NSIS + deb makers must point their
 // shortcut/launcher at the SAME name. Drift here means a broken Start menu
 // shortcut on Windows (#2414) or "could not find the Electron app binary" on deb.
-const EXECUTABLE_NAME = "agent-orchestrator";
+const EXECUTABLE_NAME = "altair";
 const AUTH_PROTOCOL = {
-	name: "Agent Orchestrator authentication callback",
+	name: "Altair authentication callback",
 	schemes: ["ao-app"],
 };
 const AUTH_PROTOCOL_MIME_TYPE = "x-scheme-handler/ao-app";
@@ -73,6 +73,8 @@ export function extraResourcesForPlatform(platform: NodeJS.Platform): string[] {
 		"assets/icon.ico",
 		"assets/trayIconTemplate.png",
 		"assets/trayIconTemplate@2x.png",
+		"assets/trayIcon.png",
+		"assets/trayIcon@2x.png",
 		"app-update.yml",
 	];
 }
@@ -126,7 +128,7 @@ const config: ForgeConfig = {
 		// the .node binary outside app.asar.
 		ignore: ignoreFromVitePackage,
 		appBundleId: "dev.agent-orchestrator.desktop",
-		name: "Agent Orchestrator",
+		name: "Altair",
 		executableName: EXECUTABLE_NAME,
 		protocols: [AUTH_PROTOCOL],
 		appCategoryType: "public.app-category.developer-tools",
@@ -290,13 +292,14 @@ const config: ForgeConfig = {
 				appId: "dev.agent-orchestrator.desktop",
 				// The name shown in the installer, the updater, the shortcuts, and
 				// Windows Apps. It matches the app's display name in main.ts.
-				productName: "Orchestrator.inc",
+				productName: "Altair",
 				// Match the packaged binary name so the Start menu shortcut targets
-				// the real "agent-orchestrator.exe" (not "Agent Orchestrator.exe").
+				// altair.exe. The appId above is unchanged, so an upgrade still finds
+				// the existing install in the uninstall registry.
 				executableName: EXECUTABLE_NAME,
 				icon: "assets/icon.ico",
-				// Keep the installer filename unchanged. electron-builder names it
-				// after productName by default.
+				// Keep the downloaded installer filename unchanged. electron-builder
+				// would otherwise name it after productName.
 				nsis: { artifactName: "Agent Orchestrator Setup ${version}.${ext}" },
 			},
 			["win32"],
@@ -312,7 +315,7 @@ const config: ForgeConfig = {
 		new MakerDMG(
 			{
 				appId: "dev.agent-orchestrator.desktop",
-				productName: "Agent Orchestrator",
+				productName: "Altair",
 			},
 			["darwin"],
 		),
@@ -323,7 +326,7 @@ const config: ForgeConfig = {
 		new MakerAppImage(
 			{
 				appId: "dev.agent-orchestrator.desktop",
-				productName: "Agent Orchestrator",
+				productName: "Altair",
 				icon: "assets/icon.png",
 				protocols: [AUTH_PROTOCOL],
 			},
@@ -335,10 +338,10 @@ const config: ForgeConfig = {
 				options: {
 					// Must match packagerConfig.executableName, or the deb maker
 					// looks for the package name and fails with "could not find
-					// the Electron app binary". (Both are "agent-orchestrator".)
+					// the Electron app binary".
 					bin: EXECUTABLE_NAME,
 					icon: "assets/icon.png",
-					maintainer: "Agent Orchestrator",
+					maintainer: "Altair",
 					homepage: "https://github.com/aoagents/agent-orchestrator",
 					mimeType: [AUTH_PROTOCOL_MIME_TYPE],
 				},

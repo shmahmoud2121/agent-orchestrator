@@ -6,6 +6,9 @@ func TestNormalizeCommandPath(t *testing.T) {
 	if got := NormalizeCommandPath("  AO   Hooks  claude-code  post-tool-use "); got != "ao hooks claude-code post-tool-use" {
 		t.Fatalf("NormalizeCommandPath = %q, want normalized lowercase fields", got)
 	}
+	if got := NormalizeCommandPath("altair status"); got != "ao status" {
+		t.Fatalf("NormalizeCommandPath(altair) = %q, want ao status", got)
+	}
 }
 
 func TestIsRoutineInternalCLICommandNormalizesLegacyShapes(t *testing.T) {

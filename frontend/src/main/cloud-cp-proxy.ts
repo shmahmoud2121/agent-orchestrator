@@ -185,7 +185,7 @@ function unauthorizedResponse(): CloudCpProxyResponse {
 		body: JSON.stringify({
 			error: "unauthorized",
 			code: "no_token",
-			message: "No AO Cloud session is available. Sign in and try again.",
+			message: "No Altair Cloud session is available. Sign in and try again.",
 		}),
 	};
 }
@@ -300,7 +300,7 @@ export function createCloudCpProxy(getDataDir: () => string, options: CloudCpPro
 		}
 		const token = await getCloudAccessToken(getDataDir());
 		if (token === null || token === "") {
-			throw streamError(401, "No AO Cloud session is available. Sign in and try again.");
+			throw streamError(401, "No Altair Cloud session is available. Sign in and try again.");
 		}
 		const controller = new AbortController();
 		const response = await doFetch(url, {

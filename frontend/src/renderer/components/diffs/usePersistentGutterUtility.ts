@@ -5,7 +5,7 @@ type PointerPosition = { clientX: number; clientY: number };
 /**
  * Pierre rebuilds its line DOM when a live workspace snapshot refreshes. That
  * rebuild clears its internal hovered-line state even when the mouse has not
- * moved, which removes the slotted AO feedback button. Replay the last real
+ * moved, which removes the slotted Altair feedback button. Replay the last real
  * pointer position after a render so the original control stays attached to
  * the line still under the pointer.
  */

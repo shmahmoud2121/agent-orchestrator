@@ -17,10 +17,14 @@ import {
 	type StaleAppCopy,
 } from "./stale-app-copies";
 
-const RUNNING_PATH = "/Applications/Agent Orchestrator.app";
+const RUNNING_PATH = "/Applications/Altair.app";
 const RUNNING_VERSION = "0.13.1-nightly.202609121623";
+const LEGACY_APPLICATIONS = "/Applications/Agent Orchestrator.app";
+const LEGACY_HOME_APPLICATIONS = "/Users/user/Applications/Agent Orchestrator.app";
 const DOWNLOADS_COPY = "/Users/user/Downloads/Agent Orchestrator.app";
 const DESKTOP_COPY = "/Users/user/Desktop/Agent Orchestrator.app";
+const CURRENT_DOWNLOADS = "/Users/user/Downloads/Altair.app";
+const CURRENT_DESKTOP = "/Users/user/Desktop/Altair.app";
 const STAGED_PATH = "/Users/user/Downloads/Agent Orchestrator.app.ao-retiring-test";
 const ORIGINAL_IDENTITY = { device: 1, inode: 10 };
 
@@ -101,15 +105,23 @@ describe("findStaleAppCopies", () => {
 		};
 	}
 
-	it.skipIf(process.platform === "win32")("finds valid older AO copies only in Downloads and Desktop", async () => {
+	it.skipIf(process.platform === "win32")("finds older legacy copies and older Altair downloads", async () => {
 		const deps = dependencies({
 			identities: {
+				[LEGACY_APPLICATIONS]: { device: 1, inode: 8 },
+				[LEGACY_HOME_APPLICATIONS]: { device: 1, inode: 9 },
 				[DOWNLOADS_COPY]: ORIGINAL_IDENTITY,
 				[DESKTOP_COPY]: { device: 1, inode: 11 },
+				[CURRENT_DOWNLOADS]: { device: 1, inode: 12 },
+				[CURRENT_DESKTOP]: { device: 1, inode: 13 },
 			},
 			metadata: {
+				[LEGACY_APPLICATIONS]: { bundleId: AO_BUNDLE_ID, version: RUNNING_VERSION },
+				[LEGACY_HOME_APPLICATIONS]: { bundleId: AO_BUNDLE_ID, version: "0.9.0" },
 				[DOWNLOADS_COPY]: { bundleId: AO_BUNDLE_ID, version: "0.10.3" },
 				[DESKTOP_COPY]: { bundleId: AO_BUNDLE_ID, version: "0.12.0" },
+				[CURRENT_DOWNLOADS]: { bundleId: AO_BUNDLE_ID, version: "0.11.0" },
+				[CURRENT_DESKTOP]: { bundleId: AO_BUNDLE_ID, version: "0.12.1" },
 			},
 		});
 
@@ -117,25 +129,40 @@ describe("findStaleAppCopies", () => {
 			runningVersion: RUNNING_VERSION,
 			homeDir: "/Users/user",
 		}, deps)).resolves.toEqual([
+			{ path: LEGACY_APPLICATIONS, version: RUNNING_VERSION, device: 1, inode: 8 },
+			{ path: LEGACY_HOME_APPLICATIONS, version: "0.9.0", device: 1, inode: 9 },
 			{ path: DOWNLOADS_COPY, version: "0.10.3", ...ORIGINAL_IDENTITY },
 			{ path: DESKTOP_COPY, version: "0.12.0", device: 1, inode: 11 },
+			{ path: CURRENT_DOWNLOADS, version: "0.11.0", device: 1, inode: 12 },
+			{ path: CURRENT_DESKTOP, version: "0.12.1", device: 1, inode: 13 },
 		]);
-		expect(deps.fileIdentity).toHaveBeenCalledTimes(2);
+		expect(deps.fileIdentity).toHaveBeenCalledTimes(6);
 	});
 
 	it.each([
 		["another app", ORIGINAL_IDENTITY, { bundleId: "com.example.other", version: "0.10.3" }],
 		["an unreadable version", ORIGINAL_IDENTITY, { bundleId: AO_BUNDLE_ID, version: null }],
 		["an invalid version", ORIGINAL_IDENTITY, { bundleId: AO_BUNDLE_ID, version: "broken" }],
-		["the same version", ORIGINAL_IDENTITY, { bundleId: AO_BUNDLE_ID, version: RUNNING_VERSION }],
+		["the same version of Altair", ORIGINAL_IDENTITY, { bundleId: AO_BUNDLE_ID, version: RUNNING_VERSION }],
 		["a newer version", ORIGINAL_IDENTITY, { bundleId: AO_BUNDLE_ID, version: "0.14.0" }],
 		["a symlink or regular file", null, { bundleId: AO_BUNDLE_ID, version: "0.10.3" }],
 	] as const)("leaves %s untouched", async (_label, identity, metadata) => {
 		const deps = dependencies({
-			identities: { [DOWNLOADS_COPY]: identity },
-			metadata: { [DOWNLOADS_COPY]: metadata },
+			identities: { [CURRENT_DOWNLOADS]: identity },
+			metadata: { [CURRENT_DOWNLOADS]: metadata },
 		});
 
+		await expect(findStaleAppCopies({
+			runningVersion: RUNNING_VERSION,
+			homeDir: "/Users/user",
+		}, deps)).resolves.toEqual([]);
+	});
+
+	it.skipIf(process.platform === "win32")("leaves a newer legacy bundle untouched", async () => {
+		const deps = dependencies({
+			identities: { [LEGACY_APPLICATIONS]: ORIGINAL_IDENTITY },
+			metadata: { [LEGACY_APPLICATIONS]: { bundleId: AO_BUNDLE_ID, version: "0.14.0" } },
+		});
 		await expect(findStaleAppCopies({
 			runningVersion: RUNNING_VERSION,
 			homeDir: "/Users/user",

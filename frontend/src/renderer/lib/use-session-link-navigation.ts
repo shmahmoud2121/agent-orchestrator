@@ -76,7 +76,7 @@ export function useSessionLinkNavigation(sourceHostId?: string, sourceKind?: "cl
 			return false;
 		}
 		if (!source.ready) {
-			showGlobalToast(`AO could not verify that session. Check the ${remoteHostId ? "host" : sourceKind === "cloud" ? "Cloud" : "daemon"} connection and try again.`, undefined, {
+			showGlobalToast(`Altair could not verify that session. Check the ${remoteHostId ? "host" : sourceKind === "cloud" ? "Cloud" : "daemon"} connection and try again.`, undefined, {
 				tone: "error",
 				placement: "top-center",
 				dismissible: true,

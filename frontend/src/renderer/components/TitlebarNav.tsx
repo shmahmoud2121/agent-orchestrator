@@ -155,7 +155,7 @@ export function TitlebarNav({
             <BuildInfoTooltip>
               <span className="inline-flex min-w-0 items-center gap-1.5">
                 <AOMascot className="h-5.5 w-5.5 shrink-0" />
-                <span className="min-w-0 truncate" data-brand-label="">Orchestrator.inc</span>
+                <span className="min-w-0 truncate" data-brand-label="">Altair</span>
               </span>
             </BuildInfoTooltip>
           </span>

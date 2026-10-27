@@ -288,7 +288,7 @@ describe("packaged authentication callback registration", () => {
 	it("declares ao-app in the macOS bundle and Linux package metadata", () => {
 		expect(config.packagerConfig?.protocols).toEqual([
 			{
-				name: "Agent Orchestrator authentication callback",
+				name: "Altair authentication callback",
 				schemes: ["ao-app"],
 			},
 		]);

@@ -10,10 +10,10 @@ const displayAttributes = new Set(["alt", "aria-label", "placeholder", "title"])
 // English UI copy. Keeping this allowlist exact makes newly introduced chrome fail.
 const approvedLiterals: Record<string, readonly string[]> = {
 	"components/BrowserPanel.tsx": [
-		"AO Preview",
+		"Altair Preview",
 		"Demo app preview",
 		"The worker exposed a local Vite app with",
-		"ao preview",
+		"altair preview",
 		"Loaded",
 		"$ npm run dev -- --host 127.0.0.1",
 		"ready in 418 ms",
@@ -24,13 +24,13 @@ const approvedLiterals: Record<string, readonly string[]> = {
 		"my-workspace/", "my-project", "web-app", "main", "github_pat_…", "ghp_...",
 		"https://github.com/owner/repo", "GitHub PAT",
 	],
-	"components/DaemonStartupLoader.tsx": ["Agent Orchestrator"],
+	"components/DaemonStartupLoader.tsx": ["Altair"],
 	// Technical branch/prefix examples moved with the common settings fields.
 	"components/ProjectSettingsEditor.tsx": ["auto", "ao", "go test ./...", "registry.npmjs.org *.githubusercontent.com"],
 	"components/RemoteDirectoryPicker.tsx": ["/home/you/code"],
 	"components/SessionInspector.tsx": ["PR #"],
-	"components/Sidebar.tsx": ["Orchestrator.inc", "daemon"],
-	"components/TitlebarNav.tsx": ["Orchestrator.inc"],
+	"components/Sidebar.tsx": ["Altair", "daemon"],
+	"components/TitlebarNav.tsx": ["Altair"],
 	"components/WindowTitlebar.tsx": [
 		"Alt+F4",
 		"Ctrl+Z",

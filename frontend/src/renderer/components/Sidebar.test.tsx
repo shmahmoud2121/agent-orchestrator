@@ -612,7 +612,7 @@ describe("Sidebar", () => {
 		renderSidebar();
 
 		expect(screen.getAllByRole("button", { name: "Settings" }).length).toBeGreaterThan(0);
-		expect(screen.queryByLabelText("Sign in to AO Cloud")).not.toBeInTheDocument();
+		expect(screen.queryByLabelText("Sign in to Altair Cloud")).not.toBeInTheDocument();
 		expect(cloudSessionState.signIn).not.toHaveBeenCalled();
 	});
 
@@ -624,7 +624,7 @@ describe("Sidebar", () => {
 
 		expect(screen.getAllByRole("button", { name: "Settings" }).length).toBeGreaterThan(0);
 		expect(screen.queryByLabelText("Signed in as user@example.com")).not.toBeInTheDocument();
-		expect(screen.queryByLabelText("Sign in to AO Cloud")).not.toBeInTheDocument();
+		expect(screen.queryByLabelText("Sign in to Altair Cloud")).not.toBeInTheDocument();
 	});
 
 	it("hides cloud account controls when the daemon reports the cloud offering off", () => {
@@ -643,7 +643,7 @@ describe("Sidebar", () => {
 		useUiStore.setState({ developerMode: true });
 		renderSidebar();
 
-		expect(screen.queryByLabelText("Sign in to AO Cloud")).not.toBeInTheDocument();
+		expect(screen.queryByLabelText("Sign in to Altair Cloud")).not.toBeInTheDocument();
 	});
 
 	it("shows the Artifacts row under Automations with a count of live artifacts", async () => {
@@ -1698,7 +1698,7 @@ describe("Sidebar", () => {
 			path: "/repo/parent/universe",
 			repos: [],
 			setupWarning:
-				"Selected folder is inside an existing Git repository at /repo/parent. AO will initialize this folder as a separate repository.",
+				"Selected folder is inside an existing Git repository at /repo/parent. Altair will initialize this folder as a separate repository.",
 		});
 		renderSidebar({ onCreateProject, onInitializeProject });
 
@@ -1942,7 +1942,7 @@ describe("Sidebar", () => {
 
 		expect(screen.getByText("unborn")).toBeInTheDocument();
 		expect(screen.queryByText("Set an origin remote for the child repositories marked below before importing this workspace.")).not.toBeInTheDocument();
-		expect(screen.getByText("The 2 repositories marked below have no commit or origin remote yet. AO will import this workspace without them, and agents will not work in them.")).toBeInTheDocument();
+		expect(screen.getByText("The 2 repositories marked below have no commit or origin remote yet. Altair will import this workspace without them, and agents will not work in them.")).toBeInTheDocument();
 		expect(screen.getByText("Git setup needed · Not included")).toBeInTheDocument();
 		expect(screen.getByText("No remote · Not included")).toBeInTheDocument();
 		expect(screen.queryByRole("dialog", { name: "Prepare project" })).not.toBeInTheDocument();
@@ -2049,7 +2049,7 @@ describe("Sidebar", () => {
 		window.ao!.app.checkAncestorRepo = vi
 			.fn()
 			.mockResolvedValue(
-				"Selected folder is inside an existing Git repository at /repo. AO will initialize this folder as a separate repository.",
+				"Selected folder is inside an existing Git repository at /repo. Altair will initialize this folder as a separate repository.",
 			);
 		renderSidebar({ onCreateProject, onInitializeProject });
 
@@ -2059,12 +2059,12 @@ describe("Sidebar", () => {
 		await user.click(screen.getByRole("button", { name: "Continue" }));
 		expect(
 			screen.getByText(
-				"Selected folder is inside an existing Git repository at /repo. AO will initialize this folder as a separate repository.",
+				"Selected folder is inside an existing Git repository at /repo. Altair will initialize this folder as a separate repository.",
 			),
 		).toBeInTheDocument();
 		expect(
 			screen.getByText(
-				"If this folder needs Git setup, AO will initialize it and create the first commit before starting.",
+				"If this folder needs Git setup, Altair will initialize it and create the first commit before starting.",
 			),
 		).toBeInTheDocument();
 		await chooseOption(screen.getByRole("combobox", { name: "Orchestrator agent" }), "Claude Code");
@@ -2248,7 +2248,7 @@ describe("Sidebar", () => {
 		await user.click(await screen.findByRole("menuitem", { name: "Remove project" }));
 
 		expect(await screen.findByRole("dialog", { name: "Remove project" })).toHaveTextContent(
-			"2 open pull requests belong to this project. Removing it will hide those pull requests from AO, but will not close them.",
+			"2 open pull requests belong to this project. Removing it will hide those pull requests from Altair, but will not close them.",
 		);
 	});
 

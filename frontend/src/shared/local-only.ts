@@ -1,5 +1,5 @@
 /**
- * This build of Agent Orchestrator is local-only: the app and its daemon never
+ * This build of Altair is local-only: the app and its daemon never
  * reach the network on their own initiative, and nothing listens beyond
  * loopback. There is no mobile app pairing, no remote control (remote hosts,
  * LAN listener, tunnels), no AO Cloud, no telemetry export, no auto-update or
@@ -14,4 +14,4 @@
 export const LOCAL_ONLY_BUILD: boolean = true;
 
 /** User-facing reason a disabled feature is unavailable. */
-export const LOCAL_ONLY_DISABLED_MESSAGE = "This feature is disabled in this local-only build of Agent Orchestrator.";
+export const LOCAL_ONLY_DISABLED_MESSAGE = "This feature is disabled in this local-only build of Altair.";

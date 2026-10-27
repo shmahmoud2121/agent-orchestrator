@@ -10,7 +10,7 @@ async function request(baseUrl: string, method: string, path: string, body?: unk
 		cache: "no-store",
 		signal: AbortSignal.timeout(10_000),
 	});
-	if (!response.ok) throw new Error(`AO Cloud host sync failed (${response.status}).`);
+	if (!response.ok) throw new Error(`Altair Cloud host sync failed (${response.status}).`);
 	return response;
 }
 

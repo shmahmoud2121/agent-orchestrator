@@ -1,11 +1,11 @@
 ---
 name: agent-orchestrator-design-system
-description: "Use for any renderer UI, visual polish, component, layout, theme, motion, or interaction change in Agent Orchestrator. Read before proposing or implementing visual work."
+description: "Use for any renderer UI, visual polish, component, layout, theme, motion, or interaction change in Altair. Read before proposing or implementing visual work."
 ---
 
-# Design system — Agent Orchestrator
+# Design system — Altair
 
-Agent Orchestrator (AO) is serious desktop software for supervising parallel AI coding work. It makes the state of a project legible: what is running, what needs a human, what is safe to ship, and where intervention will have the most leverage.
+Altair is serious desktop software for supervising parallel AI coding work. It makes the state of a project legible: what is running, what needs a human, what is safe to ship, and where intervention will have the most leverage.
 
 This is a product UI, not a marketing site. It must feel calm under sustained use, reward scanning, and preserve the terminal as a first-class working surface.
 
@@ -13,7 +13,7 @@ This is a product UI, not a marketing site. It must feel calm under sustained us
 
 This guide is deliberately based only on these approved visual references: the app shell; sidebar and its project section; tooltips; iconography; typography; tokens and themes; borders, shadows and outlines; the New Task, Clone Repository, Settings and Add Project flows; dropdowns used in Settings and New Task; and the kanban board with its cards.
 
-Do **not** infer a visual rule from another AO screen merely because it exists today. Much of the application is still being de-slopped. Existing rounded cards, isolated borders, shadows, all-caps metadata, extra helper copy, or one-off button styling outside the approved references are migration debt, not precedent.
+Do **not** infer a visual rule from another Altair screen merely because it exists today. Much of the application is still being de-slopped. Existing rounded cards, isolated borders, shadows, all-caps metadata, extra helper copy, or one-off button styling outside the approved references are migration debt, not precedent.
 
 The guide is a future-state standard and a review tool. When current code conflicts with it, preserve functional behavior but move the surface toward this standard in the smallest safe change. Do not copy a legacy inconsistency into new work.
 
@@ -43,7 +43,7 @@ When a referenced file and this guide disagree, follow this guide for new work a
 - **Reader's job:** understand the current state in seconds; open the right session; make a precise intervention; return to the board without losing context.
 - **Core object:** a session. Each session carries a task, agent, worktree, conversation or terminal, files, PR, checks, review facts, and derived status.
 - **Memorable promise:** “I can run several agents without losing the thread.”
-- **Product posture:** operational, technically literate, compact, direct. AO does not pretend that software delivery is effortless; it makes the work visible and tractable.
+- **Product posture:** operational, technically literate, compact, direct. Altair does not pretend that software delivery is effortless; it makes the work visible and tractable.
 
 ### Working preferences for design changes
 
@@ -74,12 +74,12 @@ Never use visual polish to obscure a state transition, destructive action, conne
 - **Material:** true black in dark and warm paper in light, with small tonal steps reserved for nesting, hover, and elevation.
 - **Color:** rare, semantic, and stateful. A colored element must answer “what does this mean?”
 - **Shape:** modest radius, not a field of pills. A rounded control should read as a control; a panel should read as one composed container; ordinary metadata should remain text.
-- **Density:** compact by default. AO is used all day and needs high information capacity without cramped target sizes.
+- **Density:** compact by default. Altair is used all day and needs high information capacity without cramped target sizes.
 - **Personality:** quiet competence. No gradients, glass, glow, stock imagery, decorative textures, emoji, or novelty visual language in the working UI.
 
 ## 3. App architecture expressed visually
 
-AO has one persistent shell; routes replace the center surface rather than replacing the app's orientation.
+Altair has one persistent shell; routes replace the center surface rather than replacing the app's orientation.
 
 ### Shell
 
@@ -457,7 +457,7 @@ Before calling a visual change done, verify:
 7. Are dense lists grouped and scan-friendly without becoming cramped? Are project rows compact enough for an all-day sidebar?
 8. Does focus work without hover? Does reduced motion remain coherent? Are icon-only actions named by accessible label and, where needed, tooltip?
 9. Does the change hold on dark/light themes, all desktop platforms, compact sidebar, narrow center width, long text, and loading/error/empty states?
-10. Did we avoid introducing a generic dashboard/card-grid pattern where AO already has a stronger operational model?
+10. Did we avoid introducing a generic dashboard/card-grid pattern where Altair already has a stronger operational model?
 
 ### Review outcome
 
@@ -471,13 +471,13 @@ Approve only when the answer to every applicable check is yes. Otherwise classif
 
 | Date | Decision | Rationale |
 | --- | --- | --- |
-| 2026-09-03 | Dark-first, token-led, compact operational UI | Matches AO's long-running desktop workflow and renderer source of truth. |
+| 2026-09-03 | Dark-first, token-led, compact operational UI | Matches Altair's long-running desktop workflow and renderer source of truth. |
 | 2026-09-03 | Geist/Geist Mono remain the typographic system | They are bundled, legible at dense sizes, and already define renderer hierarchy. |
 | 2026-10-09 | macOS uses SF Pro / SF Mono; Geist stays the bundled default elsewhere | System faces match native macOS chrome and get optical sizing for free. |
 | 2026-09-03 | Color is reserved for semantics and active focus | Parallel-agent supervision depends on fast, trustworthy scanning. |
 | 2026-09-03 | Shared list containers with dividers are preferred over spaced sibling cards | Better density and clearer grouping for projects and sessions. |
 | 2026-09-03 | Existing platform shell behavior is part of the design system | macOS traffic lights, Windows titlebar, and collapsible inspector are product behavior, not incidental CSS. |
-| 2026-09-03 | The approved reference set is intentionally narrow | AO is mid-migration; unfinished screens must not become accidental design authority. |
+| 2026-09-03 | The approved reference set is intentionally narrow | Altair is mid-migration; unfinished screens must not become accidental design authority. |
 | 2026-09-03 | Sentence case and concise decision-relevant copy are mandatory | The interface should carry operational clarity through hierarchy and state, not verbose explanation or technical-looking labels. |
 | 2026-09-03 | Borders and shadows are structural/elevational exceptions | The future UI favors one composed surface, shared lists, quiet dividers, and stable hierarchy over a field of outlined cards. |
 | 2026-09-04 | Settings language follows the user's task, not internal architecture | “Agents” describes installation/setup and “Accounts” describes sign-in/account management more clearly than “Harness” or “Subscriptions”. |
@@ -506,4 +506,5 @@ Approve only when the answer to every applicable check is yes. Otherwise classif
 | 2026-10-26 | "Approve all" approves only edits inside the asking session's workspace; everything else needs its own click | A conservative rule the daemon can check; the manager allowlist comes later. |
 | 2026-10-26 | The Team toggle is a per-project setting enforced in the daemon; off means the manager may not start workers | Enforcing it in the daemon makes the toggle trustworthy, not just a hint to the model. |
 | 2026-10-26 | Workers must run sandboxed by default; protected files and secret variables are kept from workers | The person can't be expected to list secret files, so safe defaults are built in. On Windows, where no sandbox exists, the person turns this off per project and the watchdog (next step) is the guard. |
-| 2026-10-26 | A watchdog checks every agent tool call against the protected list and blocks it; workers are stopped after repeated attempts | On Windows no sandbox exists, and the manager is never sandboxed, so AO checks reads itself. Blocking before the read keeps the secret from reaching the AI at all. |
+| 2026-10-26 | A watchdog checks every agent tool call against the protected list and blocks it; workers are stopped after repeated attempts | On Windows no sandbox exists, and the manager is never sandboxed, so Altair checks reads itself. Blocking before the read keeps the secret from reaching the AI at all. |
+| 2026-10-27 | Product renamed Altair; four-point star mark in starlight gold on black. Internal `ao` names, `~/.ao` data and the `ao` command alias stay for compatibility. | The name a person sees and types changes. Existing installs, hooks, and data keep working. |

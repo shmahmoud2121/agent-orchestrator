@@ -44,7 +44,7 @@ beforeEach(async () => {
 describe("CliLinkSettings", () => {
 	it("hides the action when developer mode is off", () => {
 		render(<CliLinkSettings enabled={false} />);
-		expect(screen.queryByText("Global ao command")).not.toBeInTheDocument();
+		expect(screen.queryByText("Global altair command")).not.toBeInTheDocument();
 		expect(inspect).not.toHaveBeenCalled();
 	});
 
@@ -75,7 +75,7 @@ describe("CliLinkSettings", () => {
 		inspect.mockRejectedValue(new Error("marker access denied"));
 		render(<CliLinkSettings enabled />);
 		expect(await screen.findByRole("alert")).toHaveTextContent("marker access denied");
-		expect(screen.queryByText("Checking the global ao command.")).not.toBeInTheDocument();
+		expect(screen.queryByText("Checking the global altair command.")).not.toBeInTheDocument();
 	});
 
 	it("requires confirmation before unlinking the target shown", async () => {

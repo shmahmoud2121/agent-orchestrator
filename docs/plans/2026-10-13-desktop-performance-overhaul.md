@@ -157,7 +157,7 @@ breaking risk after the listed mitigation.
 | SU-11 | P1 | A quick relaunch replaces the running daemon (shutdown polled every 200 ms for up to 8 s, then a full reconcile). Hand browser-runtime ownership to the new app run in place and attach instead. | `shared/daemon-takeover.ts:55-56`; `main.ts:1549-1559` | 150 to 250 | Medium. Reuse the existing stdin token path for the handover. |
 | SU-12 | P2 | Cache `gh auth status` and the owner list under `~/.ao` and render from the cached value; refresh the owner list when the clone form opens instead of at boot. | `systemcheck.go:262-297`; `main.ts:3024`, `:2511-2535` | ~60 | Low. Refresh on focus. |
 | SU-13 | P2 | Onboarding "Check again" re-checks installation only (under 0.5 s) and runs auth probes in the background (today 2 to 5 s). | `InstallDependencyDialog.tsx:59-63`; `readiness.go:155-166` | ~20 | None. |
-| SU-14 | P2 | Ship the startup mascot at 192 px instead of a 1254 px RGBA PNG (576 KB, decoded to 6.3 MB on every launch). | `assets/ao-mascot.png`; `TitlebarNav.tsx:166`; `DaemonStartupLoader.tsx:79` | asset | None. |
+| SU-14 | P2 | Ship the startup mascot at 192 px instead of a 1254 px RGBA PNG (576 KB, decoded to 6.3 MB on every launch). | `frontend/assets/retired/ao-mascot.png`; `TitlebarNav.tsx:166`; `DaemonStartupLoader.tsx:79` | asset | None. |
 
 ### 2. Data layer and sync (`DL`)
 

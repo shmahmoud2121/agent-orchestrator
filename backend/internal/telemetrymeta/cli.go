@@ -5,7 +5,16 @@ import "strings"
 // NormalizeCommandPath canonicalizes command paths received from current CLIs
 // and best-effort legacy loopback callers before cost-control classification.
 func NormalizeCommandPath(commandPath string) string {
-	return strings.ToLower(strings.Join(strings.Fields(commandPath), " "))
+	normalized := strings.ToLower(strings.Join(strings.Fields(commandPath), " "))
+	// Help text says altair. Cost-control maps and older callers still say ao.
+	// The two names are one binary, so classification treats them as one path.
+	if normalized == "altair" {
+		return "ao"
+	}
+	if strings.HasPrefix(normalized, "altair ") {
+		return "ao" + strings.TrimPrefix(normalized, "altair")
+	}
+	return normalized
 }
 
 // IsRoutineInternalCLICommand reports whether a successful CLI invocation is

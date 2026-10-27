@@ -165,7 +165,7 @@ describe("AppMemoryIndicator", () => {
 		expect(button).toHaveTextContent("2.0 GB");
 		expect(button).not.toHaveTextContent("Fine");
 		expect(button).toHaveAttribute("data-memory-state", "fine");
-		expect(button).toHaveAttribute("aria-label", "Fine · 20.0 GB free of 32.0 GB · AO holds 2.0 GB · pressure 0.0");
+		expect(button).toHaveAttribute("aria-label", "Fine · 20.0 GB free of 32.0 GB · Altair holds 2.0 GB · pressure 0.0");
 
 		// Stalling on memory: the light colours, the phrase stays AO's own size.
 		appMemoryMock.mockReturnValue(appReading(3, 12, 20));
@@ -199,7 +199,7 @@ describe("AppMemoryIndicator", () => {
 		expect(within(table).getAllByRole("columnheader").map((th) => th.textContent)).toEqual(["Name", "Type", "PID", "Memory", "CPU"]);
 		// A session is not a process: its PID cell says what is under it and that the row opens.
 		expect(within(within(table).getAllByTestId("session-memory-row")[0]).getByTestId("session-memory-process-count")).toHaveTextContent("2 processes ›");
-		expect(screen.getByTestId("session-memory-stacked")).toHaveTextContent("AO 2.0 GB");
+		expect(screen.getByTestId("session-memory-stacked")).toHaveTextContent("Altair 2.0 GB");
 		expect(screen.getByTestId("session-memory-stacked")).toHaveTextContent("Available 20.0 GB");
 		expect(screen.getByTestId("session-memory-stacked")).not.toHaveTextContent("In use");
 		expect(screen.getByTestId("session-memory-stacked")).not.toHaveTextContent("Other");
@@ -209,7 +209,7 @@ describe("AppMemoryIndicator", () => {
 		expect(cpu).toHaveTextContent("load 0.50");
 		// Each line is named, so a colour is never the only clue.
 		expect(cpu).toHaveTextContent("Machine 40%");
-		expect(cpu).toHaveTextContent("AO 20%");
+		expect(cpu).toHaveTextContent("Altair 20%");
 		// Two lines, no bars: the machine and AO's share of it.
 		expect(cpu.querySelectorAll("path")).toHaveLength(2);
 		expect(within(cpu).queryByTestId("session-cpu-cores")).not.toBeInTheDocument();
@@ -341,7 +341,7 @@ describe("AppMemoryIndicator", () => {
 		expect(within(bigRow).getByTestId("session-memory-agent")).toHaveTextContent("claude-code");
 		// A session's type is its role.
 		expect(within(bigRow).getByTestId("session-memory-type")).toHaveTextContent("Worker");
-		expect(within(own).getByTestId("session-memory-type")).toHaveTextContent("AO");
+		expect(within(own).getByTestId("session-memory-type")).toHaveTextContent("Altair");
 		expect(children[1]).not.toHaveTextContent("go test");
 		// Clicking a process line copies nothing and opens nothing.
 		await userEvent.click(children[0]);
@@ -617,7 +617,7 @@ describe("AppMemoryIndicator", () => {
 		await userEvent.click(screen.getByRole("button", { name: "Copy report" }));
 		const report = clipboardMock.mock.calls[0][0] as string;
 		// The machine first, then every session on screen — not just one.
-		expect(report).toContain("Memory   AO 2.0 GB · 20.0 GB free of 32.0 GB");
+		expect(report).toContain("Memory   Altair 2.0 GB · 20.0 GB free of 32.0 GB");
 		expect(report).toContain("Sessions 2");
 		expect(report).toContain("big worker");
 		expect(report).toContain("small worker");

@@ -389,7 +389,7 @@ const claudeAuthFlow: ProviderAuthFlow = {
 				cleanup();
 				server?.close();
 				res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
-				res.end(CLAUDE_CALLBACK_HTML("Sign-in failed", "Return to Agent Orchestrator and try signing in again."));
+				res.end(CLAUDE_CALLBACK_HTML("Sign-in failed", "Return to Altair and try signing in again."));
 				reject(err);
 			};
 
@@ -443,8 +443,8 @@ const claudeAuthFlow: ProviderAuthFlow = {
 						res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
 						res.end(
 							CLAUDE_CALLBACK_HTML(
-								"Signed in to Agent Orchestrator",
-								"You can close this tab and return to Agent Orchestrator.",
+								"Signed in to Altair",
+								"You can close this tab and return to Altair.",
 							),
 						);
 						resolve({ provider: "claude-code", credentialType: "oauth_token", secret: accessToken });
@@ -479,7 +479,7 @@ const claudeAuthFlow: ProviderAuthFlow = {
 	},
 };
 
-// GitHub OAuth scopes requested by Agent Orchestrator:
+// GitHub OAuth scopes requested by Altair:
 //   repo        – full control of public and private repos (clone, push, pull, PRs, issues, hooks)
 //   read:org    – read org membership and team membership
 //   repo_hook   – full control of repo webhooks (needed for some cloud features)
@@ -534,7 +534,7 @@ const githubAuthFlow: ProviderAuthFlow = {
 					server?.close();
 					reject(new Error(url.searchParams.get("error_description") || `GitHub sign-in failed: ${errorParam}`));
 					res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-					res.end(GITHUB_CALLBACK_HTML("Sign-in failed", "Return to Agent Orchestrator and try signing in again."));
+					res.end(GITHUB_CALLBACK_HTML("Sign-in failed", "Return to Altair and try signing in again."));
 					return;
 				}
 
@@ -545,7 +545,7 @@ const githubAuthFlow: ProviderAuthFlow = {
 					server?.close();
 					reject(new Error("GitHub sign-in callback is invalid."));
 					res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
-					res.end(GITHUB_CALLBACK_HTML("Sign-in failed", "Return to Agent Orchestrator and try signing in again."));
+					res.end(GITHUB_CALLBACK_HTML("Sign-in failed", "Return to Altair and try signing in again."));
 					return;
 				}
 
@@ -594,8 +594,8 @@ const githubAuthFlow: ProviderAuthFlow = {
 						server?.close();
 						res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
 						res.end(GITHUB_CALLBACK_HTML(
-							"Signed in to Agent Orchestrator",
-							`Authenticated as <strong>${login}</strong>. You can close this tab and return to Agent Orchestrator.`,
+							"Signed in to Altair",
+							`Authenticated as <strong>${login}</strong>. You can close this tab and return to Altair.`,
 						));
 						resolve({ provider: "github", credentialType: "access_token", secret: accessToken, refreshToken, expiresIn, refreshTokenExpiresIn });
 					} catch (err) {
@@ -603,7 +603,7 @@ const githubAuthFlow: ProviderAuthFlow = {
 						server?.close();
 						reject(err instanceof Error ? err : new Error(String(err)));
 						res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
-						res.end(GITHUB_CALLBACK_HTML("Sign-in failed", "Return to Agent Orchestrator and try signing in again."));
+						res.end(GITHUB_CALLBACK_HTML("Sign-in failed", "Return to Altair and try signing in again."));
 					}
 				})();
 			});

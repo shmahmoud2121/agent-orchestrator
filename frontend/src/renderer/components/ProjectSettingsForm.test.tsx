@@ -668,7 +668,7 @@ describe("ProjectSettingsForm", () => {
 		await userEvent.click(screen.getByRole("button", { name: "Worker agent" }));
 		const cursor = await screen.findByRole("menuitem", { name: /Cursor/ });
 		expect(cursor).toHaveTextContent("Not watched");
-		expect(cursor).toHaveAttribute("title", "AO can't check what this AI reads. It could read protected files.");
+		expect(cursor).toHaveAttribute("title", "Altair can't check what this AI reads. It could read protected files.");
 		expect(screen.getByRole("menuitem", { name: /Claude Code/ })).not.toHaveTextContent("Not watched");
 		expect(screen.getByRole("menuitem", { name: /Codex/ })).not.toHaveTextContent("Not watched");
 		await userEvent.keyboard("{Escape}");
@@ -941,7 +941,7 @@ describe("ProjectSettingsForm", () => {
 
 		renderSettings("proj-1", undefined, "general");
 
-		const toggle = await screen.findByRole("switch", { name: "Workers request AO review" });
+		const toggle = await screen.findByRole("switch", { name: "Workers request Altair review" });
 		expect(toggle).not.toBeChecked();
 
 		await userEvent.click(toggle);
@@ -1040,7 +1040,7 @@ describe("ProjectSettingsForm", () => {
 
 		renderSettings("proj-1", undefined, "general");
 
-		await screen.findByRole("switch", { name: "Workers request AO review" });
+		await screen.findByRole("switch", { name: "Workers request Altair review" });
 		expect(screen.queryByRole("textbox", { name: "Merge check command" })).not.toBeInTheDocument();
 	});
 

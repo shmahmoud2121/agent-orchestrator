@@ -202,7 +202,7 @@ func TestRequireAMD64(t *testing.T) {
 
 func TestWindowsInstalledExe(t *testing.T) {
 	got := windowsInstalledExe("C:\\Users\\me\\AppData\\Local")
-	want := filepath.Join("C:\\Users\\me\\AppData\\Local", "Programs", "Agent Orchestrator", "agent-orchestrator.exe")
+	want := filepath.Join("C:\\Users\\me\\AppData\\Local", "Programs", "Altair", "altair.exe")
 	if got != want {
 		t.Fatalf("windowsInstalledExe = %q, want %q", got, want)
 	}
@@ -447,7 +447,7 @@ func TestDownload_NonTTYProgress(t *testing.T) {
 		t.Fatalf("non-TTY progress must not emit carriage returns, got %q", out)
 	}
 	// Start line: asset name, size, and repo are all present.
-	if !strings.Contains(out, "Downloading Agent Orchestrator (agent-orchestrator.zip, ") {
+	if !strings.Contains(out, "Downloading Altair (agent-orchestrator.zip, ") {
 		t.Fatalf("missing start line in %q", out)
 	}
 	if !strings.Contains(out, "from owner/repo...") {
@@ -486,7 +486,7 @@ func TestDownload_NoContentLengthOmitsSize(t *testing.T) {
 	if strings.Contains(out, "~") {
 		t.Fatalf("size segment should be omitted without Content-Length, got %q", out)
 	}
-	if !strings.Contains(out, "Downloading Agent Orchestrator (asset.bin) from") {
+	if !strings.Contains(out, "Downloading Altair (asset.bin) from") {
 		t.Fatalf("unexpected start line in %q", out)
 	}
 	if !strings.Contains(out, "Downloaded ") {

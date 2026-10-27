@@ -196,7 +196,7 @@ describe("resolveDaemonFromRunFile", () => {
 			pid: 4242,
 			executablePath: undefined,
 			workingDirectory: undefined,
-			message: "An AO daemon is already running, but it is not ready yet.",
+			message: "An Altair daemon is already running, but it is not ready yet.",
 			code: "not_ready",
 		});
 	});
@@ -209,13 +209,13 @@ describe("resolveDaemonFromRunFile", () => {
 				"3001:healthz": { status: "ok", service: DAEMON_SERVICE_NAME, pid: 4242 },
 				"3001:readyz": { status: "ready", service: DAEMON_SERVICE_NAME, pid: 4242, workingDirectory: "/other" },
 			}),
-			identityError: () => "Another AO daemon is already running from /other.",
+			identityError: () => "Another Altair daemon is already running from /other.",
 		});
 		expect(result).toMatchObject({
 			state: "error",
 			pid: 4242,
 			port: 3001,
-			message: "Another AO daemon is already running from /other.",
+			message: "Another Altair daemon is already running from /other.",
 		});
 	});
 
@@ -294,7 +294,7 @@ describe("resolveDaemonFromPort", () => {
 			pid: 777,
 			executablePath: undefined,
 			workingDirectory: undefined,
-			message: "An AO daemon is already running, but it is not ready yet.",
+			message: "An Altair daemon is already running, but it is not ready yet.",
 			code: "not_ready",
 		});
 	});
@@ -309,13 +309,13 @@ describe("resolveDaemonFromPort", () => {
 			identityError: (probe) =>
 				probe.executablePath === "/new/ao"
 					? null
-					: `Another AO daemon is already running from ${probe.executablePath}.`,
+					: `Another Altair daemon is already running from ${probe.executablePath}.`,
 		});
 		expect(result).toMatchObject({
 			state: "error",
 			port: 3001,
 			pid: 777,
-			message: "Another AO daemon is already running from /old/ao.",
+			message: "Another Altair daemon is already running from /old/ao.",
 		});
 	});
 
@@ -460,13 +460,13 @@ describe("end-to-end against a real daemon server", () => {
 			identityError: (probe) =>
 				probe.executablePath === "/expected/ao"
 					? null
-					: `Another AO daemon is already running from ${probe.executablePath}.`,
+					: `Another Altair daemon is already running from ${probe.executablePath}.`,
 		});
 		expect(result).toMatchObject({
 			state: "error",
 			port,
 			pid: 909,
-			message: "Another AO daemon is already running from /old/build/ao.",
+			message: "Another Altair daemon is already running from /old/build/ao.",
 		});
 	});
 

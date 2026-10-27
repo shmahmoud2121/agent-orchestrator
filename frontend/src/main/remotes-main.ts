@@ -108,7 +108,7 @@ export function registerRemotesIpc(
 	const accountID = async () => {
 		await requireAccount();
 		const id = await getAccountId();
-		if (!id) throw new Error("Sign in to AO Cloud to use remote hosts.");
+		if (!id) throw new Error("Sign in to Altair Cloud to use remote hosts.");
 		return id;
 	};
 	const owned = async () => {

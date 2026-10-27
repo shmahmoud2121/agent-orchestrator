@@ -733,7 +733,7 @@ function ShellLayout() {
 			void captureRendererEvent("ao.renderer.project_add_requested");
 			const status = await refreshDaemonStatus();
 			if (status.state !== "ready" || !status.port) {
-				throw new Error(status.message || "AO daemon is not ready.");
+				throw new Error(status.message || "Altair daemon is not ready.");
 			}
 			const { data, error } = await apiClient.POST("/api/v1/projects", {
 				body: {
@@ -810,7 +810,7 @@ function ShellLayout() {
 			void captureRendererEvent("ao.renderer.project_clone_requested");
 			const status = await refreshDaemonStatus();
 			if (status.state !== "ready" || !status.port) {
-				throw new Error(status.message || "AO daemon is not ready.");
+				throw new Error(status.message || "Altair daemon is not ready.");
 			}
 			const { data, error } = await apiClient.POST("/api/v1/projects/clone", {
 				signal: input.signal,

@@ -703,7 +703,7 @@ describe("CreateProjectFlow droppedPath", () => {
 		));
 		expect(screen.getByTestId("clone-dialog")).toBeInTheDocument();
 		expect(useUiStore.getState().globalToast?.body).toBe(
-			"AO cloned the repository but could not verify the checkout. Try again.",
+			"Altair cloned the repository but could not verify the checkout. Try again.",
 		);
 		expect(useUiStore.getState().globalToast?.body).not.toContain("request_id");
 	});
@@ -730,7 +730,7 @@ describe("CreateProjectFlow droppedPath", () => {
 		await waitFor(() => expect(cleanupAttempts).toBe(1));
 		expect(screen.getByTestId("clone-dialog")).toBeInTheDocument();
 		expect(useUiStore.getState().globalToast?.body).toBe(
-			"AO could not remove the incomplete checkout. Try again before leaving this flow.",
+			"Altair could not remove the incomplete checkout. Try again before leaving this flow.",
 		);
 
 		fireEvent.click(screen.getByText("Back clone"));
@@ -987,7 +987,7 @@ describe("CreateProjectFlow project import validation", () => {
 		renderChooseFlow();
 		await openSource(user, "Open a workspace");
 		expect(screen.queryByText("Set an origin remote for the child repositories marked below before importing this workspace.")).not.toBeInTheDocument();
-		expect(screen.getByText("The repository marked below has no commit or origin remote yet. AO will import this workspace without it, and agents will not work in it.")).toBeInTheDocument();
+		expect(screen.getByText("The repository marked below has no commit or origin remote yet. Altair will import this workspace without it, and agents will not work in it.")).toBeInTheDocument();
 		expect(screen.getByText("No remote · Not included")).toBeInTheDocument();
 		expect(screen.queryByText("Setup required")).not.toBeInTheDocument();
 		await user.click(screen.getByRole("button", { name: "Continue" }));
@@ -1184,7 +1184,7 @@ describe("CreateProjectFlow project import validation", () => {
 		expect(await screen.findByText("Prepare project")).toBeInTheDocument();
 		expect(screen.queryByText("Project setup")).not.toBeInTheDocument();
 		expect(screen.getByText("project")).toBeInTheDocument();
-		expect(screen.getByText("does not have a GitHub remote. AO will create a repository, add it as origin, and push the current branch.")).toBeInTheDocument();
+		expect(screen.getByText("does not have a GitHub remote. Altair will create a repository, add it as origin, and push the current branch.")).toBeInTheDocument();
 		expect(screen.queryByRole("checkbox", { name: "Set up Git for this project" })).not.toBeInTheDocument();
 		expect(screen.queryByText("Git initialization")).not.toBeInTheDocument();
 		expect(screen.queryByText("Initial commit")).not.toBeInTheDocument();
@@ -1535,9 +1535,9 @@ describe("CreateProjectFlow project import validation", () => {
 		await openSource(user, "Open a local folder");
 		await user.click(await screen.findByRole("button", { name: "Submit agents" }));
 
-		await waitFor(() => expect(useUiStore.getState().globalToast?.body).toBe("AO could not create this project. Try again."));
+		await waitFor(() => expect(useUiStore.getState().globalToast?.body).toBe("Altair could not create this project. Try again."));
 		const sheet = screen.getByTestId("agent-sheet");
-		expect(sheet).toHaveTextContent("AO could not create this project. Try again.");
+		expect(sheet).toHaveTextContent("Altair could not create this project. Try again.");
 		expect(sheet).not.toHaveTextContent("request_id");
 		await waitFor(() => expect(sheet).toHaveClass("modal-shake"));
 	});
@@ -1648,7 +1648,7 @@ describe("CreateProjectFlow project import validation", () => {
 			await waitFor(() => expect(screen.getByRole("button", { name: "Create repository and continue" })).toBeEnabled());
 			await user.click(screen.getByRole("button", { name: "Create repository and continue" }));
 
-		expect(await screen.findByText("Running project setup. AO is preparing this repository now.")).toBeInTheDocument();
+		expect(await screen.findByText("Running project setup. Altair is preparing this repository now.")).toBeInTheDocument();
 		expect(screen.getAllByText("In progress")).toHaveLength(1);
 		expect(screen.getAllByText("Queued")).toHaveLength(2);
 		expect(apiMocks.POST).toHaveBeenCalledTimes(2);
@@ -1786,8 +1786,8 @@ describe("CreateProjectFlow project import validation", () => {
 		render(<CreateProjectFlow embedded mode="choose" {...noop} />, { wrapper: CloudTestProviders });
 
 		await user.click(screen.getByRole("button", { name: "Clone to the cloud" }));
-		expect(screen.getByText(/sign in to AO Cloud to create a cloud project/i)).toBeInTheDocument();
-		await user.click(screen.getByRole("button", { name: "Sign in to AO Cloud" }));
+		expect(screen.getByText(/sign in to Altair Cloud to create a cloud project/i)).toBeInTheDocument();
+		await user.click(screen.getByRole("button", { name: "Sign in to Altair Cloud" }));
 		expect(cloudMocks.signIn).toHaveBeenCalledOnce();
 	});
 
@@ -1797,7 +1797,7 @@ describe("CreateProjectFlow project import validation", () => {
 
 		view.rerender(<CreateProjectFlow mode="choose" sourceSignal={{ source: "cloud", nonce: 1 }} {...noop} />);
 
-		expect(await screen.findByText(/sign in to AO Cloud to create a cloud project/i)).toBeInTheDocument();
+		expect(await screen.findByText(/sign in to Altair Cloud to create a cloud project/i)).toBeInTheDocument();
 	});
 
 	it("shows Cloud in a separate card above the local project sources", () => {

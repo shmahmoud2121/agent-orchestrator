@@ -32,7 +32,7 @@ describe("MakerAppImage", () => {
 	it("writes callback protocols into the AppImage desktop entry", async () => {
 		const protocols = [
 			{
-				name: "Agent Orchestrator authentication callback",
+				name: "Altair authentication callback",
 				schemes: ["ao-app"],
 			},
 		];
