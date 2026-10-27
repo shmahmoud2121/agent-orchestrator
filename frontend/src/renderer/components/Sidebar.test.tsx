@@ -2326,6 +2326,7 @@ describe("Sidebar", () => {
 		expect(highlight).toBeTruthy();
 		expect(highlight?.className).toMatch(/bg-interactive-active/);
 		expect(highlight?.className).toMatch(/opacity-100/);
+		expect(highlight).toHaveAttribute("data-nav-row-highlight-active", "");
 		expect(time).toHaveAttribute("data-session-message-age", "");
 		expect(time).toHaveAttribute("datetime", lastUserMessageAt);
 		expect(time).toHaveClass("font-sans", "tabular-nums");
@@ -2414,6 +2415,32 @@ describe("Sidebar", () => {
 
 		expect(screen.queryByText("Project 11")).not.toBeInTheDocument();
 		expect(screen.getByRole("button", { name: "Show 4 more projects" })).toBeInTheDocument();
+	});
+
+	it("marks the open project row and the open session row for the active edge", () => {
+		mockParams.projectId = "proj-1";
+		renderSidebar({ workspaces: [workspace] });
+		expect(
+			document.querySelector('[data-project-drag-row][data-project-id="proj-1"] [data-nav-row-highlight]'),
+		).toHaveAttribute("data-nav-row-highlight-active", "");
+	});
+
+	it("marks the open session and leaves its siblings unmarked", () => {
+		mockParams.projectId = "proj-1";
+		mockParams.sessionId = session.id;
+		renderSidebar({
+			workspaces: [{ ...workspace, sessions: [session, { ...session, id: "proj-1-2", title: "write docs" }] }],
+		});
+
+		const openRow = screen.getByRole("button", { name: "Open fix login" }).closest("[data-session-row]");
+		expect(openRow?.querySelector("[data-nav-row-highlight]")).toHaveAttribute("data-nav-row-highlight-active", "");
+
+		const otherRow = screen.getByRole("button", { name: "Open write docs" }).closest("[data-session-row]");
+		expect(otherRow?.querySelector("[data-nav-row-highlight]")).not.toHaveAttribute("data-nav-row-highlight-active");
+
+		expect(
+			document.querySelector('[data-project-drag-row][data-project-id="proj-1"] [data-nav-row-highlight]'),
+		).not.toHaveAttribute("data-nav-row-highlight-active");
 	});
 
 	it("keeps the active project row at the top of the scroller", () => {

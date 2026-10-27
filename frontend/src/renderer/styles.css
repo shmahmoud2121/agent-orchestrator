@@ -2511,9 +2511,11 @@ body.is-resizing-x .session-split[data-workspace-resizing="true"] [data-slot="in
 	}
 }
 
-/* Active row marker: a 2px starlight edge. The pill fill stays the neutral
-   active surface. --ring is the palette accent on a named theme. */
-[data-nav-row-highlight]:not([data-nav-row-highlight-idle]) {
+/* Active project or session row: a 2px starlight edge. The pill fill stays
+   the neutral active surface. --ring is the palette accent on a named theme.
+   Home, Settings, and Stay Awake share the highlight and must not grow this edge. */
+[data-project-drag-row] [data-nav-row-highlight-active],
+[data-session-row] [data-nav-row-highlight-active] {
 	box-shadow: inset 2px 0 0 var(--ring);
 }
 
