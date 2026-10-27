@@ -1,6 +1,7 @@
 package watchdog
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -83,4 +84,87 @@ func quote(path string) string {
 		return `"` + path + `"`
 	}
 	return "'" + path + "'"
+}
+
+func TestCheckOriginalWriteShellShapes(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "source")
+	task := filepath.Join(root, "results", "task")
+	for _, dir := range []string{source, task} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	notes := filepath.Join(source, "notes.txt")
+	if err := os.WriteFile(notes, []byte("recieve"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	q := quote
+	encode := func(text string) string {
+		var raw []byte
+		for _, r := range text {
+			raw = append(raw, byte(r), byte(r>>8))
+		}
+		return base64.StdEncoding.EncodeToString(raw)
+	}
+
+	cases := []struct {
+		name    string
+		command string
+		blocked bool
+	}{
+		{"powershell -Command", `powershell -Command "Set-Content -Path '` + notes + `' -Value hi"`, true},
+		{"powershell.exe -NoProfile -Command", `powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Remove-Item '` + notes + `'"`, true},
+		{"pwsh -c", `pwsh -c "Remove-Item ` + q(notes) + `"`, true},
+		{"powershell statements", `powershell -Command "Get-Content x; Set-Content -Path '` + notes + `' -Value hi"`, true},
+		{"powershell encoded", "powershell -EncodedCommand " + encode("Remove-Item '"+notes+"'"), true},
+		{"powershell bad encoded", "powershell -enc not-base64!!", true},
+		{"bash -c", `bash -c "rm ` + q(notes) + `"`, true},
+		{"sh -lc", `sh -lc "echo hi > ` + q(notes) + `"`, true},
+		{"cmd /c", `cmd /c del ` + q(notes), true},
+		{"nested wrappers", `bash -c "powershell -Command \"Remove-Item ` + notes + `\""`, true},
+		{"cd then rm", "cd " + q(source) + " && rm notes.txt", true},
+		{"Set-Location then Set-Content", "Set-Location " + q(source) + "; Set-Content notes.txt hi", true},
+		{"cd then cd back", "cd " + q(source) + " && cd - && rm notes.txt", false},
+		{"perl -pi", "perl -pi -e 's/a/b/' " + q(notes), true},
+		{"perl -i.bak", "perl -i.bak -pe 's/a/b/' " + q(notes), true},
+		{"ruby -i", "ruby -i -pe 'x' " + q(notes), true},
+		{"find -delete", "find " + q(source) + " -name '*.txt' -delete", true},
+		{"find -exec rm", "find " + q(source) + " -name '*.txt' -exec rm {} +", true},
+		{"find parent -delete", "find " + q(root) + " -name '*.txt' -delete", true},
+		{"xargs rm", "find " + q(source) + " -name '*.txt' | xargs rm", true},
+		{"git -C checkout", "git -C " + q(source) + " checkout -- .", true},
+		{"cd then git reset", "cd " + q(source) + " && git reset --hard", true},
+		{"git clean in parent", "git -C " + q(root) + " clean -fdx", true},
+		{"rm parent folder", "rm -rf " + q(root), true},
+		{"Remove-Item parent", "Remove-Item -Recurse " + q(root), true},
+		{"mv parent folder", "mv " + q(root) + " " + q(filepath.Join(task, "gone")), true},
+
+		{"cat", "cat " + q(notes), false},
+		{"cp out", "cp " + q(notes) + " " + q(filepath.Join(task, "copy.txt")), false},
+		{"Get-Content", "Get-Content " + q(notes), false},
+		{"powershell read", `powershell -Command "Get-Content '` + notes + `'"`, false},
+		{"cd then ls", "cd " + q(source) + " && ls", false},
+		{"git log", "git -C " + q(source) + " log", false},
+		{"git status", "git -C " + q(source) + " status", false},
+		{"git diff", "git -C " + q(source) + " diff", false},
+		{"python reads", "python read.py " + q(notes), false},
+		{"find lists", "find " + q(source) + " -name '*.txt'", false},
+		{"xargs cat", "find " + q(source) + " -name '*.txt' | xargs cat", false},
+		{"mv into parent", "mv " + q(filepath.Join(task, "out.txt")) + " " + q(root), false},
+		{"rm in task", "rm -rf " + q(filepath.Join(task, "old")), false},
+		{"bash script in task", `bash -c "echo hi > out.txt"`, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			raw, err := json.Marshal(map[string]string{"command": tc.command})
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := CheckOriginalWrite([]string{source}, task, "Bash", raw)
+			if got.Blocked != tc.blocked {
+				t.Fatalf("blocked = %v, want %v (path %q) for %s", got.Blocked, tc.blocked, got.Path, tc.command)
+			}
+		})
+	}
 }

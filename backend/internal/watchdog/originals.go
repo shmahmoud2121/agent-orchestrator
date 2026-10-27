@@ -1,10 +1,13 @@
 package watchdog
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"unicode/utf16"
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 )
@@ -86,17 +89,224 @@ func originalHit(sources []string, resolved string) bool {
 	return false
 }
 
+// originalShellDepth caps how far wrapped shells (bash -c, powershell
+// -Command, cmd /c) are unwrapped. Past it, a command that names an original
+// is blocked.
+const originalShellDepth = 3
+
 func checkOriginalShell(sources []string, workDir, command string) Result {
+	return checkOriginalShellAt(sources, workDir, command, 0)
+}
+
+// checkOriginalShellAt walks the segments in order. A cd moves the folder that
+// later relative paths resolve against.
+func checkOriginalShellAt(sources []string, workDir, command string, depth int) Result {
+	if depth > originalShellDepth {
+		return mentionsOriginal(sources, workDir, command)
+	}
 	var hit Result
+	dir := workDir
 	for _, segment := range shellSegments(shellWords(command)) {
 		if isAOCommand(segment) {
 			continue
 		}
-		if next := checkOriginalSegment(sources, workDir, segment); next.Blocked && worse(next, hit) {
+		if next, ok := changedDir(segment, dir, workDir); ok {
+			dir = next
+			continue
+		}
+		var next Result
+		if inner, wrapped, ok := wrappedShell(segment); wrapped {
+			if !ok {
+				next = mentionsOriginal(sources, dir, command)
+				if !next.Blocked {
+					next = Result{Blocked: true, Path: "encoded command"}
+				}
+			} else {
+				next = checkOriginalShellAt(sources, dir, inner, depth+1)
+			}
+		} else if xargsWriter(segment) {
+			next = mentionsOriginal(sources, dir, command)
+		} else {
+			next = checkOriginalSegment(sources, dir, segment)
+		}
+		if next.Blocked && worse(next, hit) {
 			hit = next
 		}
 	}
 	return hit
+}
+
+// mentionsOriginal blocks when any word names an original or a folder that
+// holds one. It is the fallback when the command cannot be read word by word.
+func mentionsOriginal(sources []string, workDir, command string) Result {
+	for _, word := range shellWords(command) {
+		if isShellPunctuation(word) {
+			continue
+		}
+		if resolved := resolveArg(workDir, word); originalHit(sources, resolved) || holdsOriginal(sources, resolved) {
+			return Result{Blocked: true, Path: displayPath(word, resolved, workDir)}
+		}
+	}
+	return Result{}
+}
+
+// changedDir reports the folder a cd-style segment moves to. A cd with no
+// usable target returns to the session's working folder.
+func changedDir(words []string, dir, home string) (string, bool) {
+	cmd, at := commandBase(words)
+	switch cmd {
+	case "cd", "chdir", "pushd", "set-location", "sl", "popd":
+	default:
+		return "", false
+	}
+	if cmd == "popd" {
+		return home, true
+	}
+	var args []string
+	for _, word := range words[at+1:] {
+		if isRedirectOp(word) {
+			break
+		}
+		if isShellFlag(word) || strings.EqualFold(word, "/d") {
+			continue
+		}
+		args = append(args, word)
+	}
+	if len(args) == 0 || args[0] == "-" || args[0] == "~" {
+		return home, true
+	}
+	if resolved := resolveArg(dir, args[0]); resolved != "" {
+		return resolved, true
+	}
+	return dir, true
+}
+
+// wrappedShell returns the command a shell launcher runs. wrapped is false for
+// anything that is not a launcher; ok is false when the inner command could
+// not be read (a bad -EncodedCommand payload).
+func wrappedShell(words []string) (inner string, wrapped, ok bool) {
+	cmd, at := commandBase(words)
+	if at < 0 {
+		return "", false, false
+	}
+	rest := words[at+1:]
+	switch cmd {
+	case "bash", "sh", "zsh", "dash", "ksh":
+		for i, word := range rest {
+			if strings.HasPrefix(word, "-") && !strings.HasPrefix(word, "--") && strings.Contains(word[1:], "c") {
+				if i+1 < len(rest) {
+					return rest[i+1], true, true
+				}
+				return "", false, false
+			}
+		}
+	case "cmd":
+		for i, word := range rest {
+			if low := strings.ToLower(word); low == "/c" || low == "/k" {
+				return strings.Join(rest[i+1:], " "), true, true
+			}
+		}
+	case "powershell", "pwsh":
+		return powershellCommand(rest)
+	}
+	return "", false, false
+}
+
+// powershellValueFlags take a value, so the word after them is not the command.
+var powershellValueFlags = map[string]bool{
+	"executionpolicy": true, "ep": true, "ex": true, "workingdirectory": true, "wd": true,
+	"inputformat": true, "inputformats": true, "outputformat": true, "of": true, "windowstyle": true, "w": true,
+	"configurationname": true, "settingsfile": true, "version": true, "v": true, "psconsolefile": true,
+	"custompipename": true,
+}
+
+func powershellCommand(rest []string) (string, bool, bool) {
+	for i := 0; i < len(rest); i++ {
+		word := rest[i]
+		if !strings.HasPrefix(word, "-") && !strings.HasPrefix(word, "/") {
+			return strings.Join(rest[i:], " "), true, true
+		}
+		name := strings.ToLower(strings.TrimLeft(word, "-/"))
+		name, value, hasValue := strings.Cut(name, ":")
+		switch name {
+		case "command", "c", "cmd":
+			if hasValue {
+				return word[len(word)-len(value):] + " " + strings.Join(rest[i+1:], " "), true, true
+			}
+			return strings.Join(rest[i+1:], " "), true, true
+		case "encodedcommand", "enc", "ec", "e":
+			if i+1 >= len(rest) {
+				return "", true, false
+			}
+			decoded, err := decodePowershell(rest[i+1])
+			if err != nil {
+				return "", true, false
+			}
+			return decoded, true, true
+		case "file", "f":
+			return "", false, false
+		}
+		if powershellValueFlags[name] && !hasValue {
+			i++
+		}
+	}
+	return "", false, false
+}
+
+// decodePowershell reads an -EncodedCommand payload: base64 of UTF-16LE text.
+func decodePowershell(payload string) (string, error) {
+	raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(payload))
+	if err != nil {
+		return "", err
+	}
+	if len(raw)%2 != 0 {
+		return "", errors.New("odd utf-16 length")
+	}
+	units := make([]uint16, len(raw)/2)
+	for i := range units {
+		units[i] = uint16(raw[2*i]) | uint16(raw[2*i+1])<<8
+	}
+	return string(utf16.Decode(units)), nil
+}
+
+// xargsWriter reports `xargs rm` and friends: xargs feeding a known writer.
+func xargsWriter(words []string) bool {
+	cmd, at := commandBase(words)
+	if cmd != "xargs" {
+		return false
+	}
+	for _, word := range words[at+1:] {
+		if isShellFlag(word) {
+			continue
+		}
+		return originalWriters[strings.TrimSuffix(strings.ToLower(filepath.Base(word)), ".exe")]
+	}
+	return false
+}
+
+// originalWriters change the files they name.
+var originalWriters = map[string]bool{
+	"rm": true, "rmdir": true, "unlink": true, "mv": true, "move": true, "touch": true, "mkdir": true,
+	"chmod": true, "chown": true, "truncate": true, "ln": true, "tee": true, "shred": true,
+	"remove-item": true, "move-item": true, "rename-item": true, "set-content": true, "add-content": true,
+	"out-file": true, "new-item": true, "clear-content": true, "del": true, "erase": true, "ren": true,
+	"rd": true, "ri": true, "mi": true, "rni": true, "sc": true, "ac": true, "clc": true,
+	"sed": true,
+}
+
+// originalRemovers take a whole folder with them, so naming a folder that
+// holds an original is as bad as naming the original.
+var originalRemovers = map[string]bool{
+	"rm": true, "rmdir": true, "remove-item": true, "ri": true, "rd": true, "del": true, "erase": true,
+	"mv": true, "move": true, "move-item": true, "mi": true, "rename-item": true, "ren": true, "rni": true,
+	"shred": true,
+}
+
+// gitReadOnly are git subcommands that never change the working tree.
+var gitReadOnly = map[string]bool{
+	"status": true, "log": true, "diff": true, "show": true, "blame": true, "grep": true,
+	"ls-files": true, "ls-tree": true, "rev-parse": true, "describe": true, "shortlog": true,
+	"cat-file": true, "rev-list": true,
 }
 
 func checkOriginalSegment(sources []string, workDir string, words []string) Result {
@@ -116,26 +326,209 @@ func checkOriginalSegment(sources []string, workDir string, words []string) Resu
 			return Result{Blocked: true, Path: displayPath(dest, resolved, workDir)}
 		}
 		return Result{}
-	case "rm", "rmdir", "unlink", "mv", "move", "touch", "mkdir", "chmod", "chown", "truncate", "ln", "tee",
-		"remove-item", "move-item", "rename-item", "set-content", "add-content", "out-file", "new-item",
-		"del", "erase", "ren", "rd", "ri", "mi", "rni", "sc", "ac":
-		for _, raw := range pathArgs(words) {
-			if resolved := resolvePath(workDir, raw); originalHit(sources, resolved) {
-				return Result{Blocked: true, Path: displayPath(raw, resolved, workDir)}
-			}
-		}
-		return Result{}
 	case "sed":
 		if !sedInPlace(words) {
 			return Result{}
 		}
-		for _, raw := range pathArgs(words) {
-			if resolved := resolvePath(workDir, raw); originalHit(sources, resolved) {
-				return Result{Blocked: true, Path: displayPath(raw, resolved, workDir)}
+		return firstOriginalArg(sources, workDir, pathArgs(words), false)
+	case "perl", "ruby":
+		if !scriptInPlace(words) {
+			return Result{}
+		}
+		return firstOriginalArg(sources, workDir, pathArgs(words), false)
+	case "find":
+		return checkOriginalFind(sources, workDir, words)
+	case "git":
+		return checkOriginalGit(sources, workDir, words)
+	}
+	if !originalWriters[cmd] {
+		return Result{}
+	}
+	args := pathArgs(words)
+	if hit := firstOriginalArg(sources, workDir, args, false); hit.Blocked {
+		return hit
+	}
+	if !originalRemovers[cmd] {
+		return Result{}
+	}
+	// A move may name a parent folder as its destination; only the sources it
+	// moves away can carry an original with them.
+	if cmd == "mv" || cmd == "move" || cmd == "move-item" || cmd == "mi" {
+		dest := destinationArg(words, cmd)
+		var moved []string
+		for _, arg := range args {
+			if arg != dest {
+				moved = append(moved, arg)
 			}
+		}
+		args = moved
+	}
+	return firstOriginalArg(sources, workDir, args, true)
+}
+
+// firstOriginalArg blocks on the first argument under an original. With
+// holders, a folder that holds an original also counts.
+func firstOriginalArg(sources []string, workDir string, args []string, holders bool) Result {
+	for _, raw := range args {
+		resolved := resolveArg(workDir, raw)
+		if originalHit(sources, resolved) || (holders && holdsOriginal(sources, resolved)) {
+			return Result{Blocked: true, Path: displayPath(raw, resolved, workDir)}
 		}
 	}
 	return Result{}
+}
+
+// scriptInPlace reports perl or ruby editing files in place: -i, -pi, -i.bak.
+func scriptInPlace(words []string) bool {
+	for _, word := range words {
+		if !strings.HasPrefix(word, "-") || strings.HasPrefix(word, "--") {
+			continue
+		}
+		if strings.HasPrefix(word, "-M") || strings.HasPrefix(word, "-m") || strings.HasPrefix(word, "-I") {
+			continue
+		}
+		flags, _, _ := strings.Cut(word[1:], ".")
+		if strings.Contains(flags, "i") {
+			return true
+		}
+	}
+	return false
+}
+
+// checkOriginalFind blocks find -delete, or find -exec running a writer, when
+// a search root is an original or holds one.
+func checkOriginalFind(sources []string, workDir string, words []string) Result {
+	_, at := commandBase(words)
+	writes := false
+	for i, word := range words[at+1:] {
+		low := strings.ToLower(word)
+		if low == "-delete" {
+			writes = true
+		}
+		if low == "-exec" || low == "-execdir" || low == "-ok" || low == "-okdir" {
+			next := at + 2 + i
+			if next < len(words) && originalWriters[strings.TrimSuffix(strings.ToLower(filepath.Base(words[next])), ".exe")] {
+				writes = true
+			}
+		}
+	}
+	if !writes {
+		return Result{}
+	}
+	var roots []string
+	for _, word := range words[at+1:] {
+		if strings.HasPrefix(word, "-") || word == "(" || word == "!" {
+			break
+		}
+		roots = append(roots, word)
+	}
+	if len(roots) == 0 {
+		roots = []string{"."}
+	}
+	return firstOriginalArg(sources, workDir, roots, true)
+}
+
+// checkOriginalGit allows read-only git anywhere. Any other subcommand is
+// blocked when git runs in an original or in a folder that holds one.
+func checkOriginalGit(sources []string, workDir string, words []string) Result {
+	_, at := commandBase(words)
+	dir := workDir
+	shown := ""
+	sub := ""
+	var subArgs []string
+	rest := words[at+1:]
+	for i := 0; i < len(rest); i++ {
+		word := rest[i]
+		low := strings.ToLower(word)
+		switch {
+		case sub != "":
+			subArgs = append(subArgs, word)
+		case word == "-C" && i+1 < len(rest):
+			i++
+			if resolved := resolveArg(dir, rest[i]); resolved != "" {
+				dir, shown = resolved, rest[i]
+			}
+		case (low == "--git-dir" || low == "--work-tree") && i+1 < len(rest):
+			i++
+			if resolved := resolveArg(dir, rest[i]); resolved != "" {
+				dir, shown = resolved, rest[i]
+			}
+		case strings.HasPrefix(low, "--git-dir=") || strings.HasPrefix(low, "--work-tree="):
+			_, value, _ := strings.Cut(word, "=")
+			if resolved := resolveArg(dir, value); resolved != "" {
+				dir, shown = resolved, value
+			}
+		case word == "-c" && i+1 < len(rest):
+			i++
+		case strings.HasPrefix(word, "-"):
+		default:
+			sub = low
+		}
+	}
+	if sub == "" || gitSubReadOnly(sub, subArgs) {
+		return Result{}
+	}
+	if originalHit(sources, dir) || holdsOriginal(sources, dir) {
+		if shown == "" {
+			shown = dir
+		}
+		return Result{Blocked: true, Path: displayPath(shown, dir, workDir)}
+	}
+	return Result{}
+}
+
+func gitSubReadOnly(sub string, args []string) bool {
+	if gitReadOnly[sub] {
+		return true
+	}
+	onlyFlags := func(allowed ...string) bool {
+		for _, arg := range args {
+			ok := false
+			for _, flag := range allowed {
+				if arg == flag {
+					ok = true
+				}
+			}
+			if !ok {
+				return false
+			}
+		}
+		return true
+	}
+	switch sub {
+	case "branch":
+		return onlyFlags("--list", "-a", "-r", "-v", "-vv", "--all", "--remotes")
+	case "remote":
+		return onlyFlags("-v")
+	case "config":
+		return len(args) > 0 && (args[0] == "--get" || args[0] == "--list" || args[0] == "-l" || args[0] == "--get-all")
+	}
+	return false
+}
+
+// resolveArg is resolvePath that also understands "." as the folder itself.
+func resolveArg(workDir, raw string) string {
+	if strings.TrimSpace(raw) == "." {
+		return resolvePath("", cleanOrEmpty(workDir))
+	}
+	return resolvePath(workDir, raw)
+}
+
+// holdsOriginal reports a folder that contains an original, so removing or
+// moving the folder would take the original with it.
+func holdsOriginal(sources []string, resolved string) bool {
+	if resolved == "" {
+		return false
+	}
+	for _, source := range sources {
+		if domain.PathCovers(resolved, source) {
+			return true
+		}
+		if runtime.GOOS == "windows" && domain.PathCovers(strings.ToLower(resolved), strings.ToLower(source)) {
+			return true
+		}
+	}
+	return false
 }
 
 func commandBase(words []string) (string, int) {

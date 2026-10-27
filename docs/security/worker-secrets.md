@@ -66,9 +66,22 @@ manager, for Claude Code and Codex, through the same pre-tool-use hook.
 A blocked call uses the same alert, the same 3-strike stop, and the same
 audit log. The reason is "tried to change an original file".
 
-Command inspection cannot catch every write. A script that hides the write
-inside another program, for example `python -c` creating a file, can get
-past the word split. On Mac, Linux, and WSL2 the Claude Code sandbox denies
-those writes as well: a Work worker may write only in its task folder and
-its scratch folder. On native Windows the sandbox does not run. There the
-built-in instructions and this watchdog are the guards.
+The check reads each shell command word by word. It follows `cd`,
+`Set-Location` and `pushd` inside one command, and it opens wrapped commands:
+`bash -c`, `sh -c`, `powershell -Command`, `pwsh -c`, `powershell
+-EncodedCommand` and `cmd /c`. It also blocks `perl -i` and `ruby -i`, `find`
+with `-delete` or `-exec rm`, `xargs rm`, and git commands that change files
+(read-only ones such as `git status`, `git log` and `git diff` stay allowed).
+Removing or moving a folder that holds an original counts as changing it.
+
+Command inspection cannot catch every write. These still get past it:
+
+- inline scripts: `python -c`, `node -e`, and the like;
+- a script file that writes, for example `python fix.py` or `powershell -File fix.ps1`;
+- programs the check does not know.
+
+On Mac, Linux, and WSL2 the Claude Code sandbox denies those writes as well:
+a Work worker may write only in its task folder and its scratch folder. On
+native Windows the sandbox does not run. There the built-in instructions and
+this watchdog are the guards. Running workers inside WSL2 (Work step W5) is
+the real fix there.
