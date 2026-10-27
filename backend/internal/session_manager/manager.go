@@ -2569,17 +2569,25 @@ type KillResult struct {
 
 // Kill waits for workspace retirement for internal callers that depend on it.
 func (m *Manager) Kill(ctx context.Context, id domain.SessionID) (bool, error) {
-	result, err := m.kill(ctx, id, false)
+	result, err := m.kill(ctx, id, false, false)
 	return result.Freed, err
+}
+
+// KillPreservingWorkspace stops the agent and marks the session terminated
+// without removing its worktree. The watchdog uses it: a worker that keeps
+// reading protected files is stopped, and the work it already did stays on disk.
+func (m *Manager) KillPreservingWorkspace(ctx context.Context, id domain.SessionID) error {
+	_, err := m.kill(ctx, id, false, true)
+	return err
 }
 
 // RequestKill stops the agent and persists terminal intent before returning.
 // Configured cleanup commands use the daemon's existing background workers.
 func (m *Manager) RequestKill(ctx context.Context, id domain.SessionID) (KillResult, error) {
-	return m.kill(ctx, id, true)
+	return m.kill(ctx, id, true, false)
 }
 
-func (m *Manager) kill(ctx context.Context, id domain.SessionID, backgroundCleanup bool) (KillResult, error) {
+func (m *Manager) kill(ctx context.Context, id domain.SessionID, backgroundCleanup, preserveWorkspace bool) (KillResult, error) {
 	// Teardown deliberately stops riding the caller's context. Kill runs a
 	// sequence (stop the agent, tear the controller down, mark the row
 	// terminated, drop the worktree) where being cancelled partway leaves a session
@@ -2696,6 +2704,15 @@ func (m *Manager) kill(ctx context.Context, id domain.SessionID, backgroundClean
 			return KillResult{}, m.terminateWithPreservedWorkspace(ctx, id, nil, true)
 		}
 		releaseTerminals = release
+	}
+	// The watchdog stops a worker that keeps reading protected files. The agent
+	// is already gone by here; leaving the worktree is the whole point, so this
+	// returns before pre-remove and workspace removal.
+	if preserveWorkspace {
+		if err := m.recordTermination(ctx, id, true); err != nil {
+			return KillResult{}, err
+		}
+		return KillResult{}, nil
 	}
 	freed := false
 	if ws.Path != "" {

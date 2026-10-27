@@ -21,13 +21,20 @@ const (
 	NotificationReviewCompleted NotificationType = "review_completed"
 	// NotificationReviewChangesRequested means an AO reviewer found changes to make.
 	NotificationReviewChangesRequested NotificationType = "review_changes_requested"
+	// NotificationWatchdogBlocked means the watchdog refused a tool call that
+	// touched a protected file.
+	NotificationWatchdogBlocked NotificationType = "watchdog_blocked"
+	// NotificationWatchdogStopped means the watchdog stopped a worker after
+	// repeated protected-file reads or a tamper attempt.
+	NotificationWatchdogStopped NotificationType = "watchdog_stopped"
 )
 
 // Valid reports whether t is one of the v1 notification kinds.
 func (t NotificationType) Valid() bool {
 	switch t {
 	case NotificationNeedsInput, NotificationReadyToMerge, NotificationPRMerged, NotificationPRClosedUnmerged,
-		NotificationReviewCompleted, NotificationReviewChangesRequested:
+		NotificationReviewCompleted, NotificationReviewChangesRequested,
+		NotificationWatchdogBlocked, NotificationWatchdogStopped:
 		return true
 	default:
 		return false

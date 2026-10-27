@@ -826,7 +826,7 @@ export function TaskComposer({
 						: submitTask(brief, "tui")),
 				onSubmit: (brief) => void submitTask(brief, selectedAgent === "unreal-agent" ? "chat" : requiresTuiFallback ? "tui" : undefined),
 			}}
-			renderAgentControl={(control) => <DesktopAgentControl {...control} hostId={hostId} manageView={isCloudProject ? "cloud" : "local"} sandboxRequired={!isCloudProject && projectConfig?.workerSandbox?.requireSandbox !== false} sandboxAvailable={agentsQuery.data?.workerSandboxAvailable} />}
+			renderAgentControl={(control) => <DesktopAgentControl {...control} hostId={hostId} manageView={isCloudProject ? "cloud" : "local"} sandboxRequired={!isCloudProject && projectConfig?.workerSandbox?.requireSandbox !== false} showUnwatched={!isCloudProject && projectConfig?.workerSandbox?.requireSandbox === false} sandboxAvailable={agentsQuery.data?.workerSandboxAvailable} />}
 			renderEffortControl={(control) => <TaskEffortPicker {...control} value={control.value || cloudDefaultEffort} defaultEffort={inheritedEffort || effortModel?.defaultEffort} availability={effortAvailability} />}
 			renderModelControl={(control) => <TaskModelPicker {...control} onRefresh={refreshSelectedModels}
 				showFollowAgentAction={Boolean(catalogDefaultOption || !isConcreteModelID(projectModelOrMode))} />}
@@ -864,7 +864,7 @@ function TaskEffortPicker({
 
 // Both local and cloud list only harnesses that can run, plus a way to manage
 // them: local logins, or cloud connections for cloud projects.
-function DesktopAgentControl({ hostId, manageView, sandboxRequired, sandboxAvailable, ...control }: TaskComposerAgentControl & { hostId?: string; manageView: "local" | "cloud"; sandboxRequired?: boolean; sandboxAvailable?: boolean }) {
+function DesktopAgentControl({ hostId, manageView, sandboxRequired, sandboxAvailable, showUnwatched, ...control }: TaskComposerAgentControl & { hostId?: string; manageView: "local" | "cloud"; sandboxRequired?: boolean; sandboxAvailable?: boolean; showUnwatched?: boolean }) {
 	const { t } = useTranslation();
 	return (
 		<RequiredAgentField
@@ -873,6 +873,7 @@ function DesktopAgentControl({ hostId, manageView, sandboxRequired, sandboxAvail
 			manageView={manageView}
 			sandboxRequired={sandboxRequired}
 			sandboxAvailable={sandboxAvailable}
+			showUnwatched={showUnwatched}
 			managementLabel={(manageView === "cloud" ? t("agentSelector.manageCloud") : t("agentSelector.manage")).replace(/[.…]+$/u, "")}
 			variant="chip"
 			triggerClassName="composer-toolbar-option w-fit"

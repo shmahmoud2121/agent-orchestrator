@@ -20,7 +20,7 @@ func enrich(intent Intent) (domain.NotificationRecord, error) {
 	if !intent.Type.Valid() {
 		return domain.NotificationRecord{}, domain.ErrInvalidNotificationType
 	}
-	if intent.Type != domain.NotificationNeedsInput && rec.PRURL == "" {
+	if rec.PRURL == "" && !prURLOptional(intent.Type) {
 		return domain.NotificationRecord{}, domain.ErrInvalidNotificationRecord
 	}
 	rec.Title = titleForIntent(intent)
@@ -51,9 +51,19 @@ func titleForIntent(intent Intent) string {
 		return fmt.Sprintf("Review complete for %s", prLabel(intent))
 	case domain.NotificationReviewChangesRequested:
 		return fmt.Sprintf("Review found changes for %s", prLabel(intent))
+	case domain.NotificationWatchdogBlocked:
+		return fmt.Sprintf("Watchdog blocked %s", sessionLabel(intent))
+	case domain.NotificationWatchdogStopped:
+		return fmt.Sprintf("Watchdog stopped %s after it kept trying to read protected files.", sessionLabel(intent))
 	default:
 		return "Notification"
 	}
+}
+
+func prURLOptional(typ domain.NotificationType) bool {
+	return typ == domain.NotificationNeedsInput ||
+		typ == domain.NotificationWatchdogBlocked ||
+		typ == domain.NotificationWatchdogStopped
 }
 
 func bodyForIntent(intent Intent) string {
@@ -83,6 +93,18 @@ func bodyForIntent(intent Intent) string {
 		return "Orchestrator finished reviewing this pull request and approved it."
 	case domain.NotificationReviewChangesRequested:
 		return "Orchestrator finished reviewing this pull request and found changes to address."
+	case domain.NotificationWatchdogBlocked:
+		agent := strings.TrimSpace(intent.Agent)
+		if agent == "" {
+			agent = "The AI"
+		}
+		subject := strings.TrimSpace(intent.Subject)
+		if subject == "" {
+			subject = "a protected file"
+		}
+		return fmt.Sprintf("%s tried to read %s.", agent, subject)
+	case domain.NotificationWatchdogStopped:
+		return fmt.Sprintf("Watchdog stopped %s after it kept trying to read protected files.", sessionLabel(intent))
 	default:
 		return ""
 	}

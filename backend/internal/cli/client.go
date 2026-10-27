@@ -115,6 +115,12 @@ func (c *commandContext) postJSON(ctx context.Context, path string, body, out an
 	return c.doJSON(ctx, http.MethodPost, path, body, out)
 }
 
+// postJSONTimeout is postJSON with a caller-chosen deadline. The watchdog hook
+// uses it so a stuck daemon cannot consume the agent's hook budget.
+func (c *commandContext) postJSONTimeout(ctx context.Context, path string, body, out any, timeout time.Duration) error {
+	return c.doJSONPathWithHeadersAndTimeout(ctx, http.MethodPost, "/api/v1/"+path, body, out, nil, timeout)
+}
+
 // postSetupJSON is postJSON for a call that runs the project's Setup (a spawn,
 // a restore) with no client timeout. The daemon bounds the call by the Setup
 // steps' own time limits, and any client limit would be a ceiling under them:

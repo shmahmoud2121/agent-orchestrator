@@ -60,7 +60,7 @@ describe("app i18next instance", () => {
 	it("provides agent management and readiness labels for every supported locale", () => {
 		for (const locale of APP_LOCALES) {
 			const catalog = allCatalogs[locale] as unknown as Record<string, string>;
-			for (const key of ["agentSelector.manage", "agentSelector.noneReady", "agentSelector.needsSetup", "agentSelector.retired"]) {
+			for (const key of ["agentSelector.manage", "agentSelector.noneReady", "agentSelector.needsSetup", "agentSelector.notWatched", "agentSelector.notWatchedReason", "agentSelector.retired"]) {
 				expect(catalog[key], `${locale} is missing ${key}`).toBeTruthy();
 			}
 		}

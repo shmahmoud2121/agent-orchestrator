@@ -10404,6 +10404,57 @@ paths:
       summary: Switch a logical AO session to another agent harness
       tags:
       - sessions
+  /api/v1/sessions/{sessionId}/watchdog:
+    post:
+      operationId: decideSessionWatchdog
+      parameters:
+      - description: Session identifier, e.g. project-1.
+        in: path
+        name: sessionId
+        required: true
+        schema:
+          description: Session identifier, e.g. project-1.
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WatchdogDecisionRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchdogDecisionResponse'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Bad Request
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Not Found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Internal Server Error
+        "501":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Not Implemented
+      summary: Decide whether a project session's tool call may read a protected file
+      tags:
+      - sessions
   /api/v1/sessions/{sessionId}/workspace/diffs:
     post:
       operationId: getSessionWorkspaceDiffs
@@ -16844,6 +16895,8 @@ components:
           - pr_closed_unmerged
           - review_completed
           - review_changes_requested
+          - watchdog_blocked
+          - watchdog_stopped
           type: string
       required:
       - id
@@ -20262,6 +20315,44 @@ components:
           type: string
       required:
       - status
+      type: object
+    WatchdogDecisionRequest:
+      properties:
+        toolInput:
+          description: Raw tool-input object from the agent hook.
+        toolName:
+          description: Native tool name, such as Read or Bash.
+          type: string
+      required:
+      - toolName
+      type: object
+    WatchdogDecisionResponse:
+      properties:
+        decision:
+          description: allow runs the tool, deny blocks it, skip means this session
+            is not watched.
+          enum:
+          - allow
+          - deny
+          - skip
+          type: string
+        ok:
+          type: boolean
+        path:
+          description: Protected path the tool call touched.
+          type: string
+        reason:
+          description: Sentence the agent sees when the call is denied.
+          type: string
+        stopped:
+          description: True when this call stopped the worker.
+          type: boolean
+        tamper:
+          description: True when the call tried to change AO's hook settings.
+          type: boolean
+      required:
+      - ok
+      - decision
       type: object
     WorkerSandboxConfig:
       properties:

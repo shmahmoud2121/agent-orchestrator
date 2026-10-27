@@ -4054,6 +4054,23 @@ func TestSpawn_WorkspaceProjectRollsBackWhenWorktreeRowsFail(t *testing.T) {
 	}
 }
 
+func TestKillPreservingWorkspaceLeavesTheWorktree(t *testing.T) {
+	m, st, rt, ws := newManager()
+	st.sessions["mer-1"] = mkLive("mer-1")
+	if err := m.KillPreservingWorkspace(ctx, "mer-1"); err != nil {
+		t.Fatal(err)
+	}
+	if rt.destroyed != 1 {
+		t.Fatal("runtime should be stopped")
+	}
+	if ws.destroyed != 0 {
+		t.Fatal("worktree should stay on disk")
+	}
+	if !st.sessions["mer-1"].IsTerminated {
+		t.Fatal("session should be terminated")
+	}
+}
+
 func TestKill_TearsDownRuntimeAndWorkspace(t *testing.T) {
 	m, st, rt, ws := newManager()
 	preview := &fakePreviewLifecycle{}

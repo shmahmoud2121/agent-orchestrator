@@ -462,6 +462,8 @@ var schemaNames = map[string]string{ //nolint:gosec // Public OpenAPI type names
 	"ControllersListSessionPRsResponse":                   "ListSessionPRsResponse",
 	"ControllersSetActivityRequest":                       "SetActivityRequest",
 	"ControllersSetActivityResponse":                      "SetActivityResponse",
+	"ControllersWatchdogDecisionRequest":                  "WatchdogDecisionRequest",
+	"ControllersWatchdogDecisionResponse":                 "WatchdogDecisionResponse",
 	"ControllersCodewhaleLifecycleWebhookRequest":         "CodewhaleLifecycleWebhookRequest",
 	"ControllersCodewhaleLifecycleEvent":                  "CodewhaleLifecycleEvent",
 	"ControllersSetReviewActivityRequest":                 "SetReviewActivityRequest",
@@ -3259,6 +3261,19 @@ func sessionOperations() []operation {
 			reqBody:    controllers.SetActivityRequest{},
 			resps: []respUnit{
 				{http.StatusOK, controllers.SetActivityResponse{}},
+				{http.StatusBadRequest, envelope.APIError{}},
+				{http.StatusNotFound, envelope.APIError{}},
+				{http.StatusInternalServerError, envelope.APIError{}},
+				{http.StatusNotImplemented, envelope.APIError{}},
+			},
+		},
+		{
+			method: http.MethodPost, path: "/api/v1/sessions/{sessionId}/watchdog", id: "decideSessionWatchdog", tag: "sessions",
+			summary:    "Decide whether a project session's tool call may read a protected file",
+			pathParams: []any{controllers.SessionIDParam{}},
+			reqBody:    controllers.WatchdogDecisionRequest{},
+			resps: []respUnit{
+				{http.StatusOK, controllers.WatchdogDecisionResponse{}},
 				{http.StatusBadRequest, envelope.APIError{}},
 				{http.StatusNotFound, envelope.APIError{}},
 				{http.StatusInternalServerError, envelope.APIError{}},

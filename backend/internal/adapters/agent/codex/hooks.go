@@ -73,6 +73,10 @@ var codexManagedHooks = []codexHookSpec{
 	{Event: "SessionStart", Command: codexHookCommandPrefix + "session-start"},
 	{Event: "UserPromptSubmit", Command: codexHookCommandPrefix + "user-prompt-submit"},
 	{Event: "PermissionRequest", Command: codexHookCommandPrefix + "permission-request"},
+	// PreToolUse can refuse a call (exit 0 plus permissionDecision deny). Codex
+	// 0.163 covers Bash and apply_patch. Exit 2 is not used: Windows PowerShell
+	// reports it as 1 and Codex then ignores the JSON.
+	{Event: "PreToolUse", Command: codexHookCommandPrefix + "pre-tool-use"},
 	// Current Codex emits the canonical `spawn_agent` tool name. Keep the
 	// historical collaboration alias while older installed Codex builds drain
 	// their sessions, so both payloads reach the parser.
