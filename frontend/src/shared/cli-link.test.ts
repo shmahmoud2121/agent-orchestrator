@@ -100,7 +100,7 @@ describe("cli link", () => {
 		});
 		expect((await inspectCliLink(nodeCliLinkIo(), { ...base, appImage: "/opt/AO.AppImage" })).ok).toBe(false);
 		expect(await inspectCliLink(nodeCliLinkIo(), { ...base, isPackaged: false })).toMatchObject({ code: "unsupported" });
-		expect(await lstat(path.join(linkDirectory, "ao")).catch(() => null)).toBeNull();
+		expect(await lstat(path.join(linkDirectory, "altair")).catch(() => null)).toBeNull();
 	});
 
 	it.skipIf(process.platform === "win32")("links a missing command, reports version from a clean environment, and is idempotent", async () => {
@@ -113,7 +113,7 @@ describe("cli link", () => {
 		expect(missing).toMatchObject({ ok: true, status: { current: { kind: "missing" }, proposedVersion: "2.4.0" } });
 		const linked = await linkCli(io, req);
 		expect(linked).toMatchObject({ ok: true, changed: true, version: "2.4.0", targetPath: appCliPath });
-		expect(await readlink(path.join(linkDirectory, "ao"))).toBe(appCliPath);
+		expect(await readlink(path.join(linkDirectory, "altair"))).toBe(appCliPath);
 		const again = await linkCli(io, { ...req, confirmReplacement: true });
 		expect(again).toMatchObject({ ok: true, changed: false, version: "2.4.0" });
 		expect(countedHolder.symlinks).toBe(2);
@@ -123,7 +123,7 @@ describe("cli link", () => {
 	it("does not replace an unrelated executable and will not unlink it", async () => {
 		const { linkDirectory, dataDir, apps } = await layout();
 		const appCliPath = await executable(path.join(apps, "current"), "ao", "3.0.0");
-		const foreign = path.join(linkDirectory, "ao");
+		const foreign = path.join(linkDirectory, "altair");
 		await writeFile(foreign, "#!/bin/sh\nprintf 'other\\n'\n");
 		await chmod(foreign, 0o755);
 		const before = await readFile(foreign, "utf8");
@@ -133,11 +133,33 @@ describe("cli link", () => {
 		expect(await readFile(foreign, "utf8")).toBe(before);
 	});
 
+	it.skipIf(process.platform === "win32")("links altair and leaves an existing managed ao link in place", async () => {
+		const { linkDirectory, dataDir, apps } = await layout();
+		const aoTarget = await executable(path.join(apps, "legacy"), "ao", "1.0.0");
+		const appCliPath = await executable(path.join(apps, "current"), "altair", "2.0.0");
+		const aoLink = path.join(linkDirectory, "ao");
+		const io = nodeCliLinkIo();
+		await io.symlink(aoTarget, aoLink);
+		await io.writeText(
+			path.join(dataDir, CLI_LINK_MARKER_FILE),
+			`${JSON.stringify({ version: 1, linkPath: aoLink, targetPath: aoTarget })}\n`,
+		);
+		const linked = await linkCli(io, request({ appCliPath, linkDirectory, dataDir }));
+		expect(linked).toMatchObject({
+			ok: true,
+			changed: true,
+			linkPath: path.join(linkDirectory, "altair"),
+			targetPath: appCliPath,
+		});
+		expect(await readlink(aoLink)).toBe(aoTarget);
+		expect(await readlink(path.join(linkDirectory, "altair"))).toBe(appCliPath);
+	});
+
 	it.skipIf(process.platform === "win32")("requires confirmation before repairing a stale AO link and keeps the old binary", async () => {
 		const { linkDirectory, dataDir, apps } = await layout();
 		const oldCli = await executable(path.join(apps, "old"), "ao", "1.0.0");
 		const appCliPath = await executable(path.join(apps, "current"), "ao", "4.0.0");
-		const linkPath = path.join(linkDirectory, "ao");
+		const linkPath = path.join(linkDirectory, "altair");
 		const io = nodeCliLinkIo();
 		await io.symlink(oldCli, linkPath);
 		await io.writeText(path.join(dataDir, CLI_LINK_MARKER_FILE), `${JSON.stringify({ version: 1, linkPath, targetPath: oldCli })}\n`);
@@ -154,7 +176,7 @@ describe("cli link", () => {
 	it.skipIf(process.platform === "win32")("repairs a dangling AO link and unlinks only that symlink", async () => {
 		const { linkDirectory, dataDir, apps } = await layout();
 		const appCliPath = await executable(path.join(apps, "current"), "ao", "5.0.0");
-		const linkPath = path.join(linkDirectory, "ao");
+		const linkPath = path.join(linkDirectory, "altair");
 		const gone = path.join(apps, "gone", "ao");
 		const io = nodeCliLinkIo();
 		await io.symlink(gone, linkPath);
@@ -175,7 +197,7 @@ describe("cli link", () => {
 		try {
 			const result = await linkCli(nodeCliLinkIo(), request({ appCliPath, linkDirectory, dataDir, confirmReplacement: true }));
 			expect(result).toMatchObject({ ok: false, code: "permission" });
-			expect(await lstat(path.join(linkDirectory, "ao")).catch(() => null)).toBeNull();
+			expect(await lstat(path.join(linkDirectory, "altair")).catch(() => null)).toBeNull();
 		} finally {
 			await chmod(linkDirectory, 0o755);
 		}
@@ -195,7 +217,7 @@ describe("cli link", () => {
 	it.skipIf(process.platform === "win32")("never claims a user made symlink to the app CLI", async () => {
 		const { linkDirectory, dataDir, apps } = await layout();
 		const appCliPath = await executable(apps, "ao", "1.0.0");
-		const linkPath = path.join(linkDirectory, "ao");
+		const linkPath = path.join(linkDirectory, "altair");
 		await symlink(appCliPath, linkPath);
 		const req = request({ appCliPath, linkDirectory, dataDir, confirmReplacement: true, expectedTarget: appCliPath });
 		expect(await linkCli(nodeCliLinkIo(), req)).toMatchObject({ ok: false, code: "foreign" });
@@ -208,7 +230,7 @@ describe("cli link", () => {
 		const { linkDirectory, dataDir, apps } = await layout();
 		const appCliPath = await executable(path.join(apps, "current"), "ao", "1.0.0");
 		const userCli = await executable(path.join(apps, "user"), "ao", "2.0.0");
-		const linkPath = path.join(linkDirectory, "ao");
+		const linkPath = path.join(linkDirectory, "altair");
 		const io = nodeCliLinkIo();
 		const req = request({ appCliPath, linkDirectory, dataDir });
 		expect((await linkCli(io, req)).ok).toBe(true);
@@ -225,7 +247,7 @@ describe("cli link", () => {
 		const oldCli = await executable(path.join(apps, "old"), "ao", "1.0.0");
 		const appCliPath = await executable(path.join(apps, "new"), "ao", "2.0.0");
 		const io = nodeCliLinkIo();
-		const linkPath = path.join(linkDirectory, "ao");
+		const linkPath = path.join(linkDirectory, "altair");
 		await io.symlink(oldCli, linkPath);
 		await io.writeText(path.join(dataDir, CLI_LINK_MARKER_FILE), JSON.stringify({ version: 1, linkPath, targetPath: oldCli }));
 		const failing: CliLinkIo = { ...io, rename: async () => { throw Object.assign(new Error("disk failed"), { code: "EIO" }); } };
@@ -245,7 +267,7 @@ describe("cli link", () => {
 			return io.version(file);
 		} };
 		expect(await linkCli(failing, request({ appCliPath, linkDirectory, dataDir }))).toMatchObject({ ok: false, code: "version" });
-		expect(await lstat(path.join(linkDirectory, "ao")).catch(() => null)).toBeNull();
+		expect(await lstat(path.join(linkDirectory, "altair")).catch(() => null)).toBeNull();
 	});
 
 	it.skipIf(process.platform === "win32")("does not create a link when writing its marker fails", async () => {
@@ -254,7 +276,7 @@ describe("cli link", () => {
 		const io = nodeCliLinkIo();
 		const failing: CliLinkIo = { ...io, writeText: async () => { throw Object.assign(new Error("marker denied"), { code: "EACCES" }); } };
 		expect(await linkCli(failing, request({ appCliPath, linkDirectory, dataDir }))).toMatchObject({ ok: false, code: "permission" });
-		expect(await lstat(path.join(linkDirectory, "ao")).catch(() => null)).toBeNull();
+		expect(await lstat(path.join(linkDirectory, "altair")).catch(() => null)).toBeNull();
 	});
 
 	it("refuses translocated and mounted macOS app bundles", async () => {
@@ -268,15 +290,15 @@ describe("cli link", () => {
 		const { root, linkDirectory, dataDir, apps } = await layout();
 		const appCliPath = await executable(apps, "ao", "1.0.0");
 		const earlier = path.join(root, "earlier");
-		await executable(earlier, "ao", "other");
+		await executable(earlier, "altair", "other");
 		const result = await inspectCliLink(nodeCliLinkIo(), request({
 			appCliPath, linkDirectory, dataDir, shellPath: `${earlier}:${linkDirectory}`,
 		}));
-		expect(result.ok && result.status.message).toContain(path.join(earlier, "ao"));
+		expect(result.ok && result.status.message).toContain(path.join(earlier, "altair"));
 		expect(await linkCli(nodeCliLinkIo(), request({
 			appCliPath, linkDirectory, dataDir, shellPath: `${earlier}:${linkDirectory}`,
 		}))).toMatchObject({ ok: false, code: "unsupported" });
-		expect(await lstat(path.join(linkDirectory, "ao")).catch(() => null)).toBeNull();
+		expect(await lstat(path.join(linkDirectory, "altair")).catch(() => null)).toBeNull();
 	});
 
 	it.skipIf(process.platform === "win32")("selects a writable supported directory on the login PATH without changing the protected directory", async () => {
@@ -288,8 +310,8 @@ describe("cli link", () => {
 		const shellPath = `${protectedDirectory}:${linkDirectory}`;
 		expect(await selectCliLinkDirectory(restricted, dataDir, shellPath, [protectedDirectory, linkDirectory])).toBe(linkDirectory);
 		const appCliPath = await executable(apps, "ao", "1.0.0");
-		expect(await linkCli(restricted, request({ appCliPath, linkDirectory, dataDir, shellPath }))).toMatchObject({ ok: true, linkPath: path.join(linkDirectory, "ao") });
-		expect(await lstat(path.join(protectedDirectory, "ao")).catch(() => null)).toBeNull();
+		expect(await linkCli(restricted, request({ appCliPath, linkDirectory, dataDir, shellPath }))).toMatchObject({ ok: true, linkPath: path.join(linkDirectory, "altair") });
+		expect(await lstat(path.join(protectedDirectory, "altair")).catch(() => null)).toBeNull();
 	});
 
 	it.skipIf(process.platform === "win32")("keeps an existing AO managed link in its original directory for repair and unlink", async () => {
@@ -302,7 +324,7 @@ describe("cli link", () => {
 		expect((await linkCli(io, req)).ok).toBe(true);
 		expect(await selectCliLinkDirectory(io, dataDir, `${alternative}:${linkDirectory}`, [alternative, linkDirectory])).toBe(linkDirectory);
 		expect(await unlinkCli(io, { ...req, confirmReplacement: true, expectedTarget: appCliPath })).toMatchObject({ ok: true, changed: true });
-		expect(await lstat(path.join(alternative, "ao")).catch(() => null)).toBeNull();
+		expect(await lstat(path.join(alternative, "altair")).catch(() => null)).toBeNull();
 	});
 
 	it.skipIf(process.platform === "win32")("refuses to link when the selected directory is absent from the login PATH", async () => {
@@ -310,14 +332,14 @@ describe("cli link", () => {
 		const appCliPath = await executable(apps, "ao", "1.0.0");
 		const req = request({ appCliPath, linkDirectory, dataDir, shellPath: path.join(root, "other") });
 		expect(await linkCli(nodeCliLinkIo(), req)).toMatchObject({ ok: false, code: "unsupported" });
-		expect(await lstat(path.join(linkDirectory, "ao")).catch(() => null)).toBeNull();
+		expect(await lstat(path.join(linkDirectory, "altair")).catch(() => null)).toBeNull();
 	});
 
 	it.skipIf(process.platform === "win32")("rejects a stale target changed since the confirmation dialog opened", async () => {
 		const { linkDirectory, dataDir, apps } = await layout();
 		const oldCli = await executable(path.join(apps, "old"), "ao", "1.0.0");
 		const appCliPath = await executable(path.join(apps, "new"), "ao", "2.0.0");
-		const linkPath = path.join(linkDirectory, "ao");
+		const linkPath = path.join(linkDirectory, "altair");
 		const io = nodeCliLinkIo();
 		await io.symlink(oldCli, linkPath);
 		await io.writeText(path.join(dataDir, CLI_LINK_MARKER_FILE), JSON.stringify({ version: 1, linkPath, targetPath: oldCli }));

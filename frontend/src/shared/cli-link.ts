@@ -1,11 +1,11 @@
-// Developer Mode only. Links the global ao command to the CLI shipped inside the
-// installed app. It never edits shell startup files and never replaces a
-// command AO did not create.
+// Developer Mode only. Links the global altair command to the CLI shipped
+// inside the installed app. It never edits shell startup files, never replaces
+// a command Altair did not create, and never removes an existing ao link.
 
 import { randomUUID } from "node:crypto";
 
 export const CLI_LINK_DIRECTORY = "/usr/local/bin";
-export const CLI_LINK_NAME = "ao";
+export const CLI_LINK_NAME = "altair";
 export const CLI_LINK_MARKER_FILE = "cli-link.json";
 
 const SYSTEM_LINK_DIRECTORIES = new Set(["/usr/local/bin", "/opt/homebrew/bin", "/usr/bin"]);
@@ -105,7 +105,7 @@ export function cliLinkSupport(input: {
 		return {
 			ok: false,
 			message:
-				"Windows is not supported. Agent Orchestrator does not add ao to PATH, and this action will not create an elevated symlink or edit shell configuration.",
+				"Windows is not supported. Altair does not add altair to PATH, and this action will not create an elevated symlink or edit shell configuration.",
 		};
 	}
 	if (input.appImage) {
@@ -116,18 +116,18 @@ export function cliLinkSupport(input: {
 		};
 	}
 	if (input.platform === "darwin" && (input.appCliPath?.includes("/AppTranslocation/") || input.appCliPath?.startsWith("/Volumes/"))) {
-		return { ok: false, message: "Move Agent Orchestrator to Applications before linking the global ao command." };
+		return { ok: false, message: "Move Altair to Applications before linking the global altair command." };
 	}
 	if (!input.isPackaged) {
 		return {
 			ok: false,
-			message: "This checkout is not an installed app. Link the global ao command from the installed Agent Orchestrator app.",
+			message: "This checkout is not an installed app. Link the global altair command from the installed Altair app.",
 		};
 	}
 	if (input.platform !== "darwin" && input.platform !== "linux") {
 		return {
 			ok: false,
-			message: "This platform is not supported. The action only links ao on macOS and Linux.",
+			message: "This platform is not supported. The action only links altair on macOS and Linux.",
 		};
 	}
 	return { ok: true };
@@ -135,7 +135,7 @@ export function cliLinkSupport(input: {
 
 function guard(io: CliLinkIo, request: CliLinkRequest): CliLinkFailure | ReadyLink {
 	if (!request.developerMode) {
-		return failure("developer-mode", "Turn on Developer mode to link the global ao command.");
+		return failure("developer-mode", "Turn on Developer mode to link the global altair command.");
 	}
 	const resolvedDir = io.resolve(request.linkDirectory);
 	if (!request.allowSystemLinkDir && SYSTEM_LINK_DIRECTORIES.has(resolvedDir)) {
@@ -245,7 +245,7 @@ export async function inspectCliLink(io: CliLinkIo, request: CliLinkRequest): Pr
 		}
 	}
 	if (current.kind === "foreign") {
-		message = `The command at ${gated.linkPath} is not an Agent Orchestrator link. It was left unchanged.`;
+		message = `The command at ${gated.linkPath} is not an Altair link. It was left unchanged.`;
 	}
 	if (current.kind === "missing" && !(await io.canWrite(io.parent(gated.linkPath)))) {
 		message = await io.lstat(io.parent(gated.linkPath))
@@ -276,7 +276,7 @@ export async function linkCli(io: CliLinkIo, request: CliLinkRequest): Promise<C
 	if (!view.ok) return view;
 	const { status } = view;
 	if (status.current.kind === "foreign") {
-		return failure("foreign", `The command at ${status.linkPath} is not an Agent Orchestrator link. It was left unchanged.`, {
+		return failure("foreign", `The command at ${status.linkPath} is not an Altair link. It was left unchanged.`, {
 			linkPath: status.linkPath,
 			currentTarget: status.current.target,
 			proposedTarget: status.proposedTarget,
@@ -313,7 +313,7 @@ export async function linkCli(io: CliLinkIo, request: CliLinkRequest): Promise<C
 		);
 	}
 	if (status.current.kind === "stale" && request.expectedTarget !== status.current.target) {
-		return failure("confirmation-required", "The current ao link changed. Review its target before relinking.", {
+		return failure("confirmation-required", "The current altair link changed. Review its target before relinking.", {
 			linkPath: status.linkPath, currentTarget: status.current.target, proposedTarget: status.proposedTarget,
 		});
 	}
@@ -340,7 +340,7 @@ export async function linkCli(io: CliLinkIo, request: CliLinkRequest): Promise<C
 		verifying = false;
 		const latest = await classify(io, status.linkPath, request.appCliPath, await readMarker(io, request.dataDir));
 		if (latest.kind !== status.current.kind || (latest.kind === "stale" && status.current.kind === "stale" && latest.target !== status.current.target)) {
-			return failure("confirmation-required", "The current ao link changed. Review its target before linking.", { linkPath: status.linkPath });
+			return failure("confirmation-required", "The current altair link changed. Review its target before linking.", { linkPath: status.linkPath });
 		}
 		await writeMarker(io, request, status.linkPath, status.proposedTarget);
 		markerChanged = true;
@@ -356,7 +356,7 @@ export async function linkCli(io: CliLinkIo, request: CliLinkRequest): Promise<C
 			else await io.writeText(markerPath, previousMarker);
 		}
 		const code = error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code;
-		return failure(code === "EACCES" || code === "EPERM" ? "permission" : verifying ? "version" : "io", error instanceof Error ? error.message : "Could not create the ao link.", {
+		return failure(code === "EACCES" || code === "EPERM" ? "permission" : verifying ? "version" : "io", error instanceof Error ? error.message : "Could not create the altair link.", {
 			linkPath: status.linkPath, proposedTarget: status.proposedTarget,
 		});
 	} finally {
@@ -370,22 +370,22 @@ export async function unlinkCli(io: CliLinkIo, request: CliLinkRequest): Promise
 	if (!view.ok) return view;
 	const { status } = view;
 	if (status.current.kind === "foreign") {
-		return failure("foreign", status.message ?? "The existing command is not an Agent Orchestrator link.", {
+		return failure("foreign", status.message ?? "The existing command is not an Altair link.", {
 			linkPath: status.linkPath, currentTarget: status.current.target,
 		});
 	}
 	if (!request.confirmReplacement || request.expectedTarget !== (status.current.kind === "missing" ? null : status.current.target)) {
-		return failure("confirmation-required", `Remove the Agent Orchestrator link at ${status.linkPath}?`, {
+		return failure("confirmation-required", `Remove the Altair link at ${status.linkPath}?`, {
 			linkPath: status.linkPath,
 			currentTarget: status.current.kind === "missing" ? null : status.current.target,
 		});
 	}
 	if (status.current.kind === "missing") {
-		return failure("io", `No ao command exists at ${status.linkPath}.`, { linkPath: status.linkPath });
+		return failure("io", `No altair command exists at ${status.linkPath}.`, { linkPath: status.linkPath });
 	}
 	const latest = await classify(io, status.linkPath, request.appCliPath, await readMarker(io, request.dataDir));
 	if (latest.kind === "foreign" || latest.kind === "missing" || latest.target !== status.current.target) {
-		return failure("foreign", `The command at ${status.linkPath} is not an Agent Orchestrator link. It was left unchanged.`, {
+		return failure("foreign", `The command at ${status.linkPath} is not an Altair link. It was left unchanged.`, {
 			linkPath: status.linkPath,
 		});
 	}

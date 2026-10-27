@@ -91,7 +91,7 @@ export async function ancestorRepositorySetupWarning(repoPath: string, options: 
 	try {
 		const top = normalizeGitReportedPath(repoPath, await gitOutput(repoPath, ["rev-parse", "--show-toplevel"], options));
 		if (top && !samePath(top, repoPath)) {
-			return `Selected folder is inside an existing Git repository at ${top}. AO will initialize this folder as a separate repository.`;
+			return `Selected folder is inside an existing Git repository at ${top}. Altair will initialize this folder as a separate repository.`;
 		}
 	} catch {
 		// No ancestor repository.

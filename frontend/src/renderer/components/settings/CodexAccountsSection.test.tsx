@@ -795,7 +795,7 @@ it("explains that logging out an inactive account leaves the device account unch
 	fireEvent.click(await screen.findByRole("button", { name: "Log out" }));
 
 	const dialog = await screen.findByRole("dialog");
-	expect(dialog).toHaveTextContent("Logging out of other@example.com will remove its saved sign-in from AO.");
+	expect(dialog).toHaveTextContent("Logging out of other@example.com will remove its saved sign-in from Altair.");
 	expect(dialog).toHaveTextContent("The Codex account in use on this device will not change.");
 });
 

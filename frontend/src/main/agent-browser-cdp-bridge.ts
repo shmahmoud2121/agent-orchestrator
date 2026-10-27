@@ -93,7 +93,7 @@ export class AgentBrowserCDPBridge {
 
 	async close(): Promise<void> {
 		for (const sessionId of [...this.attached.keys()]) this.detachTarget(sessionId);
-		for (const socket of this.server.clients) socket.close(1001, "AO browser session closed");
+		for (const socket of this.server.clients) socket.close(1001, "Altair browser session closed");
 		await new Promise<void>((resolve) => this.server.close(() => resolve()));
 		this.physical.clear();
 		this.endpoint = "";
@@ -151,7 +151,7 @@ export class AgentBrowserCDPBridge {
 					protocolVersion: "1.3",
 					product: `Chrome/${process.versions.chrome ?? "0"}`,
 					revision: "",
-					userAgent: "AO agent-browser bridge",
+					userAgent: "Altair agent-browser bridge",
 					jsVersion: process.versions.v8 ?? "",
 				};
 			case "Target.setDiscoverTargets": {
@@ -312,11 +312,11 @@ export class AgentBrowserCDPBridge {
 			for (const client of physical.clients.values()) {
 				this.send(client.connection.socket, {
 					method: "Inspector.detached",
-					params: { reason: "AO page debugger was released" },
+					params: { reason: "Altair page debugger was released" },
 					...(client.protocolSessionId ? { sessionId: client.protocolSessionId } : {}),
 				});
 				if (client.protocolSessionId) this.attached.delete(client.protocolSessionId);
-				client.connection.socket.close(1012, "AO page debugger was released");
+				client.connection.socket.close(1012, "Altair page debugger was released");
 			}
 			physical.clients.clear();
 			this.physical.delete(target.id);

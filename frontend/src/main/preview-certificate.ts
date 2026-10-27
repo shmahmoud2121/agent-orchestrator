@@ -43,7 +43,7 @@ function pemBody(pem: string): string {
 function createPreviewCertificate(): PreviewCertificate {
 	const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
 	const ecdsaWithSha256 = sequence(objectId("1.2.840.10045.4.3.2"));
-	const name = sequence(set(sequence(objectId("2.5.4.3"), tlv(0x0c, Buffer.from("AO preview")))));
+	const name = sequence(set(sequence(objectId("2.5.4.3"), tlv(0x0c, Buffer.from("Altair preview")))));
 	const now = Date.now();
 	const subjectAltName = sequence(
 		objectId("2.5.29.17"),

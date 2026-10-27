@@ -5,7 +5,10 @@ import path from "node:path";
 import semver from "semver";
 
 export const AO_BUNDLE_ID = "dev.agent-orchestrator.desktop";
-export const MAINTAINED_MAC_APP_PATH = "/Applications/Agent Orchestrator.app";
+export const MAINTAINED_MAC_APP_PATH = "/Applications/Altair.app";
+
+const CURRENT_MAC_BUNDLE_NAME = "Altair.app";
+const LEGACY_MAC_BUNDLE_NAME = "Agent Orchestrator.app";
 
 export interface BundleMetadata {
 	bundleId: string | null;
@@ -84,20 +87,31 @@ export async function findStaleAppCopies(
 	if (runningVersion === null) return [];
 
 	const dependencies = { ...defaultDiscoveryDependencies, ...dependencyOverrides };
+	// Legacy bundles keep the old name after this rename, including one already
+	// installed in /Applications. The maintained Altair.app is not a candidate.
+	// An equal version counts as stale only for the legacy name: this branch
+	// does not bump the version, and a same-version Altair download must stay.
 	const candidates = [
-		path.join(input.homeDir, "Downloads", "Agent Orchestrator.app"),
-		path.join(input.homeDir, "Desktop", "Agent Orchestrator.app"),
+		{ path: path.join("/Applications", LEGACY_MAC_BUNDLE_NAME), legacy: true },
+		{ path: path.join(input.homeDir, "Applications", LEGACY_MAC_BUNDLE_NAME), legacy: true },
+		{ path: path.join(input.homeDir, "Downloads", LEGACY_MAC_BUNDLE_NAME), legacy: true },
+		{ path: path.join(input.homeDir, "Desktop", LEGACY_MAC_BUNDLE_NAME), legacy: true },
+		{ path: path.join(input.homeDir, "Downloads", CURRENT_MAC_BUNDLE_NAME), legacy: false },
+		{ path: path.join(input.homeDir, "Desktop", CURRENT_MAC_BUNDLE_NAME), legacy: false },
 	];
 	const copies: StaleAppCopy[] = [];
 	for (const candidate of candidates) {
 		try {
-			const identity = await dependencies.fileIdentity(candidate);
+			const identity = await dependencies.fileIdentity(candidate.path);
 			if (!identity) continue;
-			const metadata = await dependencies.readMetadata(candidate);
+			const metadata = await dependencies.readMetadata(candidate.path);
 			if (metadata.bundleId !== AO_BUNDLE_ID) continue;
 			const candidateVersion = semver.valid(metadata.version ?? "");
-			if (candidateVersion && semver.lt(candidateVersion, runningVersion)) {
-				copies.push({ path: candidate, version: candidateVersion, ...identity });
+			if (!candidateVersion) continue;
+			const older = semver.lt(candidateVersion, runningVersion);
+			const legacySameVersion = candidate.legacy && semver.eq(candidateVersion, runningVersion);
+			if (older || legacySameVersion) {
+				copies.push({ path: candidate.path, version: candidateVersion, ...identity });
 			}
 		} catch {
 			// Missing or unreadable candidates are left untouched.
@@ -156,7 +170,7 @@ export async function isUnchangedStaleAppCopy(
 		return metadata.bundleId === AO_BUNDLE_ID
 			&& bundleVersion !== null
 			&& bundleVersion === copy.version
-			&& semver.lt(copy.version, currentVersion);
+			&& semver.lte(copy.version, currentVersion);
 	} catch {
 		return false;
 	}

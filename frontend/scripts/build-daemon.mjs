@@ -1,4 +1,4 @@
-import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, linkSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
@@ -44,6 +44,7 @@ if (isWindowsDev) {
 	// daemon path.
 	mkdirSync(outDir, { recursive: true });
 	rmSync(outPath, { force: true });
+	rmSync(join(outDir, "altair.exe"), { force: true });
 	rmSync(windowsDevManifestPath, { force: true });
 	cleanupOldWindowsDevDaemons(undefined);
 } else {
@@ -66,9 +67,27 @@ if (result.status !== 0) {
 	process.exit(result.status ?? 1);
 }
 
+// The app launches daemon/ao. altair is the name Developer Mode links, and the
+// name a person types. Mac and Linux share one inode; Windows gets a copy.
+aliasCliBinary(buildOutPath);
+
 if (isWindowsDev) {
 	writeFileSync(windowsDevManifestPath, `${JSON.stringify({ path: buildOutPath }, null, 2)}\n`);
 	cleanupOldWindowsDevDaemons(buildOutPath);
+}
+
+function aliasCliBinary(binaryPath) {
+	const aliasPath = join(dirname(binaryPath), process.platform === "win32" ? "altair.exe" : "altair");
+	rmSync(aliasPath, { force: true });
+	if (process.platform === "win32") {
+		copyFileSync(binaryPath, aliasPath);
+		return;
+	}
+	try {
+		linkSync(binaryPath, aliasPath);
+	} catch {
+		copyFileSync(binaryPath, aliasPath);
+	}
 }
 
 function cleanupOldWindowsDevDaemons(activePath) {

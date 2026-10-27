@@ -2104,7 +2104,7 @@ describe("SessionView", () => {
 			render(<SessionView sessionId="sess-2" />);
 			expect(screen.getByTestId("cloud-session-loader-screen")).toBeInTheDocument();
 			expect(screen.getByTestId("cloud-session-startup-note")).toHaveTextContent(
-				`${startupError.message} AO is still retrying.`,
+				`${startupError.message} Altair is still retrying.`,
 			);
 			expect(screen.queryByTestId("cloud-session-startup-error")).not.toBeInTheDocument();
 		});

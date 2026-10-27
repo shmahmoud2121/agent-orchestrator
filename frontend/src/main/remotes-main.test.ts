@@ -240,12 +240,12 @@ describe("registerRemotesIpc", () => {
 		const file = await tempFile();
 		const registry = new RemoteRegistry(async () => { throw new Error("proxy must not start"); });
 		const ipc = fakeIpc();
-		const requireAccount = vi.fn(async () => { throw new Error("Sign in to AO Cloud to use remote hosts."); });
+		const requireAccount = vi.fn(async () => { throw new Error("Sign in to Altair Cloud to use remote hosts."); });
 		registerRemotes(ipc.ipcMain, { file, registry, requireAccount });
-		await expect(ipc.invoke("remotes:list")).rejects.toThrow(/Sign in to AO Cloud/);
-		await expect(ipc.invoke("remotes:connect", "http://192.0.2.1:1")).rejects.toThrow(/Sign in to AO Cloud/);
-		await expect(ipc.invoke("remotes:previewUrl", "h_workbox", "s_1", "http://localhost:3000")).rejects.toThrow(/Sign in to AO Cloud/);
-		await expect(ipc.invoke("remotes:externalUrl", "h_workbox", "https://example.com/")).rejects.toThrow(/Sign in to AO Cloud/);
+		await expect(ipc.invoke("remotes:list")).rejects.toThrow(/Sign in to Altair Cloud/);
+		await expect(ipc.invoke("remotes:connect", "http://192.0.2.1:1")).rejects.toThrow(/Sign in to Altair Cloud/);
+		await expect(ipc.invoke("remotes:previewUrl", "h_workbox", "s_1", "http://localhost:3000")).rejects.toThrow(/Sign in to Altair Cloud/);
+		await expect(ipc.invoke("remotes:externalUrl", "h_workbox", "https://example.com/")).rejects.toThrow(/Sign in to Altair Cloud/);
 		expect(requireAccount).toHaveBeenCalledTimes(4);
 	});
 

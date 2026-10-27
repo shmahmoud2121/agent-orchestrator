@@ -1517,16 +1517,16 @@ describe("BrowserPanel", () => {
 		{
 			rejectionCode: "BROWSER_RUNTIME_TOKEN_REJECTED",
 			message:
-				"The AO daemon refused the browser runtime because another AO launch started it. Run `ao stop`, then reopen AO.",
+				"The Altair daemon refused the browser runtime because another Altair launch started it. Run `altair stop`, then reopen Altair.",
 		},
 		{
 			rejectionCode: "BROWSER_RUNTIME_PROTOCOL_MISMATCH",
 			message:
-				"The AO daemon refused the browser runtime because it comes from a different AO version than this app. Run `ao stop`, then reopen AO.",
+				"The Altair daemon refused the browser runtime because it comes from a different Altair version than this app. Run `altair stop`, then reopen Altair.",
 		},
 		// A malformed hello, a code this app doesn't know, or none: no cause is claimed.
-		{ rejectionCode: "BROWSER_RUNTIME_BAD_HELLO", message: "The AO daemon refused the browser runtime. Run `ao stop`, then reopen AO." },
-		{ rejectionCode: undefined, message: "The AO daemon refused the browser runtime. Run `ao stop`, then reopen AO." },
+		{ rejectionCode: "BROWSER_RUNTIME_BAD_HELLO", message: "The Altair daemon refused the browser runtime. Run `altair stop`, then reopen Altair." },
+		{ rejectionCode: undefined, message: "The Altair daemon refused the browser runtime. Run `altair stop`, then reopen Altair." },
 	])(
 		"says why the daemon refused the runtime ($rejectionCode), without a Reconnect that can't help (#6466)",
 		({ rejectionCode, message }) => {

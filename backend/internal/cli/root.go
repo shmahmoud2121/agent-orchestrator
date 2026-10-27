@@ -174,9 +174,9 @@ func NewRootCommand(deps Deps) *cobra.Command {
 	ctx := &commandContext{deps: deps}
 
 	root := &cobra.Command{
-		Use:           "ao",
-		Short:         "Agent Orchestrator",
-		Long:          "Agent Orchestrator manages the local daemon that supervises parallel coding-agent sessions.",
+		Use:           "altair",
+		Short:         "Altair",
+		Long:          "Altair manages the local daemon that supervises parallel coding-agent sessions.",
 		Version:       VersionString(),
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -268,7 +268,8 @@ func (c *commandContext) emitCLIInvoked(ctx context.Context, cmd *cobra.Command)
 }
 
 func cliInvocationActorType(cmd *cobra.Command) string {
-	if strings.TrimSpace(cmd.CommandPath()) == "ao hooks" {
+	switch strings.TrimSpace(cmd.CommandPath()) {
+	case "ao hooks", "altair hooks":
 		return "agent"
 	}
 	if sessionIDPattern.MatchString(strings.TrimSpace(os.Getenv("AO_SESSION_ID"))) {
@@ -293,7 +294,7 @@ func usageErrorCommand(args []string) (string, string) {
 	// path: anything past the deepest match is user data (session names,
 	// prompts, orchestrator names) and must never ride into telemetry.
 	current := NewRootCommand(Deps{})
-	tokens := []string{"ao"}
+	tokens := []string{"altair"}
 	for _, arg := range args {
 		if strings.HasPrefix(arg, "-") {
 			break
@@ -312,7 +313,7 @@ func usageErrorCommand(args []string) (string, string) {
 		current = next
 	}
 	commandPath := strings.Join(tokens, " ")
-	command := "ao"
+	command := "altair"
 	if len(tokens) > 1 {
 		command = tokens[len(tokens)-1]
 	}
@@ -345,7 +346,7 @@ func atMostOneArg(cmd *cobra.Command, args []string) error {
 func newDaemonCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:    "daemon",
-		Short:  "Run the AO backend daemon",
+		Short:  "Run the Altair backend daemon",
 		Hidden: true,
 		Args:   noArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {

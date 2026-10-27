@@ -28,10 +28,17 @@ function format(template: string, vars: Record<string, string | number>): string
 	return template.replace(/\{\{(\w+)\}\}/g, (match, key: string) => String(vars[key] ?? match));
 }
 
+function trayIconFileName(): string {
+	// macOS menu-bar icons are black template images. Windows and Linux need
+	// the gold star, because a template image is invisible on a light taskbar.
+	return process.platform === "darwin" ? "trayIconTemplate.png" : "trayIcon.png";
+}
+
 function trayIconPath(): string | undefined {
+	const fileName = trayIconFileName();
 	const candidate = app.isPackaged
-		? path.join(process.resourcesPath, "trayIconTemplate.png")
-		: path.join(__dirname, "../../assets/trayIconTemplate.png");
+		? path.join(process.resourcesPath, fileName)
+		: path.join(__dirname, "../../assets", fileName);
 	return existsSync(candidate) ? candidate : undefined;
 }
 
@@ -54,7 +61,7 @@ export function createTrayController(options: TrayControllerOptions): TrayContro
 	if (!iconPath) return null;
 	const icon = nativeImage.createFromPath(iconPath);
 	if (icon.isEmpty()) return null;
-	icon.setTemplateImage(true);
+	if (process.platform === "darwin") icon.setTemplateImage(true);
 
 	const tray = new Tray(icon);
 	let sessions: TraySessionEntry[] = [];
@@ -81,7 +88,7 @@ export function createTrayController(options: TrayControllerOptions): TrayContro
 	const render = () => {
 		const count = sessions.length;
 		tray.setTitle(count > 0 ? String(count) : "");
-		tray.setToolTip(count > 0 ? tPlural("tray.attentionTooltip", count) : "Agent Orchestrator");
+		tray.setToolTip(count > 0 ? tPlural("tray.attentionTooltip", count) : "Altair");
 
 		const items: MenuItemConstructorOptions[] = [];
 		if (count === 0) {

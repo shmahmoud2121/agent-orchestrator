@@ -14,6 +14,36 @@ export function bundledDaemonBinaryName(platform: NodeJS.Platform): string {
 	return platform === "win32" ? "ao.exe" : "ao";
 }
 
+/** Name linked by Developer Mode. The app still launches the daemon as `ao`. */
+export function bundledCliBinaryName(platform: NodeJS.Platform): string {
+	return platform === "win32" ? "altair.exe" : "altair";
+}
+
+const PRODUCT_INSTALL_DIR_NAMES = new Set([
+	"agent orchestrator.app",
+	"agent orchestrator",
+	"orchestrator.inc",
+	"altair.app",
+	"altair",
+]);
+
+function pathParts(filePath: string): string[] {
+	return filePath.replace(/\\/g, "/").split("/").filter((part) => part.length > 0);
+}
+
+/**
+ * True when the path is ao/altair inside a daemon directory of this product,
+ * including an install that still uses a previous folder name.
+ */
+export function isProductDaemonExecutable(filePath: string): boolean {
+	const parts = pathParts(filePath);
+	const base = (parts.at(-1) ?? "").toLowerCase();
+	const name = base.endsWith(".exe") ? base.slice(0, -4) : base;
+	if (name !== "ao" && name !== "altair") return false;
+	if ((parts.at(-2) ?? "").toLowerCase() !== "daemon") return false;
+	return parts.some((part) => PRODUCT_INSTALL_DIR_NAMES.has(part.toLowerCase()));
+}
+
 export function resolveDaemonLaunch(
 	env: Record<string, string | undefined>,
 	isPackaged: boolean,
@@ -78,18 +108,21 @@ export function bundledDaemonIdentityError(
 ): string | null {
 	if (appImagePath) {
 		if (!probe.appImagePath) {
-			return "An older AO daemon is already running, but it does not report its install identity. Stop it and restart this app.";
+			return "An older Altair daemon is already running, but it does not report its install identity. Stop it and restart this app.";
 		}
 		if (!samePath(probe.appImagePath, appImagePath)) {
-			return `Another AO daemon is already running from ${probe.appImagePath}; expected ${appImagePath}. Stop the other daemon before using this app.`;
+			return `Another Altair daemon is already running from ${probe.appImagePath}; expected ${appImagePath}. Stop the other daemon before using this app.`;
 		}
 		return null;
 	}
 	if (!probe.executablePath) {
-		return "An older AO daemon is already running, but it does not report its binary path. Stop it and restart this app.";
+		return "An older Altair daemon is already running, but it does not report its binary path. Stop it and restart this app.";
 	}
-	if (!samePath(probe.executablePath, expectedCommand)) {
-		return `Another AO daemon is already running from ${probe.executablePath}; expected ${expectedCommand}. Stop the other daemon before using this app.`;
+	if (samePath(probe.executablePath, expectedCommand)) return null;
+	// A previous install (Agent Orchestrator, Orchestrator.inc) is this product.
+	// Attach to its daemon. A binary that is merely named ao is still foreign.
+	if (isProductDaemonExecutable(probe.executablePath) && isProductDaemonExecutable(expectedCommand)) {
+		return null;
 	}
-	return null;
+	return `Another Altair daemon is already running from ${probe.executablePath}; expected ${expectedCommand}. Stop the other daemon before using this app.`;
 }

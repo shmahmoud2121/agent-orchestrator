@@ -29,7 +29,7 @@ type InstallTarget = "tmux" | "gh" | "claude" | "codex" | "opencode" | "opencode
 type AgentInstallTarget = Exclude<InstallTarget, "tmux" | "gh">;
 
 // Labels are the CLIs' own product names — not translated, same treatment as
-// "Agent Orchestrator" itself. Descriptions are ordinary UI copy and go
+// "Altair" itself. Descriptions are ordinary UI copy and go
 // through t() at render time (see AGENT_INSTALL_DESCRIPTION_KEYS below).
 const AGENT_INSTALL_OPTIONS: Array<{ target: AgentInstallTarget; label: string }> = [
 	{ target: "claude", label: "Claude Code" },

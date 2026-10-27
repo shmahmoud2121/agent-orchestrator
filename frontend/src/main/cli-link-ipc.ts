@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { nodeCliLinkIo } from "./cli-link-fs";
 import { CLI_LINK_DIRECTORY, inspectCliLink, linkCli, selectCliLinkDirectory, unlinkCli, type CliLinkRequest } from "../shared/cli-link";
-import { bundledDaemonBinaryName } from "../shared/daemon-launch";
+import { bundledCliBinaryName } from "../shared/daemon-launch";
 
 let developerMode = false;
 
@@ -27,7 +27,7 @@ export function registerCliLinkIpc(input: {
 			platform: process.platform,
 			isPackaged: input.isPackaged(),
 			appImage: input.appImage,
-			appCliPath: path.join(input.resourcesPath, "daemon", bundledDaemonBinaryName(process.platform)),
+			appCliPath: path.join(input.resourcesPath, "daemon", bundledCliBinaryName(process.platform)),
 			linkDirectory: await selectCliLinkDirectory(io, input.dataDir, shellPath, [
 				CLI_LINK_DIRECTORY,
 				...(process.platform === "darwin" ? ["/opt/homebrew/bin"] : []),

@@ -81,7 +81,7 @@ describe("scanImportFolder", () => {
 			}),
 		]);
 		expect(scan.setupWarning).toContain("Selected folder is inside an existing Git repository at ");
-		expect(scan.setupWarning).toContain("AO will initialize this folder as a separate repository.");
+		expect(scan.setupWarning).toContain("Altair will initialize this folder as a separate repository.");
 	});
 
 	it("reports a true project repository root as importable", async () => {

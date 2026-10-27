@@ -38,7 +38,7 @@ export async function generateMetadata(props: PageProps<"/[[...slug]]">): Promis
   if (!page) notFound();
 
   return {
-    title: `${page.data.title} | Agent Orchestrator Docs`,
+    title: `${page.data.title} | Altair Docs`,
     description: page.data.description,
   };
 }

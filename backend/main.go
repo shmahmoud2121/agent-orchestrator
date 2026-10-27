@@ -1,4 +1,4 @@
-// Command backend is a compatibility wrapper for the Agent Orchestrator daemon.
+// Command backend is a compatibility wrapper for the Altair daemon.
 // The user-facing CLI lives at cmd/ao; keep this wrapper so existing `go run .`
 // development workflows continue to start the daemon while scripts migrate.
 package main
@@ -12,7 +12,7 @@ import (
 
 func main() {
 	if err := daemon.Run(); err != nil {
-		fmt.Fprintln(os.Stderr, "ao backend daemon: "+err.Error())
+		fmt.Fprintln(os.Stderr, "altair daemon: "+err.Error())
 		os.Exit(1)
 	}
 }

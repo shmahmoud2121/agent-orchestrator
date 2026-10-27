@@ -361,7 +361,7 @@ describe("CreateProjectAgentSheet", () => {
 		await userEvent.click(screen.getByLabelText("Worker agent"));
 		const cursor = screen.getByRole("option", { name: /Cursor/ });
 		expect(cursor).toHaveTextContent("Not watched");
-		expect(cursor).toHaveAttribute("title", "AO can't check what this AI reads. It could read protected files.");
+		expect(cursor).toHaveAttribute("title", "Altair can't check what this AI reads. It could read protected files.");
 		expect(screen.getByRole("option", { name: /Claude Code/ })).not.toHaveTextContent("Not watched");
 		expect(screen.getByRole("option", { name: /Codex/ })).not.toHaveTextContent("Not watched");
 	});

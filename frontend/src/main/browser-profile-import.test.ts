@@ -765,7 +765,7 @@ describe("BrowserProfileImportService", () => {
 			includeCookies: false,
 			includeHistory: true,
 			destination: { mode: "merge", name: "Broken Chrome Snapshot" },
-		}, vi.fn())).rejects.toThrow("AO couldn't create a temporary copy of Google Chrome's profile database");
+		}, vi.fn())).rejects.toThrow("Altair couldn't create a temporary copy of Google Chrome's profile database");
 		expect(profileStore.profiles).toEqual([]);
 		expect(await readdir(path.join(stateDir, "browser-import-staging"))).toEqual([]);
 	});
@@ -795,7 +795,7 @@ describe("BrowserProfileImportService", () => {
 			includeCookies: false,
 			includeHistory: true,
 			destination: { mode: "merge", name: "Busy Chrome Snapshot" },
-		}, vi.fn())).rejects.toThrow("AO couldn't create a temporary copy of Google Chrome's profile database");
+		}, vi.fn())).rejects.toThrow("Altair couldn't create a temporary copy of Google Chrome's profile database");
 		expect(backup).toHaveBeenCalledTimes(2);
 		expect(profileStore.profiles).toEqual([]);
 		expect(await readdir(path.join(stateDir, "browser-import-staging"))).toEqual([]);

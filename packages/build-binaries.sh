@@ -33,6 +33,21 @@ for t in "${TARGETS[@]}"; do
   (cd "${BACKEND_DIR}" && CGO_ENABLED=0 GOOS="${goos}" GOARCH="${goarch}" \
     go build -o "${out}" ./cmd/ao)
   chmod 0755 "${out}"
+  # altair is the name a person types. ao stays beside it: hooks and an
+  # existing /usr/local/bin/ao link still call this binary. Windows gets a
+  # copy; Mac and Linux share an inode.
+  alias_name="altair"
+  if [[ "${bin}" == *.exe ]]; then
+    alias_name="altair.exe"
+  fi
+  alias_path="${SCRIPT_DIR}/${pkg}/bin/${alias_name}"
+  rm -f "${alias_path}"
+  if [[ "${goos}" == "windows" ]]; then
+    cp "${out}" "${alias_path}"
+  else
+    ln "${out}" "${alias_path}" || cp "${out}" "${alias_path}"
+  fi
+  chmod 0755 "${alias_path}"
 done
 
 echo "Done. Built binaries:"

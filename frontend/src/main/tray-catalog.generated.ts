@@ -22,8 +22,8 @@ export const trayCatalogs: Record<AppLocale, Record<TrayMessageKey, string>> = {
 		"tray.attentionTooltip_other": "{{count}} sessions need attention",
 		"tray.empty": "No sessions need attention",
 		"tray.more": "More",
-		"tray.show": "Show Agent Orchestrator",
-		"tray.quit": "Quit AO Completely",
+		"tray.show": "Show Altair",
+		"tray.quit": "Quit Altair Completely",
 		"zone.merge": "Ready to merge",
 		"zone.action": "Needs you"
 	},
@@ -33,8 +33,8 @@ export const trayCatalogs: Record<AppLocale, Record<TrayMessageKey, string>> = {
 		"tray.attentionTooltip_other": "{{count}} 个会话需要关注",
 		"tray.empty": "没有会话需要关注",
 		"tray.more": "更多",
-		"tray.show": "显示 Agent Orchestrator",
-		"tray.quit": "完全退出 AO",
+		"tray.show": "显示 Altair",
+		"tray.quit": "完全退出 Altair",
 		"zone.merge": "可合并",
 		"zone.action": "需要你处理"
 	},
@@ -44,8 +44,8 @@ export const trayCatalogs: Record<AppLocale, Record<TrayMessageKey, string>> = {
 		"tray.attentionTooltip_other": "{{count}} 件のセッションに対応が必要です",
 		"tray.empty": "対応が必要なセッションはありません",
 		"tray.more": "その他",
-		"tray.show": "Agent Orchestrator を表示",
-		"tray.quit": "AO を完全に終了",
+		"tray.show": "Altair を表示",
+		"tray.quit": "Altair を完全に終了",
 		"zone.merge": "マージ準備完了",
 		"zone.action": "対応が必要"
 	},
@@ -55,8 +55,8 @@ export const trayCatalogs: Record<AppLocale, Record<TrayMessageKey, string>> = {
 		"tray.attentionTooltip_other": "{{count}}개 세션에 확인이 필요합니다",
 		"tray.empty": "확인이 필요한 세션이 없습니다",
 		"tray.more": "더 보기",
-		"tray.show": "Agent Orchestrator 표시",
-		"tray.quit": "AO 완전히 종료",
+		"tray.show": "Altair 표시",
+		"tray.quit": "Altair 완전히 종료",
 		"zone.merge": "병합 준비 완료",
 		"zone.action": "조치 필요"
 	},
@@ -66,8 +66,8 @@ export const trayCatalogs: Record<AppLocale, Record<TrayMessageKey, string>> = {
 		"tray.attentionTooltip_other": "{{count}} sesiones requieren atención",
 		"tray.empty": "No hay sesiones que requieran atención",
 		"tray.more": "Más",
-		"tray.show": "Mostrar Agent Orchestrator",
-		"tray.quit": "Salir completamente de AO",
+		"tray.show": "Mostrar Altair",
+		"tray.quit": "Salir completamente de Altair",
 		"zone.merge": "Listo para fusionar",
 		"zone.action": "Te necesita"
 	},
@@ -77,8 +77,8 @@ export const trayCatalogs: Record<AppLocale, Record<TrayMessageKey, string>> = {
 		"tray.attentionTooltip_other": "{{count}} sessions nécessitent votre attention",
 		"tray.empty": "Aucune session ne nécessite votre attention",
 		"tray.more": "Plus",
-		"tray.show": "Afficher Agent Orchestrator",
-		"tray.quit": "Quitter complètement AO",
+		"tray.show": "Afficher Altair",
+		"tray.quit": "Quitter complètement Altair",
 		"zone.merge": "Prêt à fusionner",
 		"zone.action": "Action requise"
 	},
@@ -88,8 +88,8 @@ export const trayCatalogs: Record<AppLocale, Record<TrayMessageKey, string>> = {
 		"tray.attentionTooltip_other": "{{count}} Sitzungen benötigen Aufmerksamkeit",
 		"tray.empty": "Keine Sitzungen benötigen Aufmerksamkeit",
 		"tray.more": "Mehr",
-		"tray.show": "Agent Orchestrator anzeigen",
-		"tray.quit": "AO vollständig beenden",
+		"tray.show": "Altair anzeigen",
+		"tray.quit": "Altair vollständig beenden",
 		"zone.merge": "Bereit zum Mergen",
 		"zone.action": "Ihre Aktion nötig"
 	},
@@ -99,8 +99,8 @@ export const trayCatalogs: Record<AppLocale, Record<TrayMessageKey, string>> = {
 		"tray.attentionTooltip_other": "{{count}} sessões precisam de atenção",
 		"tray.empty": "Nenhuma sessão precisa de atenção",
 		"tray.more": "Mais",
-		"tray.show": "Mostrar Agent Orchestrator",
-		"tray.quit": "Sair completamente do AO",
+		"tray.show": "Mostrar Altair",
+		"tray.quit": "Sair completamente do Altair",
 		"zone.merge": "Pronto para merge",
 		"zone.action": "Precisa de você"
 	}
