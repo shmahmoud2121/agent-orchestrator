@@ -68,10 +68,10 @@ Never use visual polish to obscure a state transition, destructive action, conne
 
 ## 2. Visual thesis
 
-**Dark-first precision instrument.** AO is a low-glare, near-neutral control surface with calm typography, disciplined color, and dense but breathable information. The visual result should feel more like a thoughtful desktop tool than a generic SaaS dashboard.
+**Dark-first precision instrument.** Dark is true black with warm off-white text. Light is warm paper under a lamp, never pure white. Both share one starlight-gold accent, used only for focus, selection, and the active state. Typography stays calm, color stays disciplined, and the surface stays dense enough to scan all day.
 
 - **Decoration:** minimal. Type, alignment, spacing, surface tone, and only necessary one-pixel boundaries establish hierarchy.
-- **Material:** layered charcoal surfaces—not pure black—with small tonal shifts reserved for nesting, hover, and elevation.
+- **Material:** true black in dark and warm paper in light, with small tonal steps reserved for nesting, hover, and elevation.
 - **Color:** rare, semantic, and stateful. A colored element must answer “what does this mean?”
 - **Shape:** modest radius, not a field of pills. A rounded control should read as a control; a panel should read as one composed container; ordinary metadata should remain text.
 - **Density:** compact by default. AO is used all day and needs high information capacity without cramped target sizes.
@@ -124,7 +124,7 @@ The sidebar is a compact directory, not a second dashboard.
 - Project rows are compact: 28–32px visual height in expanded rail, 12–13px label text, and 14px folder/provider icon. Keep the hit target at least 32px high.
 - Project icon/avatar and label are the primary scan anchors. Do not place status pills, branches, diffs, or PR counts in the row by default.
 - Expanded sessions are visibly children through indentation and reduced contrast, never through heavy nesting or permanent decorative rails.
-- The active project/session uses restrained surface contrast plus a clear selection cue; blue is acceptable for focus/active edge, not as a broad row fill.
+- The active project/session uses restrained surface contrast plus a clear selection cue. The starlight-gold accent is the focus ring and the active edge, not a broad row fill.
 - Row actions appear on hover or focus without moving the label. Actions must not change the row's measured width or trigger navigation.
 - The collapsed rail is icon-first and keeps tooltips, keyboard focus, and fixed titlebar controls usable.
 - Interactive nav rows share `NavRowHighlight`: host backgrounds stay transparent on hover/active/focus; the growing pill owns the fill. Keyboard focus uses `:focus-visible` (not `:focus-within`) so mouse click focus does not stick the pill on.
@@ -181,7 +181,7 @@ Do not introduce one-off hex values, arbitrary radius, or unreviewed spacing. Us
 
 ### Accent rules
 
-- `--color-accent` is for the live edge: primary action, focus ring, meaningful selected state, or progress.
+- `--color-accent` is the neutral primary fill for a primary action. Starlight gold (`--accent-star`, aliased to `--ring`) is only the focus ring, text selection, and the active-row edge.
 - Success, warning, and destructive colors never decorate neutral UI.
 - Do not use color as the only state signal. Pair it with a distinct icon, label, position, or action affordance.
 
@@ -490,6 +490,7 @@ Approve only when the answer to every applicable check is yes. Otherwise classif
 | 2026-10-09 | Home: with Developer Mode and Cloud on, Clone to the cloud replaces the standalone cell; card labels use verb + source; cards rest on `bg-card` and hover to `bg-accent`; recent rows sit under the grid with no heading of their own, one 40px line each (no path), hover pill on `bg-card` | A fifth full-width row broke the 2×2 grid; the old translucent hover made cards darker instead of lifting them; the separate recent-projects title and two-line rows made home taller than it needs to be. |
 | 2026-10-14 | Installed agent rows show muted "Installed" text; install is one ghost "Install · <method>" with a borderless chevron menu | A disabled filled button read as a control, and the bordered split pill broke the settings rule that only inputs, selects and switches carry an edge or fill. Supersedes the 2026-09-04 disabled-button row. |
 | 2026-10-14 | Settings cards: no outline, filled background groups them, hairline dividers between items, rows fit their content with 10px vertical padding | The person asked for borders only between items, not around containers. Rows sit 16px in from the card edge and the page title and section headings follow that inset. |
+| 2026-10-27 | Dark is true black with warm off-white text; light is warm paper; one starlight-gold accent for focus, selection, and the active edge | Low glare at night, a warm lamp feel by day, and it prepares the Altair (star) identity. |
 | 2026-10-23 | The manager chat is project home; workers appear as one inline team card with read-only drill-in | One conversation to supervise; worker detail is on demand. The layout is inspired by PandaCode's architect/worker view, and no code or assets were copied. |
 | 2026-10-23 | Turn steps collapse into one "Worked for …" line; changed files collapse into one card with Open diff | It keeps the conversation readable during long runs without hiding evidence. |
 | 2026-10-23 | Composer is one surface with a context strip above it and one control row; approvals are a slim bar above it, shown only in the manager chat | It puts the next action and the pending human decisions in one place. |

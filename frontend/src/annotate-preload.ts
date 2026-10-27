@@ -1442,13 +1442,13 @@ function ensureOverlay(): ShadowRoot {
 
 function overlayStyles(): string {
 	const vars = {
-		background: theme.background ?? "oklch(0.210 0.002 250)",
-		foreground: theme.foreground ?? "oklch(0.970 0.002 250)",
-		muted: theme.muted ?? "oklch(0.295 0.002 250)",
-		mutedForeground: theme.mutedForeground ?? "oklch(0.720 0.002 250)",
-		border: theme.border ?? "oklch(1 0 0 / 10%)",
-		accent: theme.accent ?? "oklch(0.900 0.002 250)",
-		accentForeground: theme.accentForeground ?? "oklch(0.210 0.002 250)",
+		background: theme.background ?? "oklch(0 0 0)",
+		foreground: theme.foreground ?? "oklch(0.93 0.012 85)",
+		muted: theme.muted ?? "oklch(0.225 0.005 80)",
+		mutedForeground: theme.mutedForeground ?? "oklch(0.70 0.010 85)",
+		border: theme.border ?? "oklch(1 0.02 85 / 9%)",
+		accent: theme.accent ?? "oklch(0.90 0.014 85)",
+		accentForeground: theme.accentForeground ?? "oklch(0 0 0)",
 		destructive: theme.destructive ?? "oklch(0.704 0.191 22.216)",
 	};
 	// Mirror renderer Button/Input chrome: 8px radius, 28px controls, equal 8px padding,

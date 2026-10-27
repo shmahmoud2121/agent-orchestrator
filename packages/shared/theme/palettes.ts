@@ -46,16 +46,16 @@ export const THEMES = [
 		id: "orchestrate",
 		label: "Orchestrate",
 		dark: {
-			bg: "#181819", sidebar: "#111212", panel: "#212223", element: "#2c2d2d",
-			text: "#f4f5f6", muted: "#a4a5a6", accent: "#79b0dc", primary: "#dddedf",
+			bg: "#000000", sidebar: "#050504", panel: "#0d0c0a", element: "#1d1b19",
+			text: "#ebe7df", muted: "#a19e98", accent: "#e6b55d", primary: "#e2ddd4",
 			red: "#ff6467", orange: "#f06445", yellow: "#facc15", green: "#4ade80",
 			blue: "#60a5fa", purple: "#c084fc", cyan: "#56b6c2",
 		},
 		light: {
-			bg: "#f5f5f5", sidebar: "#eeeeee", panel: "#ffffff", element: "#e9e9e9",
-			text: "#121212", muted: "#636363", accent: "#304c83", primary: "#1f1f1f",
-			red: "#e7000b", orange: "#c2412d", yellow: "#ca8a04", green: "#16a34a",
-			blue: "#2563eb", purple: "#9333ea", cyan: "#3d7a7a",
+			bg: "#f7efe3", sidebar: "#f2e8da", panel: "#fbf6ed", element: "#ebe1d3",
+			text: "#221811", muted: "#65584c", accent: "#b17000", primary: "#2b221a",
+			red: "#e7000b", orange: "#c2412d", yellow: "#b87d00", green: "#059e45",
+			blue: "#2563eb", purple: "#9333ea", cyan: "#377474",
 		},
 	},
 	{

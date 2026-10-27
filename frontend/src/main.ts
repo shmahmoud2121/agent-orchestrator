@@ -437,8 +437,10 @@ const DEV_STATE_SUBDIR = "dev"; // ~/.ao/dev/
 const RENDERER_SCHEME = "app";
 const RENDERER_HOST = "renderer";
 const RENDERER_ORIGIN = `${RENDERER_SCHEME}://${RENDERER_HOST}`;
-const NATIVE_WINDOW_BACKGROUND_DARK = "#0c0c0e";
-const NATIVE_WINDOW_BACKGROUND_LIGHT = "#fbfbfb";
+// Startup flash, before the renderer reports --sidebar. Dark is the true-black
+// canvas. Light is oklch(0.955 0.018 80), the warm-paper --background.
+const NATIVE_WINDOW_BACKGROUND_DARK = "#000000";
+const NATIVE_WINDOW_BACKGROUND_LIGHT = "#f7efe3";
 
 function getShellWebContents(): WebContents | null {
 	return windowComposition?.shellWebContents ?? null;

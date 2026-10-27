@@ -33,3 +33,164 @@ describe("theme tokens", () => {
 		}
 	});
 });
+
+const toLinear = (channel: number) => (channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
+const fromLinear = (channel: number) => (channel <= 0.0031308 ? channel * 12.92 : 1.055 * channel ** (1 / 2.4) - 0.055);
+
+function oklabToLinear([L, a, b]: [number, number, number]): [number, number, number] {
+	const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+	const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+	const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+	return [
+		4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+		-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+		-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+	];
+}
+
+function inGamut(rgb: [number, number, number]): boolean {
+	return rgb.every((channel) => channel >= -1e-4 && channel <= 1 + 1e-4);
+}
+
+/** CSS Color 4 oklch, gamut-mapped by reducing chroma, as linear sRGB. */
+function oklchToLinear(input: string): [number, number, number] {
+	const match = input.match(/oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
+	if (!match) throw new Error(`not oklch: ${input}`);
+	const L = Number(match[1]);
+	const C = Number(match[2]);
+	const hue = (Number(match[3]) * Math.PI) / 180;
+	let lab: [number, number, number] = [L, C * Math.cos(hue), C * Math.sin(hue)];
+	if (!inGamut(oklabToLinear(lab))) {
+		let lo = 0;
+		let hi = C;
+		const angle = Math.atan2(lab[2], lab[1]);
+		for (let step = 0; step < 32; step += 1) {
+			const mid = (lo + hi) / 2;
+			const candidate: [number, number, number] = [L, mid * Math.cos(angle), mid * Math.sin(angle)];
+			if (inGamut(oklabToLinear(candidate))) lo = mid;
+			else hi = mid;
+		}
+		lab = [L, lo * Math.cos(angle), lo * Math.sin(angle)];
+	}
+	return oklabToLinear(lab).map((channel) => toLinear(fromLinear(Math.min(1, Math.max(0, channel))))) as [
+		number,
+		number,
+		number,
+	];
+}
+
+function hexToLinear(hex: string): [number, number, number] {
+	const value = hex.replace("#", "");
+	return [0, 2, 4].map((index) => toLinear(Number.parseInt(value.slice(index, index + 2), 16) / 255)) as [
+		number,
+		number,
+		number,
+	];
+}
+
+function colorToLinear(input: string): [number, number, number] {
+	return input.startsWith("#") ? hexToLinear(input) : oklchToLinear(input);
+}
+
+function contrast(foreground: string, background: string): number {
+	const luminance = (rgb: [number, number, number]) => 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+	const [hi, lo] = [luminance(colorToLinear(foreground)), luminance(colorToLinear(background))].sort((a, b) => b - a);
+	return (hi + 0.05) / (lo + 0.05);
+}
+
+function cssBlock(css: string, header: string): string {
+	const start = css.indexOf(header);
+	if (start < 0) throw new Error(header);
+	const open = css.indexOf("{", start);
+	let depth = 0;
+	for (let index = open; index < css.length; index += 1) {
+		if (css[index] === "{") depth += 1;
+		else if (css[index] === "}") {
+			depth -= 1;
+			if (depth === 0) return css.slice(open + 1, index);
+		}
+	}
+	throw new Error(`unclosed ${header}`);
+}
+
+function cssToken(block: string, name: string): string {
+	const match = block.match(new RegExp(`(?:^|\\n)\\t${name}:\\s*([^;]+);`));
+	if (!match) throw new Error(name);
+	return match[1].trim();
+}
+
+function resolveToken(block: string, name: string, seen = new Set<string>()): string {
+	const raw = cssToken(block, name);
+	const reference = raw.match(/^var\((--[\w-]+)\)$/);
+	if (!reference) return raw;
+	if (seen.has(reference[1])) throw new Error(`cycle at ${name}`);
+	seen.add(reference[1]);
+	return resolveToken(block, reference[1], seen);
+}
+
+describe("default theme contrast", () => {
+	const normalized = tokensCss.replace(/\r\n/g, "\n");
+	const dark = cssBlock(normalized, ":root,\n:root.dark,\n.dark {");
+	const light = cssBlock(normalized, '\n:root[data-theme="light"] {');
+
+	it("keeps the night-lamp token values", () => {
+		expect(resolveToken(dark, "--background")).toBe("oklch(0 0 0)");
+		expect(resolveToken(dark, "--foreground")).toBe("oklch(0.93 0.012 85)");
+		expect(resolveToken(dark, "--accent-star")).toBe("oklch(0.80 0.12 80)");
+		expect(resolveToken(dark, "--ring")).toBe("oklch(0.80 0.12 80)");
+		expect(resolveToken(dark, "--sidebar-ring")).toBe("oklch(0.80 0.12 80)");
+		expect(resolveToken(light, "--background")).toBe("oklch(0.955 0.018 80)");
+		expect(resolveToken(light, "--card")).toBe("oklch(0.975 0.013 80)");
+		expect(resolveToken(light, "--accent-star")).toBe("oklch(0.60 0.13 70)");
+		expect(resolveToken(light, "--ring")).toBe("oklch(0.60 0.13 70)");
+		expect(cssToken(dark, "--border")).toBe("oklch(1 0.02 85 / 9%)");
+		expect(cssToken(light, "--border")).toBe("oklch(0.30 0.040 60 / 10%)");
+	});
+
+	it("clears the text and gold floors on both themes", () => {
+		for (const [label, block] of [
+			["dark", dark],
+			["light", light],
+		] as const) {
+			const foreground = resolveToken(block, "--foreground");
+			const muted = resolveToken(block, "--muted-foreground");
+			const gold = resolveToken(block, "--accent-star");
+			const surfaces = ["--background", "--card", "--popover", "--sidebar"] as const;
+			for (const surface of surfaces) {
+				const ratio = contrast(foreground, resolveToken(block, surface));
+				expect(ratio, `${label} foreground on ${surface} = ${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(7);
+			}
+			for (const surface of ["--background", "--card", "--muted"] as const) {
+				const ratio = contrast(muted, resolveToken(block, surface));
+				expect(ratio, `${label} muted on ${surface} = ${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(4.5);
+			}
+			for (const surface of ["--background", "--card"] as const) {
+				const ratio = contrast(gold, resolveToken(block, surface));
+				expect(ratio, `${label} gold on ${surface} = ${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(3);
+			}
+		}
+	});
+
+	it("keeps default terminal ANSI text readable on both plates", () => {
+		const visible = ["red", "green", "yellow", "blue", "magenta", "cyan", "white", "bright-black", "bright-red", "bright-green", "bright-yellow", "bright-blue", "bright-magenta", "bright-cyan", "bright-white"] as const;
+		for (const slot of visible) {
+			const ratio = contrast(cssToken(dark, `--color-term-${slot}`), resolveToken(dark, "--background"));
+			expect(ratio, `dark ${slot} = ${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(4.5);
+		}
+		for (const slot of visible) {
+			const ratio = contrast(cssToken(light, `--color-term-${slot}`), resolveToken(light, "--background"));
+			expect(ratio, `light ${slot} = ${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(4.5);
+		}
+		const dim = contrast(cssToken(light, "--color-text-terminal-dim"), resolveToken(light, "--background"));
+		expect(dim, `light terminal dim = ${dim.toFixed(2)}`).toBeGreaterThanOrEqual(4.5);
+	});
+
+	it("keeps light status signals at 3:1 on the paper surfaces", () => {
+		for (const name of ["--color-status-working", "--color-status-needs-you", "--color-status-validating", "--color-status-in-review", "--color-status-ready", "--color-status-merged"] as const) {
+			for (const surface of ["--background", "--card"] as const) {
+				const ratio = contrast(cssToken(light, name), resolveToken(light, surface));
+				expect(ratio, `light ${name} on ${surface} = ${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(3);
+			}
+		}
+	});
+});

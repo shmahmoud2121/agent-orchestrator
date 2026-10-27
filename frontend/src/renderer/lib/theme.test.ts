@@ -6,7 +6,9 @@ import {
 	previewDocumentThemeStyle,
 	readStoredThemePreference,
 	readStoredThemeStyle,
+	resolveTheme,
 	runThemeTransition,
+	systemTheme,
 } from "./theme";
 
 describe("runThemeTransition", () => {
@@ -160,5 +162,33 @@ describe("previewDocumentThemeStyle", () => {
 		document.documentElement.dataset.styleTheme = "nord";
 		previewDocumentThemeStyle(null, "github");
 		expect(document.documentElement.dataset.styleTheme).toBe("nord");
+	});
+});
+
+describe("system appearance", () => {
+	afterEach(() => {
+		window.localStorage.clear();
+		vi.restoreAllMocks();
+	});
+
+	it("follows the OS on a fresh install", () => {
+		window.localStorage.clear();
+		expect(readStoredThemePreference()).toBe("system");
+		expect(resolveTheme("system")).toBe(systemTheme());
+	});
+
+	it("resolves system to light when the OS asks for light", () => {
+		vi.spyOn(window, "matchMedia").mockImplementation((query: string) => ({
+			matches: query === "(prefers-color-scheme: light)",
+			media: query,
+			onchange: null,
+			addEventListener: () => undefined,
+			removeEventListener: () => undefined,
+			addListener: () => undefined,
+			removeListener: () => undefined,
+			dispatchEvent: () => false,
+		}));
+		expect(systemTheme()).toBe("light");
+		expect(resolveTheme("system")).toBe("light");
 	});
 });
