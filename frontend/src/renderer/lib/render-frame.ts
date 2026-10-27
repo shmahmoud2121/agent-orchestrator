@@ -139,7 +139,7 @@ const THEME_TOKENS: ReadonlyArray<readonly [string, string]> = [
 // AO's own --chart-* tokens are grayscale. Swap for tokens once design names some.
 const CHART_SERIES = {
 	dark: ["#2dd4bf", "#fbbf24", "#c084fc", "#fb7185", "#a3e635"],
-	light: ["#0d9488", "#d97706", "#9333ea", "#e11d48", "#65a30d"],
+	light: ["#0d9488", "#ce7000", "#9333ea", "#e11d48", "#5c9600"],
 } as const;
 
 export function readRenderTheme(root: HTMLElement = document.documentElement): RenderTheme {

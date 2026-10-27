@@ -24,7 +24,7 @@ const editorTheme = EditorView.theme({
 	".cm-line": { padding: "0" },
 	".cm-gutters": { backgroundColor: "var(--color-bg-secondary)", border: "0", color: "var(--color-text-muted)" },
 	".cm-activeLineGutter, .cm-activeLine": { backgroundColor: "var(--color-interactive-hover)" },
-	".cm-selectionBackground, ::selection": { backgroundColor: "var(--color-interactive-active) !important" },
+	".cm-selectionBackground, ::selection": { backgroundColor: "color-mix(in oklch, var(--ring) 42%, transparent) !important" },
 }, { dark: false });
 
 export function MarkdownEditor({ value, onChange, filePath }: { value: string; onChange: (value: string) => void; filePath: string }) {

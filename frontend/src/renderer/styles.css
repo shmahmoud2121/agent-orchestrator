@@ -10,10 +10,10 @@
 @custom-media --layout-narrow (width <= 680px); /* --breakpoint-layout-narrow */
 
 /*
- * Design system — see DESIGN_TOKENS.md. Flat neutral graphite ramp, hairline
- * borders, and system font. Dark is primary (:root); light is the supported override
- * (:root[data-theme="light"]). apply-initial-theme runs before CSS load; the
- * Zustand theme toggle updates data-theme on <html>.
+ * Design system — see DESIGN_TOKENS.md. True black in dark, warm paper in
+ * light, hairline borders, and the system font. Dark is primary (:root); light
+ * is the supported override (:root[data-theme="light"]). apply-initial-theme
+ * runs before CSS load; the Zustand theme toggle updates data-theme on <html>.
  */
 
 /*
@@ -25,6 +25,12 @@
 ::view-transition-new(root) {
 	animation: none;
 	mix-blend-mode: normal;
+}
+
+/* Starlight gold (--ring) is the text selection. Named themes override --ring
+   with their own accent, so this does not leak the default gold into them. */
+::selection {
+	background-color: color-mix(in oklch, var(--ring) 42%, transparent);
 }
 
 /* While data-theme flips, kill per-element color tweens (composer, search,
@@ -2505,6 +2511,14 @@ body.is-resizing-x .session-split[data-workspace-resizing="true"] [data-slot="in
 	}
 }
 
+/* Active project or session row: a 2px starlight edge. The pill fill stays
+   the neutral active surface. --ring is the palette accent on a named theme.
+   Home, Settings, and Stay Awake share the highlight and must not grow this edge. */
+[data-project-drag-row] [data-nav-row-highlight-active],
+[data-session-row] [data-nav-row-highlight-active] {
+	box-shadow: inset 2px 0 0 var(--ring);
+}
+
 /* A reorder can leave its source row, so lock the renderer cursor until the
    drag ends or is cancelled. */
 html.sidebar-reordering,
@@ -2512,8 +2526,9 @@ html.sidebar-reordering * {
 	cursor: grabbing !important;
 }
 
-/* No blue focus rings anywhere — hover/active carry interaction feedback.
-   !important beats Tailwind focus / focus-visible ring and outline utilities. */
+/* Shell chrome suppresses the generic focus ring — hover and the active
+   marker carry that feedback. Rings that do paint use --ring (starlight gold
+   on the default theme). !important beats Tailwind ring and outline utilities. */
 :focus,
 :focus-visible {
 	outline: none !important;

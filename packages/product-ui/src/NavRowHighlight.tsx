@@ -21,6 +21,9 @@ export const NAV_ROW_HIGHLIGHT_HOST_CLASS =
  *   `:focus-within` (mouse click focus would stick the pill on after toggle).
  * - Shared by Sidebar and HomePage recent rows; keep one implementation.
  *   `className` may only swap the fill (home uses the action-card surface).
+ * - `data-nav-row-highlight-active` is present only for an enabled active row.
+ *   The starlight edge is painted in the app stylesheet, and only on a sidebar
+ *   project or session row — not on Home, Settings, or Stay Awake.
  */
 export function NavRowHighlight({
 	active = false,
@@ -45,6 +48,7 @@ export function NavRowHighlight({
 				className,
 			)}
 			data-nav-row-highlight=""
+			data-nav-row-highlight-active={active && !disabled ? "" : undefined}
 			data-nav-row-highlight-idle={active || disabled ? undefined : ""}
 		/>
 	);

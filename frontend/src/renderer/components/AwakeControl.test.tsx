@@ -163,6 +163,8 @@ describe("shared Stay Awake controls", () => {
 		state.active = true;
 		await show();
 		expect(coffee().querySelector("[data-nav-row-highlight]")).toHaveClass("bg-interactive-active");
+		expect(coffee().querySelector("[data-nav-row-highlight]")).toHaveAttribute("data-nav-row-highlight-active", "");
+		expect(coffee().closest("[data-project-drag-row], [data-session-row]")).toBeNull();
 		state.active = false;
 		state.paused = true;
 		state.reason = reason;
@@ -170,6 +172,7 @@ describe("shared Stay Awake controls", () => {
 		expect(coffee()).toHaveAttribute("aria-pressed", "true");
 		await waitFor(() => expect(screen.getByTestId("awake-inactive-indicator")).toBeInTheDocument());
 		expect(coffee().querySelector("[data-nav-row-highlight]")).not.toHaveClass("bg-interactive-active");
+		expect(coffee().querySelector("[data-nav-row-highlight]")).not.toHaveAttribute("data-nav-row-highlight-active");
 		expect(coffee()).toHaveAccessibleDescription(/inactive/);
 		expect(coffee()).toHaveAccessibleDescription(explanation);
 		await userEvent.hover(coffee());
@@ -211,6 +214,7 @@ describe("shared Stay Awake controls", () => {
 		expect(coffee()).toHaveAccessibleDescription(/configured.*not being kept awake/);
 		expect(screen.getByTestId("awake-inactive-indicator")).toBeInTheDocument();
 		expect(coffee().querySelector("[data-nav-row-highlight]")).not.toHaveClass("bg-interactive-active");
+		expect(coffee().querySelector("[data-nav-row-highlight]")).not.toHaveAttribute("data-nav-row-highlight-active");
 	});
 	it("fills the coffee button only when desktop actually holds wake", async () => {
 		state.active = true;
@@ -218,6 +222,8 @@ describe("shared Stay Awake controls", () => {
 		expect(coffee()).toHaveAccessibleDescription(/being kept awake/);
 		expect(screen.queryByTestId("awake-inactive-indicator")).toBeNull();
 		expect(coffee().querySelector("[data-nav-row-highlight]")).toHaveClass("bg-interactive-active");
+		expect(coffee().querySelector("[data-nav-row-highlight]")).toHaveAttribute("data-nav-row-highlight-active", "");
+		expect(coffee().closest("[data-project-drag-row], [data-session-row]")).toBeNull();
 	});
 
 	it("disables both controls until a pending start settles, preventing double-click races", async () => {
@@ -258,6 +264,7 @@ describe("shared Stay Awake controls", () => {
 				expect(coffee()).toHaveAttribute("aria-busy", "true");
 				expect(coffee()).toHaveAccessibleDescription(/Starting Stay Awake/);
 				expect(coffee()).toBeDisabled();
+				expect(coffee().querySelector("[data-nav-row-highlight]")).not.toHaveAttribute("data-nav-row-highlight-active");
 				expect(screen.getByRole("button", { name: "Mobile wake" })).toBeDisabled();
 				expect(screen.queryByTestId("awake-inactive-indicator")).toBeNull();
 				await act(async () => { await vi.advanceTimersByTimeAsync(500); });
@@ -276,6 +283,8 @@ describe("shared Stay Awake controls", () => {
 				expect(screen.queryByTestId("awake-inactive-indicator")).toBeNull();
 				expect(coffee()).toHaveAccessibleDescription(/being kept awake/);
 				expect(coffee().querySelector("[data-nav-row-highlight]")).toHaveClass("bg-interactive-active");
+				expect(coffee().querySelector("[data-nav-row-highlight]")).toHaveAttribute("data-nav-row-highlight-active", "");
+				expect(coffee().closest("[data-project-drag-row], [data-session-row]")).toBeNull();
 			} else {
 				expect(screen.getByTestId("awake-inactive-indicator")).toBeInTheDocument();
 				if (outcome === "safety stop") expect(coffee()).toHaveAccessibleDescription(/battery/i);

@@ -54,7 +54,7 @@ export function buildTerminalThemes(): { dark: ITheme; light: ITheme } {
 		foreground: terminalForeground,
 		// xterm block cursor fills with `cursor` and paints cell text in
 		// `cursorAccent`. --color-working is fine on dark plates but reads as a
-		// low-contrast wash on the light terminal bg (#f5f5f4), especially while
+		// low-contrast wash on the light terminal background, especially while
 		// blinking. Use the terminal foreground so the block stays visible.
 		cursor: terminalForeground,
 		cursorAccent: terminalBg,

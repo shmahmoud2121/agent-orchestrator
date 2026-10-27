@@ -245,3 +245,50 @@ describe("workspace file open requests", () => {
 		expect(useUiStore.getState().workspaceFileOpenRequest).toBeNull();
 	});
 });
+
+describe("system theme updates", () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+		delete document.documentElement.dataset.theme;
+	});
+
+	it("applies an OS change live and does not store light or dark", () => {
+		window.localStorage.removeItem("ao.theme");
+		useUiStore.setState({ themePreference: "system", resolvedTheme: "dark" });
+		vi.spyOn(window, "matchMedia").mockImplementation((query: string) => ({
+			matches: query === "(prefers-color-scheme: light)",
+			media: query,
+			onchange: null,
+			addEventListener: () => undefined,
+			removeEventListener: () => undefined,
+			addListener: () => undefined,
+			removeListener: () => undefined,
+			dispatchEvent: () => false,
+		}));
+
+		useUiStore.getState().syncSystemTheme();
+
+		expect(useUiStore.getState().themePreference).toBe("system");
+		expect(useUiStore.getState().resolvedTheme).toBe("light");
+		expect(document.documentElement.dataset.theme).toBe("light");
+		expect(window.localStorage.getItem("ao.theme")).toBeNull();
+	});
+
+	it("leaves a manual dark or light choice alone when the OS changes", () => {
+		useUiStore.setState({ themePreference: "dark", resolvedTheme: "dark" });
+		vi.spyOn(window, "matchMedia").mockImplementation((query: string) => ({
+			matches: query === "(prefers-color-scheme: light)",
+			media: query,
+			onchange: null,
+			addEventListener: () => undefined,
+			removeEventListener: () => undefined,
+			addListener: () => undefined,
+			removeListener: () => undefined,
+			dispatchEvent: () => false,
+		}));
+
+		useUiStore.getState().syncSystemTheme();
+
+		expect(useUiStore.getState().resolvedTheme).toBe("dark");
+	});
+});
