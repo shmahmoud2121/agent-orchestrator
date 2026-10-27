@@ -27,6 +27,7 @@ type Store interface {
 	SetCloudOffering(ctx context.Context, enabled bool, now time.Time) error
 	SetHarnessDefault(ctx context.Context, agent domain.AgentHarness, value domain.HarnessDefault, now time.Time) error
 	SetVersionRefresh(ctx context.Context, enabled bool, now time.Time) error
+	SetDefaultCodeManager(ctx context.Context, harness domain.AgentHarness, now time.Time) error
 }
 
 // Snapshot is the current preference set.
@@ -39,7 +40,10 @@ type Snapshot struct {
 	// VersionRefresh moves idle open sessions to a harness release installed
 	// while they ran (Settings, General). On by default.
 	VersionRefresh bool
-	UpdatedAt      time.Time
+	// DefaultCodeManager is pre-selected when someone creates a Code project.
+	// Work projects never use it. Empty or unknown values read as Claude Code.
+	DefaultCodeManager domain.AgentHarness
+	UpdatedAt          time.Time
 }
 
 // Offering reports which AO offerings this daemon exposes to clients. It is
@@ -120,8 +124,16 @@ func (s *Service) Get(ctx context.Context) (Snapshot, error) {
 	snapshot.ChatHibernationEnabled = s.chatHibernation.Load()
 	if err == nil {
 		s.cacheVersionRefresh(snapshot.VersionRefresh)
+		snapshot.DefaultCodeManager = normalizeDefaultCodeManager(snapshot.DefaultCodeManager)
 	}
 	return snapshot, err
+}
+
+func normalizeDefaultCodeManager(harness domain.AgentHarness) domain.AgentHarness {
+	if harness.IsKnown() {
+		return harness
+	}
+	return domain.HarnessClaudeCode
 }
 
 func (s *Service) cacheVersionRefresh(enabled bool) {
@@ -275,6 +287,17 @@ func (s *Service) SetHarnessDefault(ctx context.Context, agent domain.AgentHarne
 	}
 	value.DisabledModels = disabled
 	if err := s.store.SetHarnessDefault(ctx, agent, value, s.now()); err != nil {
+		return Snapshot{}, err
+	}
+	return s.Get(ctx)
+}
+
+// SetDefaultCodeManager changes which AI is pre-selected for a new Code project.
+func (s *Service) SetDefaultCodeManager(ctx context.Context, harness domain.AgentHarness) (Snapshot, error) {
+	if !harness.IsKnown() {
+		return Snapshot{}, fmt.Errorf("%w %q", ErrUnknownHarness, harness)
+	}
+	if err := s.store.SetDefaultCodeManager(ctx, harness, s.now()); err != nil {
 		return Snapshot{}, err
 	}
 	return s.Get(ctx)

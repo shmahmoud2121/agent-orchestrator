@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -21,6 +22,7 @@ type SettingsService interface {
 	SetHarnessDefault(ctx context.Context, agent domain.AgentHarness, value domain.HarnessDefault) (settingssvc.Snapshot, error)
 	SetChatHibernationEnabled(ctx context.Context, enabled bool) (settingssvc.Snapshot, error)
 	SetVersionRefresh(ctx context.Context, enabled bool) (settingssvc.Snapshot, error)
+	SetDefaultCodeManager(ctx context.Context, harness domain.AgentHarness) (settingssvc.Snapshot, error)
 	ChatHarnesses(candidates []domain.AgentHarness) []domain.AgentHarness
 	Offering() settingssvc.Offering
 }
@@ -41,6 +43,7 @@ func (c *SettingsController) Register(r chi.Router) {
 	r.Patch("/settings/cloud-offering", c.setCloudOffering)
 	r.Patch("/settings/chat-hibernation", c.setChatHibernation)
 	r.Patch("/settings/version-refresh", c.setVersionRefresh)
+	r.Patch("/settings/default-code-manager", c.setDefaultCodeManager)
 	r.Patch("/settings/harness-defaults/{agent}", c.setHarnessDefault)
 }
 
@@ -150,6 +153,29 @@ func (c *SettingsController) setVersionRefresh(w http.ResponseWriter, r *http.Re
 	envelope.WriteJSON(w, http.StatusOK, c.response(snapshot))
 }
 
+func (c *SettingsController) setDefaultCodeManager(w http.ResponseWriter, r *http.Request) {
+	if c.Svc == nil {
+		apispec.NotImplemented(w, r, "PATCH", "/api/v1/settings/default-code-manager")
+		return
+	}
+	var req UpdateDefaultCodeManagerRequest
+	if !decodeConversationBody(w, r, &req) {
+		return
+	}
+	harness := domain.AgentHarness(strings.TrimSpace(req.Harness))
+	snapshot, err := c.Svc.SetDefaultCodeManager(r.Context(), harness)
+	if errors.Is(err, settingssvc.ErrUnknownHarness) {
+		envelope.WriteAPIError(w, r, http.StatusBadRequest, "validation",
+			"DEFAULT_CODE_MANAGER_INVALID", "Choose an AI Altair knows.", nil)
+		return
+	}
+	if err != nil {
+		envelope.WriteError(w, r, err)
+		return
+	}
+	envelope.WriteJSON(w, http.StatusOK, c.response(snapshot))
+}
+
 func (c *SettingsController) response(snapshot settingssvc.Snapshot) SettingsResponse {
 	// Reported so the client can warn that choosing chat narrows which agents are
 	// available, instead of letting the user discover it at spawn time.
@@ -168,6 +194,7 @@ func (c *SettingsController) response(snapshot settingssvc.Snapshot) SettingsRes
 		CloudOffering:          snapshot.CloudOffering,
 		ChatHibernationEnabled: snapshot.ChatHibernationEnabled,
 		VersionRefresh:         snapshot.VersionRefresh,
+		DefaultCodeManager:     string(snapshot.DefaultCodeManager),
 		CloudEnabled:           offering.CloudEnabled(snapshot),
 		CloudControlPlaneURL:   offering.CloudControlPlaneURL,
 		TrackerIntakeEnabled:   offering.TrackerIntakeEnabled,

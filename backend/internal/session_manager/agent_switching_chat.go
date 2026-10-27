@@ -368,6 +368,9 @@ func (m *Manager) executeChatAgentSwitch(
 	targetLaunchEnv := m.runtimeEnv(id, credentialRecord.ProjectID, credentialRecord.IssueID, project.Config.Env)
 	m.augmentAgentRuntimeEnv(targetAgent, targetLaunchEnv)
 	markWorkerEnv(targetLaunchEnv, rec.Kind, cfg.TargetHarness, project.Config)
+	if err := m.requireWorkScratch(targetLaunchEnv, project, id); err != nil {
+		return result, fmt.Errorf("switch Chat agent %s: %w", id, err)
+	}
 	releaseCodexAdmission, admissionErr := m.acquireCodexControllerAdmission(ctx, cfg.TargetHarness)
 	if admissionErr != nil {
 		return result, fmt.Errorf("switch Chat agent %s: %w", id, admissionErr)
@@ -395,9 +398,9 @@ func (m *Manager) executeChatAgentSwitch(
 		Model:                   agentConfig.Model,
 		Effort:                  agentConfig.Effort,
 		Permissions:             agentConfig.Permissions,
-		WorkerSandbox:           m.workerSandboxLaunchFields(rec.Kind, project, rec.Metadata.WorkspacePath),
+		WorkerSandbox:           m.workerSandboxLaunchFields(rec.Kind, project, rec.Metadata.WorkspacePath, rec.ID),
 		SystemPrompt:            finalSystemPrompt,
-		AdditionalDirectories:   additionalDirectories,
+		AdditionalDirectories:   workChatDirectories(cfg.TargetHarness, project, additionalDirectories),
 		MCPServers:              m.aoMCPServers(cfg.TargetHarness, targetLaunchEnv),
 		ExpectedControllerOwner: credentialRecord.ControllerOwner(),
 		PrepareControllerEnv: func(launchCtx context.Context, expected domain.SessionControllerOwner) (map[string]string, error) {
@@ -410,6 +413,9 @@ func (m *Manager) executeChatAgentSwitch(
 			credentialRecord = prepared
 			m.augmentAgentRuntimeEnv(targetAgent, launchEnv)
 			markWorkerEnv(launchEnv, rec.Kind, cfg.TargetHarness, project.Config)
+			if err := m.requireWorkScratch(launchEnv, project, id); err != nil {
+				return nil, fmt.Errorf("%w", ErrWorkGuardUnavailable)
+			}
 			return launchEnv, nil
 		},
 		ProviderConversationID: providerConversationID,

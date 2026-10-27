@@ -8,6 +8,7 @@ import {
 	CircleDashed,
 	ChevronRight,
 	Cloud,
+	FileText,
 	Folder,
 	FolderClosed,
 	Folders,
@@ -65,6 +66,7 @@ import {
 import { cn } from "../lib/utils";
 import type { ProjectKind } from "../types/workspace";
 import { CreateProjectAgentSheet, RequiredAgentField, type CreateProjectAgentSelection } from "./CreateProjectAgentSheet";
+import { CreateWorkProjectSheet, type CreateWorkProjectInput } from "./CreateWorkProjectSheet";
 import { RemoteDirectoryPicker } from "./RemoteDirectoryPicker";
 import CloneRepositoryDialog, { type CloneRepositoryDetails, type CloneRepositorySelection } from "./CloneRepositoryDialog";
 // GitHubTokenField is used via inline Input components in CloudProjectCard
@@ -78,6 +80,9 @@ import { Switch } from "./ui/switch";
 
 export type CreateProjectInput = {
 	path: string;
+	name?: string;
+	sources?: string[];
+	resultsDir?: string;
 	asWorkspace?: boolean;
 	defaultBranch?: string;
 	clonePreparationId?: string;
@@ -119,7 +124,7 @@ function GitHubIcon({ className }: { className?: string }) {
 }
 
 type CreateProjectFlowMode = ProjectKind | "choose";
-type ProjectSource = "clone" | "local" | "workspace";
+type ProjectSource = "clone" | "local" | "workspace" | "work";
 
 /** Where the new project should live: on this machine or in AO Cloud. */
 type ProjectOffering = "local" | "cloud";
@@ -162,6 +167,7 @@ export function CreateProjectFlow({
 	onSelectHost,
 	openSignal,
 	sourceSignal,
+	workOpenSignal,
 }: {
 	children?: (state: { choosePath: () => void; disabled: boolean; error: string | null; label: string }) => ReactNode;
 	connected?: boolean;
@@ -193,6 +199,8 @@ export function CreateProjectFlow({
 	openSignal?: number;
 	// Home-page action cards: each new nonce jumps straight to its source.
 	sourceSignal?: { source: ProjectSource | "cloud"; nonce: number } | null;
+	/** Each new value opens the New Work project sheet, with both AI pickers empty. */
+	workOpenSignal?: number;
 }) {
 	const { t } = useTranslation();
 	const resolvedIdleLabel = idleLabel ?? t("createProject.newProject");
@@ -218,6 +226,7 @@ export function CreateProjectFlow({
 	const [projectImportShake, setProjectImportShake] = useState(false);
 	const [isChoosingPath, setIsChoosingPath] = useState(false);
 	const [isCreating, setIsCreating] = useState(false);
+	const [workSheetOpen, setWorkSheetOpen] = useState(false);
 	const [isInitializing, setIsInitializing] = useState(false);
 	const [isPreparingGit, setIsPreparingGit] = useState(false);
 	const [repositorySetup, setRepositorySetup] = useState<"NOT_A_GIT_REPO" | "PROJECT_UNBORN" | null>(null);
@@ -295,6 +304,11 @@ export function CreateProjectFlow({
 		setError(null);
 		setValidationScan(null);
 		resetProjectImportState();
+		if (source === "work") {
+			setModePickerOpen(false);
+			setWorkSheetOpen(true);
+			return;
+		}
 		if (source === "clone") {
 			setCloneDetails(initialCloneDetails(hostId));
 			setCloneSelection(null);
@@ -309,6 +323,7 @@ export function CreateProjectFlow({
 	};
 
 	const chooseDirectory = async (kind: ProjectKind, presetPath?: string, preserveCurrentDialog = false) => {
+		if (kind === "work") return;
 		if (hostId && !presetPath) {
 			setRemoteBrowse({ kind, preserveCurrentDialog });
 			return;
@@ -462,6 +477,31 @@ export function CreateProjectFlow({
 		lastOpenSignal.current = openSignal;
 		startFlow();
 	}, [openSignal]);
+
+	const lastWorkSignal = useRef(workOpenSignal);
+	useEffect(() => {
+		if (workOpenSignal === undefined || workOpenSignal === lastWorkSignal.current) return;
+		lastWorkSignal.current = workOpenSignal;
+		setModePickerOpen(false);
+		setWorkSheetOpen(true);
+	}, [workOpenSignal]);
+
+	const submitWork = async (input: CreateWorkProjectInput) => {
+		setIsCreating(true);
+		try {
+			await onCreateProject({
+				path: input.path,
+				name: input.name,
+				sources: input.sources,
+				resultsDir: input.resultsDir,
+				workerAgent: input.workerAgent,
+				orchestratorAgent: input.orchestratorAgent,
+			});
+			setWorkSheetOpen(false);
+		} finally {
+			setIsCreating(false);
+		}
+	};
 
 	// A folder was dropped on the app window. Ignored while the flow already has
 	// UI on screen so an in-progress manual selection is never silently discarded.
@@ -754,6 +794,7 @@ export function CreateProjectFlow({
 					label,
 				})}
 			{!isCreating && !isInitializing ? <CreateProjectFlowBackdrop open={!settingsOpen && (modePickerOpen || cloneDialogOpen || folderDialogOpen || selectedPath !== null || childTransitioning || projectImportOpen || remoteBrowse !== null)} /> : null}
+			{workSheetOpen ? <CreateWorkProjectSheet open isCreating={isCreating} onOpenChange={setWorkSheetOpen} onSubmit={submitWork} /> : null}
 			{hasModePicker && embedded && !modePickerOpen && !cloneDialogOpen && selectedPath === null && (
 				<div className="flex w-full flex-col items-center gap-3">
 					{cloudEnabled && offering === "cloud" ? (
@@ -2049,6 +2090,14 @@ function ImportSourcePicker({
 			description: t("createProject.workspaceDesc"),
 		},
 	];
+	if (!hostId) {
+		localSources.push({
+			source: "work",
+			icon: <FileText className="size-5" aria-hidden="true" strokeWidth={1.8} />,
+			label: t("createProject.workProject"),
+			description: t("createProject.workProjectDesc"),
+		});
+	}
 	return (
 		<div className={onboardingPanelClass}>
 			{dialog ? (

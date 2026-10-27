@@ -32,8 +32,8 @@ func (s *Service) computeWorkspaceManifest(ctx context.Context, id domain.Sessio
 	if projectOK {
 		projectKind = project.Kind.WithDefault()
 	}
-	switch projectKind {
-	case domain.ProjectKindScratch:
+	switch {
+	case projectKind.IsGitless():
 		files, truncated, err := scratchWorkspaceFiles(rec.Metadata.WorkspacePath)
 		if err != nil {
 			return WorkspaceManifest{}, err
@@ -44,7 +44,7 @@ func (s *Service) computeWorkspaceManifest(ctx context.Context, id domain.Sessio
 			Summary:   workspaceSummaryFromFiles(files),
 			Truncated: truncated,
 		}), nil
-	case domain.ProjectKindWorkspace:
+	case projectKind == domain.ProjectKindWorkspace:
 		return s.workspaceProjectManifest(ctx, rec, project)
 	default:
 		prs, err := s.workspaceComparePRs(ctx, rec.ID)

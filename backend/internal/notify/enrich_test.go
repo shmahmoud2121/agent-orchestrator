@@ -59,6 +59,31 @@ func TestEnrichWatchdogNeedsNoPullRequest(t *testing.T) {
 	}
 }
 
+func TestEnrichWatchdogOriginalChange(t *testing.T) {
+	t.Parallel()
+
+	rec, err := enrich(Intent{
+		Type:               domain.NotificationWatchdogBlocked,
+		SessionID:          "work-1",
+		ProjectID:          "docs",
+		SessionDisplayName: "W1 safety check",
+		Agent:              "Claude Code",
+		Subject:            "notes.txt",
+		Reason:             domain.WorkOriginalChangedReason,
+		SourceKey:          "watchdog:work-1:notes.txt",
+		CreatedAt:          time.Date(2026, 10, 27, 18, 26, 0, 0, time.UTC),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec.Title != "Watchdog blocked W1 safety check" {
+		t.Fatalf("title = %q", rec.Title)
+	}
+	if rec.Body != "Claude Code tried to change an original file: notes.txt." {
+		t.Fatalf("body = %q", rec.Body)
+	}
+}
+
 func TestEnrichReadyToMergeFallsBackWithoutPRTitle(t *testing.T) {
 	t.Parallel()
 

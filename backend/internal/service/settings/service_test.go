@@ -22,6 +22,9 @@ func (*hibernationSettingsStore) SetCloudOffering(context.Context, bool, time.Ti
 func (*hibernationSettingsStore) SetVersionRefresh(context.Context, bool, time.Time) error {
 	return nil
 }
+func (*hibernationSettingsStore) SetDefaultCodeManager(context.Context, domain.AgentHarness, time.Time) error {
+	return nil
+}
 
 func TestChatHibernationGateResetsOnDaemonBoot(t *testing.T) {
 	ctx := context.Background()
@@ -122,6 +125,38 @@ func (s *versionRefreshStore) GetAppSettings(context.Context) (Snapshot, error) 
 
 func (s *versionRefreshStore) SetVersionRefresh(_ context.Context, enabled bool, _ time.Time) error {
 	s.refresh = enabled
+	return nil
+}
+
+func TestDefaultCodeManagerRejectsUnknownHarness(t *testing.T) {
+	ctx := context.Background()
+	store := &defaultCodeManagerStore{}
+	svc := New(store, nil, Offering{}, nil)
+	if _, err := svc.SetDefaultCodeManager(ctx, "not-an-agent"); !errors.Is(err, ErrUnknownHarness) {
+		t.Fatalf("unknown harness: %v", err)
+	}
+	snapshot, err := svc.SetDefaultCodeManager(ctx, domain.HarnessCodex)
+	if err != nil || snapshot.DefaultCodeManager != domain.HarnessCodex || store.harness != domain.HarnessCodex {
+		t.Fatalf("set codex: snapshot=%+v store=%q err=%v", snapshot, store.harness, err)
+	}
+	store.harness = ""
+	got, err := svc.Get(ctx)
+	if err != nil || got.DefaultCodeManager != domain.HarnessClaudeCode {
+		t.Fatalf("empty reads as claude-code: %+v err=%v", got, err)
+	}
+}
+
+type defaultCodeManagerStore struct {
+	hibernationSettingsStore
+	harness domain.AgentHarness
+}
+
+func (s *defaultCodeManagerStore) GetAppSettings(context.Context) (Snapshot, error) {
+	return Snapshot{DefaultCodeManager: s.harness}, nil
+}
+
+func (s *defaultCodeManagerStore) SetDefaultCodeManager(_ context.Context, harness domain.AgentHarness, _ time.Time) error {
+	s.harness = harness
 	return nil
 }
 

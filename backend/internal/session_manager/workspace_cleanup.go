@@ -79,7 +79,7 @@ var replacementCleanupBudget = killTeardownBudget
 // ReplacementCleanupBudget is how long retiring one of the project's
 // orchestrators for a replacement may spend in its Cleanup steps.
 func ReplacementCleanupBudget(project domain.ProjectRecord) time.Duration {
-	if project.Kind.WithDefault() == domain.ProjectKindScratch {
+	if project.Kind.WithDefault().IsGitless() {
 		return 0
 	}
 	for _, step := range project.Config.PreRemove {
@@ -98,7 +98,7 @@ func (m *Manager) runPreRemoveContext(ctx context.Context, projectID domain.Proj
 	if err != nil {
 		return err
 	}
-	if project.Kind.WithDefault() == domain.ProjectKindScratch || len(project.Config.PreRemove) == 0 {
+	if project.Kind.WithDefault().IsGitless() || len(project.Config.PreRemove) == 0 {
 		return nil
 	}
 	if _, err := os.Stat(workspacePath); errors.Is(err, os.ErrNotExist) {

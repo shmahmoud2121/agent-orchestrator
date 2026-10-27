@@ -54,3 +54,34 @@ Each block is also one line in `watchdog.log` under AO's data directory
 (`~/.ao`, or `AO_DATA_DIR`). The line records the time, project, session, AI,
 tool, path, and whether the call was blocked or the worker was stopped. The
 file is capped the same way as `hooks.log`.
+
+## Read-only originals
+
+A Work project's original folders and files are a second list, next to the
+protected-file list. The person added them. Agents may read them. They may
+not edit, move, rename, or delete them, and they may not copy or redirect
+output into them. The list is applied to every Work session, including the
+manager, for Claude Code and Codex, through the same pre-tool-use hook.
+
+A blocked call uses the same alert, the same 3-strike stop, and the same
+audit log. The reason is "tried to change an original file".
+
+The check reads each shell command word by word. It follows `cd`,
+`Set-Location` and `pushd` inside one command, and it opens wrapped commands:
+`bash -c`, `sh -c`, `powershell -Command`, `pwsh -c`, `powershell
+-EncodedCommand` and `cmd /c`. It also blocks `perl -i` and `ruby -i`, `find`
+with `-delete` or `-exec rm`, `xargs rm`, and git commands that change files
+(read-only ones such as `git status`, `git log` and `git diff` stay allowed).
+Removing or moving a folder that holds an original counts as changing it.
+
+Command inspection cannot catch every write. These still get past it:
+
+- inline scripts: `python -c`, `node -e`, and the like;
+- a script file that writes, for example `python fix.py` or `powershell -File fix.ps1`;
+- programs the check does not know.
+
+On Mac, Linux, and WSL2 the Claude Code sandbox denies those writes as well:
+a Work worker may write only in its task folder and its scratch folder. On
+native Windows the sandbox does not run. There the built-in instructions and
+this watchdog are the guards. Running workers inside WSL2 (Work step W5) is
+the real fix there.

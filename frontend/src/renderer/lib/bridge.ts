@@ -9,6 +9,8 @@ export const aoBridge: AoBridge =
 		app: {
 			getVersion: async () => "0.0.0-preview",
 			chooseDirectory: async () => null,
+			chooseFiles: async () => [],
+			documentsPath: async () => "",
 			checkGitRepository: async () => true,
 			openExternal: async (url: string) => {
 				window.open(url, "_blank", "noopener,noreferrer");

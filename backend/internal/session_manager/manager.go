@@ -66,6 +66,15 @@ var (
 	// ErrScratchBranchUnsupported means a caller tried to force git branch
 	// semantics onto a scratch project.
 	ErrScratchBranchUnsupported = errors.New("session: scratch projects do not support branches")
+	// ErrWorkBranchUnsupported means a caller tried to force a git branch onto
+	// a Work project. Work sessions have no repository.
+	ErrWorkBranchUnsupported = errors.New("session: work projects do not support branches")
+	// ErrWorkHarnessUnwatched means a Work session named an AI the watchdog
+	// does not cover.
+	ErrWorkHarnessUnwatched = errors.New(domain.WorkHarnessUnwatchedMessage)
+	// ErrWorkGuardUnavailable means a Work session would have started without
+	// every original-file guard.
+	ErrWorkGuardUnavailable = errors.New(domain.WorkGuardUnavailableMessage)
 	// ErrNotResumable means a terminated session cannot be relaunched: its adapter
 	// cannot natively resume it AND it has no prompt to fresh-launch from, and it is
 	// not an orchestrator (orchestrators are promptless by design and relaunch fresh
@@ -993,6 +1002,9 @@ func (m *Manager) Spawn(ctx context.Context, cfg ports.SpawnConfig) (domain.Sess
 	if projectKind == domain.ProjectKindScratch && strings.TrimSpace(cfg.Branch) != "" {
 		return domain.SessionRecord{}, 0, 0, fmt.Errorf("spawn: %w", ErrScratchBranchUnsupported)
 	}
+	if projectKind == domain.ProjectKindWork && strings.TrimSpace(cfg.Branch) != "" {
+		return domain.SessionRecord{}, 0, 0, fmt.Errorf("spawn: %w", ErrWorkBranchUnsupported)
+	}
 	if cfg.ParentSessionID != "" && cfg.AgentConfig.Permissions == "" {
 		permissions, err := m.inheritedSpawnPermissions(ctx, cfg.ProjectID, cfg.ParentSessionID)
 		if err != nil {
@@ -1012,6 +1024,9 @@ func (m *Manager) Spawn(ctx context.Context, cfg ports.SpawnConfig) (domain.Sess
 	// gate so a retired or unknown agent is not reported as WORKER_SANDBOX_REQUIRED.
 	if _, ok := m.agents.Agent(cfg.Harness); !ok {
 		return domain.SessionRecord{}, 0, 0, fmt.Errorf("spawn: %w", unavailableHarnessError(cfg.Harness))
+	}
+	if projectKind == domain.ProjectKindWork && !domain.WorkHarnessWatched(cfg.Harness) {
+		return domain.SessionRecord{}, 0, 0, fmt.Errorf("spawn: %w", ErrWorkHarnessUnwatched)
 	}
 	if err := refuseUnsandboxedWorkerForProject(project, cfg.Kind, cfg.Harness, false); err != nil {
 		return domain.SessionRecord{}, 0, 0, fmt.Errorf("spawn: %w", err)
@@ -1389,6 +1404,10 @@ func (m *Manager) Spawn(ctx context.Context, cfg ports.SpawnConfig) (domain.Sess
 	// Everything above is shared: project, harness, prompts, seed row, worktree,
 	// provisioning, attachments. From here the two modes launch different
 	// controllers, and exactly one of them runs.
+	if err := m.refreshWorkInstructions(id, cfg.Harness, project, cfg.Kind, ws.Path, &systemPrompt, &systemPromptFile); err != nil {
+		m.rollbackSeedSpawnWorkspace(ctx, rec, ws, workspaceProject, false, false)
+		return domain.SessionRecord{}, 0, 0, wrapSpawnStage(id, ErrSpawnSystemPrompt, err)
+	}
 	if mode == domain.SessionModeChat {
 		rec, err = m.launchChatController(ctx, chatSpawn{
 			cfg:              cfg,
@@ -1467,7 +1486,7 @@ func (m *Manager) Spawn(ctx context.Context, cfg ports.SpawnConfig) (domain.Sess
 		m.rollbackSeedSpawnWorkspace(ctx, rec, ws, workspaceProject, false, false)
 		return domain.SessionRecord{}, 0, 0, wrapSpawnStage(id, ErrSpawnPrepare, err)
 	}
-	workerSandbox := m.workerSandboxLaunchFields(cfg.Kind, project, ws.Path)
+	workerSandbox := m.workerSandboxLaunchFields(cfg.Kind, project, ws.Path, id)
 	launchCfg := ports.LaunchConfig{
 		DataDir:          m.dataDir,
 		SessionID:        string(id),
@@ -1876,7 +1895,7 @@ type defaultBranchRefreshTarget struct {
 }
 
 func (m *Manager) refreshDefaultBranchesBestEffort(ctx context.Context, project domain.ProjectRecord) map[string]string {
-	if project.Kind.WithDefault() == domain.ProjectKindScratch {
+	if project.Kind.WithDefault().IsGitless() {
 		return nil
 	}
 	if strings.TrimSpace(project.Path) == "" {
@@ -1960,7 +1979,7 @@ func (m *Manager) createSessionWorkspace(ctx context.Context, project domain.Pro
 	}
 	if projectKind != domain.ProjectKindWorkspace {
 		baseBranch := project.Config.WorktreeBaseBranch()
-		if projectKind == domain.ProjectKindScratch {
+		if projectKind.IsGitless() {
 			baseBranch = ""
 		}
 		workspaceCfg := ports.WorkspaceConfig{
@@ -1972,6 +1991,13 @@ func (m *Manager) createSessionWorkspace(ctx context.Context, project domain.Pro
 			FreshBranch:   cfg.TaskPreparation != "",
 			BaseBranch:    baseBranch,
 			BaseRef:       baseRefs[filepath.Clean(project.Path)],
+		}
+		if projectKind == domain.ProjectKindWork {
+			workspaceCfg.RepoPath = project.Path
+			workspaceCfg.TaskTitle = cfg.Prompt
+			workspaceCfg.Branch = ""
+			workspaceCfg.BaseBranch = ""
+			workspaceCfg.BaseRef = ""
 		}
 		ws, err := m.workspace.Create(ctx, workspaceCfg)
 		if errors.Is(err, ports.ErrWorkspaceBranchCheckedOutElsewhere) && cfg.Kind == domain.KindOrchestrator && cfg.Branch == "" {
@@ -2554,6 +2580,7 @@ func (m *Manager) recordTermination(ctx context.Context, id domain.SessionID, dr
 	if err := m.lcm.MarkTerminated(ctx, id); err != nil {
 		return fmt.Errorf("kill %s: %w", id, errors.Join(err, markerErr))
 	}
+	m.removeWorkScratch(ctx, id)
 	m.cleanupSystemPromptDir(id)
 	if markerErr != nil {
 		return fmt.Errorf("kill %s: clear restore marker: %w", id, markerErr)
@@ -2726,7 +2753,7 @@ func (m *Manager) kill(ctx context.Context, id domain.SessionID, backgroundClean
 			if err != nil {
 				return KillResult{}, err
 			}
-			if project.Kind.WithDefault() != domain.ProjectKindScratch && len(project.Config.PreRemove) > 0 {
+			if !project.Kind.WithDefault().IsGitless() && len(project.Config.PreRemove) > 0 {
 				if err := m.recordWorkspaceCleanup(ctx, rec, domain.DispositionPending, ""); err != nil {
 					return KillResult{}, err
 				}
@@ -3019,7 +3046,7 @@ func (m *Manager) RestoreWithMode(ctx context.Context, id domain.SessionID) (Res
 	// the workspace landed has neither WorkspacePath nor Branch, and there is
 	// nothing meaningful to restore from. Surface this as a typed 409 instead of
 	// letting workspace.Restore fail with an opaque wrapped error.
-	if meta.WorkspacePath == "" || (meta.Branch == "" && projectKindForSession(project, rec.ProjectID) != domain.ProjectKindScratch) {
+	if workspaceHandleIncomplete(meta, projectKindForSession(project, rec.ProjectID)) {
 		return RestoreResult{}, fmt.Errorf("restore %s: %w", id, ErrIncompleteHandle)
 	}
 	// Resumability is decided inside restoreArgv, not here. A promptless session
@@ -3452,8 +3479,7 @@ func (m *Manager) resumeAgentRecordWithReservedGeneration(
 		return RestoreResult{}, fmt.Errorf("%s %s: %w", operation, rec.ID, err)
 	}
 	meta := rec.Metadata
-	if meta.WorkspacePath == "" ||
-		(meta.Branch == "" && projectKindForSession(project, rec.ProjectID) != domain.ProjectKindScratch) {
+	if workspaceHandleIncomplete(meta, projectKindForSession(project, rec.ProjectID)) {
 		return RestoreResult{}, fmt.Errorf("%s %s: %w", operation, rec.ID, ErrIncompleteHandle)
 	}
 	ws := ports.WorkspaceInfo{
@@ -3521,6 +3547,7 @@ func (m *Manager) relaunchSessionWithPolicyAndGeneration(ctx context.Context, op
 	if err != nil {
 		return RestoreResult{}, fmt.Errorf("%s %s: system prompt: %w", operation, rec.ID, err)
 	}
+	systemPrompt = applyWorkOriginals(systemPrompt, project, workWriteDir(project, rec.Kind, ws.Path))
 	systemPrompt, err = m.systemPromptForNativeRestore(ctx, rec, systemPrompt)
 	if err != nil {
 		return RestoreResult{}, fmt.Errorf("%s %s: switched continuation: %w", operation, rec.ID, err)
@@ -3589,7 +3616,7 @@ func (m *Manager) relaunchSessionWithPolicyAndGeneration(ctx context.Context, op
 			}
 		}
 	}
-	workerSandbox := m.workerSandboxLaunchFields(rec.Kind, project, ws.Path)
+	workerSandbox := m.workerSandboxLaunchFields(rec.Kind, project, ws.Path, rec.ID)
 	var argv []string
 	var initialization ports.NativeRestoreInitialization
 	var delivery ports.PromptDeliveryStrategy
@@ -3960,7 +3987,7 @@ func (m *Manager) reconcileLive(ctx context.Context, rec domain.SessionRecord) e
 		return nil
 	}
 	projectKind := projectKindForSession(project, rec.ProjectID)
-	if rec.Metadata.WorkspacePath == "" || (rec.Metadata.Branch == "" && projectKind != domain.ProjectKindScratch) {
+	if workspaceHandleIncomplete(rec.Metadata, projectKind) {
 		// The previous daemon died before Spawn committed a workspace (e.g. the
 		// app was closed while "Preparing the worker terminal" was still
 		// creating the worktree). Nothing observable was ever built, so — same
@@ -5606,7 +5633,7 @@ func defaultSessionBranch(id domain.SessionID, kind domain.SessionKind, prefix, 
 // DefaultSpawnBranch returns AO's generated work branch for a spawn. Explicit
 // user-provided branches bypass this helper.
 func DefaultSpawnBranch(id domain.SessionID, kind domain.SessionKind, prefix string, projectKind domain.ProjectKind, dataDir string) string {
-	if projectKind == domain.ProjectKindScratch {
+	if projectKind.IsGitless() {
 		return ""
 	}
 	branchNamespace := generatedBranchNamespace(dataDir)
@@ -5679,7 +5706,7 @@ func promptRoleForKind(kind domain.SessionKind) sessionPromptRole {
 
 func promptProjectContext(projectID domain.ProjectID, project domain.ProjectRecord) promptProject {
 	cfg := project.Config.WithDefaults()
-	if project.Kind.WithDefault() == domain.ProjectKindScratch || cfg.DefaultBranch == domain.DefaultBranchAuto {
+	if project.Kind.WithDefault().IsGitless() || cfg.DefaultBranch == domain.DefaultBranchAuto {
 		cfg.DefaultBranch = ""
 	}
 	id := project.ID
@@ -5862,7 +5889,13 @@ func (m *Manager) buildSystemPrompt(ctx context.Context, kind domain.SessionKind
 	if kind == domain.KindWorker && requestedOutput == domain.RequestedOutputArtifact {
 		cfg.AdditionalSections = append(cfg.AdditionalSections, artifactOutputPrompt)
 	}
-	return buildSystemPromptText(cfg), nil
+	writeDir := ""
+	if project.Kind.WithDefault() == domain.ProjectKindWork && kind == domain.KindWorker && m.store != nil && sessionID != "" {
+		if rec, ok, err := m.store.GetSession(ctx, sessionID); err == nil && ok {
+			writeDir = rec.Metadata.WorkspacePath
+		}
+	}
+	return applyWorkOriginals(buildSystemPromptText(cfg), project, workWriteDir(project, kind, writeDir)), nil
 }
 
 // aoSkillPointer is appended to every agent system prompt. It points the agent
@@ -6608,6 +6641,10 @@ func (m *Manager) prepareWorkspace(ctx context.Context, agent ports.Agent, id do
 			return fmt.Errorf("pre-launch: %w", err)
 		}
 	}
+	if err := m.ensureWorkGuards(ctx, agent, id, projectID, workspacePath, env); err != nil {
+		m.cleanupPreparedAgentWorkspace(ctx, agent, id, workspacePath, env)
+		return err
+	}
 	return nil
 }
 
@@ -7162,19 +7199,37 @@ func firstNonEmptyString(values ...string) string {
 // launches, with the paths its protected-file rules are built from. Every
 // launch and restore calls it, so the rules always match the current paths.
 // Non-workers get a zero policy so adapters leave them unsandboxed.
-func (m *Manager) workerSandboxLaunchFields(kind domain.SessionKind, project domain.ProjectRecord, workspacePath string) domain.WorkerSandboxConfig {
-	if kind != domain.KindWorker {
-		return domain.WorkerSandboxConfig{}
+func (m *Manager) workerSandboxLaunchFields(kind domain.SessionKind, project domain.ProjectRecord, workspacePath string, sessionID domain.SessionID) domain.WorkerSandboxConfig {
+	var sandbox domain.WorkerSandboxConfig
+	if kind == domain.KindWorker {
+		sandbox = project.Config.WorkerSandbox
+		home, _ := os.UserHomeDir()
+		sandbox.Launch = domain.WorkerSandboxLaunch{
+			ProjectPath:   project.Path,
+			WorkspacePath: workspacePath,
+			HomeDir:       home,
+		}
+		if m.dataDir != "" {
+			sandbox.Launch.APITokenPath = apitoken.Path(m.dataDir)
+		}
 	}
-	sandbox := project.Config.WorkerSandbox
-	home, _ := os.UserHomeDir()
-	sandbox.Launch = domain.WorkerSandboxLaunch{
-		ProjectPath:   project.Path,
-		WorkspacePath: workspacePath,
-		HomeDir:       home,
+	if project.Kind.WithDefault() != domain.ProjectKindWork || project.Config.Work == nil {
+		return sandbox
 	}
-	if m.dataDir != "" {
-		sandbox.Launch.APITokenPath = apitoken.Path(m.dataDir)
+	if kind == domain.KindWorker {
+		sandbox = disableWorkSandboxWhenUnavailable(project, sandbox)
+		sandbox.Launch.WriteDeny = append([]string(nil), project.Config.Work.Sources...)
+		if strings.TrimSpace(workspacePath) != "" {
+			sandbox.Launch.WriteAllow = append(sandbox.Launch.WriteAllow, workspacePath)
+		}
+		if scratch, err := domain.WorkScratchDir(m.dataDir, project.ID, string(sessionID)); err == nil && scratch != "" {
+			sandbox.Launch.WriteAllow = append(sandbox.Launch.WriteAllow, scratch)
+		}
+	} else {
+		off := false
+		sandbox.Enabled = &off
+		sandbox.RequireSandbox = &off
 	}
+	sandbox.Launch.ReadableDirs = domain.WorkReadableDirs(project, domain.HarnessClaudeCode)
 	return sandbox
 }

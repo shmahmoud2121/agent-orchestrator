@@ -117,6 +117,8 @@ window.ao = {
 	app: {
 		getVersion: async () => "0.0.0-test",
 		chooseDirectory: async () => null,
+		chooseFiles: async () => [],
+		documentsPath: async () => "C:\\Users\\me\\Documents",
 		checkGitRepository: async () => true,
 		openExternal: async () => undefined,
 		scanImportFolder: async ({ path }: { path: string }) => ({ path, repos: [] }),

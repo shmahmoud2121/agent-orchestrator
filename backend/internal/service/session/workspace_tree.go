@@ -75,7 +75,7 @@ func (s *Service) ListWorkspaceTree(ctx context.Context, id domain.SessionID, ra
 	if projectOK {
 		projectKind = project.Kind.WithDefault()
 	}
-	if projectKind == domain.ProjectKindScratch {
+	if projectKind.IsGitless() {
 		entries, truncated, err := scratchWorkspaceTreeChildren(rec.Metadata.WorkspacePath, dir)
 		if err != nil {
 			return WorkspaceTree{}, err

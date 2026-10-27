@@ -524,6 +524,13 @@ func shellWords(command string) []string {
 		r := runes[i]
 		switch {
 		case quote != 0:
+			// Inside double quotes, \" is a literal quote (POSIX). Other
+			// backslashes stay, so Windows paths are unchanged.
+			if quote == '"' && r == '\\' && i+1 < len(runes) && runes[i+1] == '"' {
+				b.WriteRune('"')
+				i++
+				continue
+			}
 			if r == quote {
 				quote = 0
 				continue

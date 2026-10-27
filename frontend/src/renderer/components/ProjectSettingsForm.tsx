@@ -7,6 +7,7 @@ import { useRemoteProjectQuery, workspaceQueryKeyForHost, workspaceQueryOptions 
 import { useSettings } from "../hooks/useSettings";
 import { useConnectedHosts } from "../hooks/useHostConnection";
 import { apiClient, apiErrorMessage } from "../lib/api-client";
+import { WorkProjectSettings } from "./WorkProjectSettings";
 import { clientForHost } from "../lib/host-clients";
 import { LOCAL_HOST, refKey } from "../lib/hosts";
 import { isLaunchableAgent } from "../lib/agent-select-options";
@@ -139,11 +140,12 @@ function SettingsBody({ project, projectId, hostId, hostConnected, onSaved, sect
 	const workspaceQuery = useQuery({ ...workspaceQueryOptions, enabled: !hostId });
 	const remoteProjectQuery = useRemoteProjectQuery(hostId ?? "", projectId);
 	const config = project.config ?? {};
-	const isScratchProject = project.kind === "scratch";
+	const isWorkProject = project.kind === "work";
+	const isGitlessProject = isWorkProject || project.kind === "scratch";
 	// The daemon refuses to merge a workspace project with verifyCommand set.
 	const verifiable = project.kind === "single_repo";
 	const { settings } = useSettings(hostId);
-	const intakeVisible = !isScratchProject && !!settings?.trackerIntakeEnabled;
+	const intakeVisible = !isGitlessProject && !!settings?.trackerIntakeEnabled;
 	const workspace = hostId ? remoteProjectQuery.data : workspaceQuery.data?.find((item) => item.id === projectId);
 	const activeOrchestrator = newestActiveOrchestrator(workspace?.sessions ?? []);
 	const intake: TrackerIntakeConfig = config.trackerIntake ?? {};
@@ -192,22 +194,34 @@ function SettingsBody({ project, projectId, hostId, hostConnected, onSaved, sect
 			project_id: projectId,
 		});
 		const displayName = values.displayName.trim();
-		const { model: _legacyModel, mode: _legacyMode, effort: _legacyEffort, permissions: _legacyPermissions, ...sharedAgentConfig } = config.agentConfig ?? {};
+		let sourceConfig = config;
+		if (isWorkProject) {
+			const current = await (hostId ? clientForHost(hostId) : apiClient).GET("/api/v1/projects/{id}", {
+				params: { path: { id: projectId } },
+			});
+			if (current.error || current.data?.status !== "ok" || !current.data.project) {
+				throw new Error(current.error ? apiErrorMessage(current.error) : t("settings.project.degraded"));
+			}
+			const latest = current.data.project as Project;
+			sourceConfig = latest.config ?? {};
+		}
+		const agentConfigBase = isWorkProject ? sourceConfig : config;
+		const { model: _legacyModel, mode: _legacyMode, effort: _legacyEffort, permissions: _legacyPermissions, ...sharedAgentConfig } = agentConfigBase.agentConfig ?? {};
 		const existingReviewer = config.reviewers?.[0];
 		const existingReviewerAgentConfig = existingReviewer?.harness === values.reviewerHarness ? existingReviewer.agentConfig : undefined;
-		const next: ProjectConfig = isScratchProject
+		const next: ProjectConfig = isGitlessProject
 			? {
-					...scratchSupportedConfig(config),
+					...scratchSupportedConfig(sourceConfig),
 					worker: {
-						...config.worker,
+						...sourceConfig.worker,
 						agent: values.workerAgent,
-						agentConfig: buildRoleAgentConfig(config.worker?.agentConfig, values.workerModel, values.workerMode, values.workerEffort, values.workerPermissions),
+						agentConfig: buildRoleAgentConfig(sourceConfig.worker?.agentConfig, values.workerModel, values.workerMode, values.workerEffort, values.workerPermissions),
 					},
 					orchestrator: {
-						...config.orchestrator,
+						...sourceConfig.orchestrator,
 						agent: values.orchestratorAgent,
 						agentConfig: buildRoleAgentConfig(
-							config.orchestrator?.agentConfig,
+							sourceConfig.orchestrator?.agentConfig,
 							values.orchestratorModel,
 							values.orchestratorMode,
 							values.orchestratorEffort,
@@ -218,6 +232,7 @@ function SettingsBody({ project, projectId, hostId, hostConnected, onSaved, sect
 						...sharedAgentConfig,
 						permissions: undefined,
 					}),
+					...(isWorkProject ? workerSandboxConfig(values) : {}),
 				}
 			: {
 					...config,
@@ -340,24 +355,28 @@ function SettingsBody({ project, projectId, hostId, hostConnected, onSaved, sect
 		}
 	};
 	return <><ProjectSettingsEditor initialValues={initialValues} section={section} disabled={!hostConnected}
-		capabilities={{ workflow: !isScratchProject, sessionPrefix: !isScratchProject, intake: intakeVisible, reviewer: !isScratchProject, requiredAgents: true, workersRequestReview: !isScratchProject, verifyCommand: verifiable, pushAfterMerge: verifiable, workerSandboxAvailable: agentsQuery.data?.workerSandboxAvailable }}
-		details={[{ label: t("settings.project.path"), value: project.path, href: hostId ? undefined : `file://${encodeURI(project.path)}` }, { label: t("settings.project.repo"), value: project.repo || "—", href: project.repo ? repositoryHref(project.repo) : undefined }]}
+		capabilities={{ workflow: !isGitlessProject, sessionPrefix: !isGitlessProject, intake: intakeVisible, reviewer: !isGitlessProject, requiredAgents: true, workersRequestReview: !isGitlessProject, verifyCommand: verifiable, pushAfterMerge: verifiable, workerSandboxAvailable: agentsQuery.data?.workerSandboxAvailable }}
+		details={[
+			{ label: t("settings.project.path"), value: project.path, href: hostId ? undefined : `file://${encodeURI(project.path)}` },
+			...(isWorkProject ? [] : [{ label: t("settings.project.repo"), value: project.repo || "—", href: project.repo ? repositoryHref(project.repo) : undefined }]),
+		]}
+		generalExtra={isWorkProject ? <WorkProjectSettings projectId={projectId} project={project} sessions={workspace?.sessions ?? []} hostId={hostId} /> : undefined}
 		workspaceRepos={project.kind === "workspace" ? project.workspaceRepos ?? [] : undefined} repository={project.repo}
 		modelScope={() => projectId} defaultReviewer={(draft) => WORKER_DEFAULT_REVIEWERS[draft.workerAgent] ?? "claude-code"}
 		reviewerWarning={reviewerTrustWarning} save={save} saveUnchanged onSaveState={onSaveState}
 		modelHostId={hostId}
-		renderAgent={(props) => <LocalAgentPicker {...props} projectId={projectId} hostId={hostId} agentsQuery={agentsQuery} />} />
- {section === "general" && hostConnected && !isScratchProject ? <RepoTrustSettings projectId={projectId} hostId={hostId} /> : null}</>;
+		renderAgent={(props) => <LocalAgentPicker {...props} projectId={projectId} hostId={hostId} agentsQuery={agentsQuery} workProject={isWorkProject} />} />
+ {section === "general" && hostConnected && !isGitlessProject ? <RepoTrustSettings projectId={projectId} hostId={hostId} /> : null}</>;
 }
 
-function LocalAgentPicker({ role, draft, value, invalid, onChange, projectId, hostId, agentsQuery }: ProjectAgentPickerProps & { projectId: string; hostId?: string; agentsQuery: ReturnType<typeof useAgentReadinessQuery> }) {
+function LocalAgentPicker({ role, draft, value, invalid, onChange, projectId, hostId, agentsQuery, workProject = false }: ProjectAgentPickerProps & { projectId: string; hostId?: string; agentsQuery: ReturnType<typeof useAgentReadinessQuery>; workProject?: boolean }) {
 	const { t } = useTranslation();
 	useEnsureAgentReadiness({ agentIds: [draft.workerAgent, draft.orchestratorAgent, draft.reviewerHarness], enabled: role === "worker" && Boolean(draft.workerAgent || draft.orchestratorAgent || draft.reviewerHarness), hostId, purpose: hostId ? "launch" : "display" });
 	const disabled = agentsQuery.isFetching && agentsQuery.data === undefined;
 	const agents = hostId ? agentsQuery.data?.agents.filter(isLaunchableAgent) : agentsQuery.data?.agents;
 	return role === "reviewer"
 		? <ReviewerSelect value={value} model={draft.reviewerModel} mode={draft.reviewerMode} projectId={projectId} hostId={hostId} harnessOnly defaultHarness={WORKER_DEFAULT_REVIEWERS[draft.workerAgent] ?? "claude-code"} triggerClassName="w-full" onChange={onChange} ariaLabel={t("settings.project.defaultReviewer")} agents={agents} disabled={disabled} />
-		: <RequiredAgentField id={`${role}Agent`} variant="settings-control" value={value} placeholder={t(role === "worker" ? "settings.project.selectWorker" : "settings.project.selectOrchestrator")} label={t(role === "worker" ? "settings.project.defaultWorker" : "settings.project.defaultOrchestrator")} agents={agents} hostId={hostId} disabled={disabled} invalid={invalid} sandboxRequired={role === "worker" && draft.workerSandboxRequireSandbox !== false} showUnwatched={role === "worker" && draft.workerSandboxRequireSandbox === false} sandboxAvailable={agentsQuery.data?.workerSandboxAvailable} onChange={onChange} />;
+		: <RequiredAgentField id={`${role}Agent`} variant="settings-control" value={value} placeholder={t(role === "worker" ? "settings.project.selectWorker" : "settings.project.selectOrchestrator")} label={t(role === "worker" ? "settings.project.defaultWorker" : "settings.project.defaultOrchestrator")} agents={agents} hostId={hostId} disabled={disabled} invalid={invalid} sandboxRequired={role === "worker" && !workProject && draft.workerSandboxRequireSandbox !== false} watchedOnly={workProject} showUnwatched={workProject || (role === "worker" && draft.workerSandboxRequireSandbox === false)} sandboxAvailable={agentsQuery.data?.workerSandboxAvailable} onChange={onChange} />;
 }
 
 function repositoryHref(repository: string): string | undefined {

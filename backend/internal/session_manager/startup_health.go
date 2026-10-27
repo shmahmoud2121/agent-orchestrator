@@ -46,8 +46,7 @@ func (m *Manager) checkSessionHealth(ctx context.Context, rec domain.SessionReco
 	}
 	// Preserve cleanup of interrupted spawns that never committed a workspace.
 	// Their client request IDs must remain retryable after a daemon crash.
-	if rec.Metadata.WorkspacePath == "" ||
-		(rec.Metadata.Branch == "" && projectKindForSession(project, rec.ProjectID) != domain.ProjectKindScratch) {
+	if workspaceHandleIncomplete(rec.Metadata, projectKindForSession(project, rec.ProjectID)) {
 		m.rollbackSpawnSeedRow(ctx, rec.ID)
 		return nil
 	}

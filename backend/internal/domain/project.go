@@ -9,6 +9,9 @@ const (
 	ProjectKindWorkspace ProjectKind = "workspace"
 	// ProjectKindScratch is AO-managed plain-directory work for first-run use.
 	ProjectKindScratch ProjectKind = "scratch"
+	// ProjectKindWork is a document project. Agents read the person's originals
+	// and write only into a results folder. There is no git repository.
+	ProjectKindWork ProjectKind = "work"
 	// RootWorkspaceRepoName is the reserved repo_name used for the parent root repo.
 	RootWorkspaceRepoName = "__root__"
 )
@@ -22,6 +25,18 @@ func (k ProjectKind) WithDefault() ProjectKind {
 		return ProjectKindSingleRepo
 	}
 	return k
+}
+
+// IsGitless reports whether sessions for this kind have no repository, branch,
+// worktree, or pull request. Scratch and Work are gitless. An empty kind is a
+// single-repo project, so it is not gitless.
+func (k ProjectKind) IsGitless() bool {
+	switch k.WithDefault() {
+	case ProjectKindScratch, ProjectKindWork:
+		return true
+	default:
+		return false
+	}
 }
 
 // ProjectRecord is the durable project registry row used by storage and services.

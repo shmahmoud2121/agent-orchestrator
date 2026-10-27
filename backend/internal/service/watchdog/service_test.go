@@ -98,6 +98,59 @@ func TestDecideBlocksProtectedRead(t *testing.T) {
 	}
 }
 
+func TestDecideBlocksOriginalWrite(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "originals")
+	results := filepath.Join(root, "results")
+	if err := os.MkdirAll(source, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(results, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	original := filepath.Join(source, "notes.txt")
+	if err := os.WriteFile(original, []byte("typo\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	notes := &fakeNotifier{}
+	svc := &Service{
+		DataDir: filepath.Join(root, "data"),
+		HomeDir: filepath.Join(root, "home"),
+		Notify:  notes,
+		Store: fakeStore{
+			ok: true,
+			session: domain.SessionRecord{
+				ID: "work-1", ProjectID: "docs", Kind: domain.KindWorker, Harness: domain.HarnessClaudeCode,
+				Metadata: domain.SessionMetadata{WorkspacePath: results},
+			},
+			hasProj: true,
+			project: domain.ProjectRecord{
+				ID: "docs", Kind: domain.ProjectKindWork, Path: results,
+				Config: domain.ProjectConfig{Work: &domain.WorkConfig{
+					Sources: []string{source}, ResultsDir: results,
+				}},
+			},
+		},
+	}
+	blocked, err := svc.Decide(context.Background(), "work-1", "Edit", json.RawMessage(`{"file_path":`+quote(original)+`}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if blocked.Action != "deny" || blocked.Reason != domain.WorkOriginalChangedReason {
+		t.Fatalf("edit original = %+v", blocked)
+	}
+	if len(notes.intents) != 1 || notes.intents[0].Reason != domain.WorkOriginalChangedReason || notes.intents[0].Subject != blocked.Path {
+		t.Fatalf("alert = %+v", notes.intents)
+	}
+	allowed, err := svc.Decide(context.Background(), "work-1", "Read", json.RawMessage(`{"file_path":`+quote(original)+`}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if allowed.Action != "allow" {
+		t.Fatalf("read original = %+v, want allow", allowed)
+	}
+}
+
 func quote(s string) string {
 	b, _ := json.Marshal(s)
 	return string(b)

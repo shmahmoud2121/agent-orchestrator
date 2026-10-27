@@ -49,6 +49,15 @@ type WorkerSandboxLaunch struct {
 	HomeDir string
 	// APITokenPath is AO's install token file (apitoken.Path).
 	APITokenPath string
+	// WriteAllow is the only folders a Work worker may write. Empty leaves the
+	// sandbox's own write rules unchanged, which Code worktrees rely on.
+	WriteAllow []string
+	// WriteDeny is the Work project's original files and folders. Empty means
+	// this launch has no extra write-deny list.
+	WriteDeny []string
+	// ReadableDirs are folders Claude Code may be given with --add-dir.
+	// Empty for every other launch. Codex must not receive them.
+	ReadableDirs []string
 }
 
 // IsEnabled reports whether worker sandboxing is on. A missing config (nil

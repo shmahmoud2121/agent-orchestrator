@@ -1635,6 +1635,12 @@ func mapSessionError(err error) error {
 			"This session already has an agent switch in progress", nil)
 	case errors.Is(err, sessionmanager.ErrScratchBranchUnsupported):
 		return apierr.Invalid("SCRATCH_BRANCH_UNSUPPORTED", err.Error(), nil)
+	case errors.Is(err, sessionmanager.ErrWorkBranchUnsupported):
+		return apierr.Invalid("WORK_BRANCH_UNSUPPORTED", "Work projects do not support branches.", nil)
+	case errors.Is(err, sessionmanager.ErrWorkHarnessUnwatched):
+		return apierr.Invalid("WORK_HARNESS_UNWATCHED", domain.WorkHarnessUnwatchedMessage, nil)
+	case errors.Is(err, sessionmanager.ErrWorkGuardUnavailable):
+		return apierr.Conflict("WORK_GUARD_UNAVAILABLE", domain.WorkGuardUnavailableMessage, nil)
 	case errors.Is(err, ports.ErrWorkspaceBranchCheckedOutElsewhere):
 		return apierr.Conflict("BRANCH_CHECKED_OUT_ELSEWHERE", err.Error(), nil)
 	case errors.Is(err, ports.ErrWorkspaceDefaultBranchUnresolved):

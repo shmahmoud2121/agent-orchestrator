@@ -1408,7 +1408,7 @@ func (m *Manager) prepareTargetActivation(ctx context.Context, store ports.Agent
 	if err != nil {
 		return preparedTargetActivation{}, err
 	}
-	workerSandbox := m.workerSandboxLaunchFields(rec.Kind, project, rec.Metadata.WorkspacePath)
+	workerSandbox := m.workerSandboxLaunchFields(rec.Kind, project, rec.Metadata.WorkspacePath, rec.ID)
 	launch := ports.LaunchConfig{
 		DataDir: m.dataDir, SessionID: string(rec.ID), WorkspacePath: rec.Metadata.WorkspacePath,
 		Kind: rec.Kind, SystemPrompt: systemPrompt, SystemPromptFile: systemFile,

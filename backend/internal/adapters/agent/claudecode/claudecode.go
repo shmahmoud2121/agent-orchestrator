@@ -195,6 +195,7 @@ func (p *Plugin) GetLaunchCommand(ctx context.Context, cfg ports.LaunchConfig) (
 	if err != nil {
 		return nil, err
 	}
+	providerArgs = appendClaudeReadableDirs(providerArgs, cfg.WorkerSandbox.Launch.ReadableDirs)
 	return agentruntime.BuildLaunchCommand(agentruntime.LaunchConfig{
 		Harness:          agentruntime.HarnessClaudeCode,
 		Binary:           binary,
@@ -222,6 +223,19 @@ var workerPublishDenyRules = []string{
 	"Bash(git push:*)",
 	"Bash(gh pr create:*)",
 	"Bash(gh pr merge:*)",
+}
+
+// appendClaudeReadableDirs adds Work originals as readable folders. The flag
+// is omitted when the list is empty so Code launches stay unchanged.
+func appendClaudeReadableDirs(args []string, dirs []string) []string {
+	for _, dir := range dirs {
+		dir = strings.TrimSpace(dir)
+		if dir == "" {
+			continue
+		}
+		args = append(args, "--add-dir", dir)
+	}
+	return args
 }
 
 // workerDisallowedTools adds workerPublishDenyRules to a worker launch's deny
@@ -414,6 +428,7 @@ func (p *Plugin) GetRestoreCommand(ctx context.Context, cfg ports.RestoreConfig)
 	if err != nil {
 		return nil, false, err
 	}
+	providerArgs = appendClaudeReadableDirs(providerArgs, cfg.WorkerSandbox.Launch.ReadableDirs)
 	return agentruntime.BuildRestoreCommand(agentruntime.RestoreConfig{
 		Harness:          agentruntime.HarnessClaudeCode,
 		Binary:           binary,

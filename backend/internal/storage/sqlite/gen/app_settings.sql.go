@@ -14,7 +14,7 @@ import (
 
 const getAppSettings = `-- name: GetAppSettings :one
 
-SELECT id, default_session_mode, updated_at, cloud_offering, harness_defaults, version_refresh FROM app_settings WHERE id = 1
+SELECT id, default_session_mode, updated_at, cloud_offering, harness_defaults, version_refresh, default_code_manager FROM app_settings WHERE id = 1
 `
 
 // Daemon-owned user preferences. One row, seeded by migration 0042, so a read
@@ -29,6 +29,7 @@ func (q *Queries) GetAppSettings(ctx context.Context) (AppSetting, error) {
 		&i.CloudOffering,
 		&i.HarnessDefaults,
 		&i.VersionRefresh,
+		&i.DefaultCodeManager,
 	)
 	return i, err
 }
@@ -61,6 +62,20 @@ type SetCloudOfferingParams struct {
 
 func (q *Queries) SetCloudOffering(ctx context.Context, arg SetCloudOfferingParams) error {
 	_, err := q.db.ExecContext(ctx, setCloudOffering, arg.CloudOffering, arg.UpdatedAt)
+	return err
+}
+
+const setDefaultCodeManager = `-- name: SetDefaultCodeManager :exec
+UPDATE app_settings SET default_code_manager = ?, updated_at = ? WHERE id = 1
+`
+
+type SetDefaultCodeManagerParams struct {
+	DefaultCodeManager domain.AgentHarness
+	UpdatedAt          time.Time
+}
+
+func (q *Queries) SetDefaultCodeManager(ctx context.Context, arg SetDefaultCodeManagerParams) error {
+	_, err := q.db.ExecContext(ctx, setDefaultCodeManager, arg.DefaultCodeManager, arg.UpdatedAt)
 	return err
 }
 

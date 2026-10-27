@@ -73,6 +73,19 @@ export function agentUsageCompare(a: AgentInfo, b: AgentInfo): number {
 	return 0;
 }
 
+// defaultCodeProjectManager pre-selects the host setting when that AI is
+// installed and signed in. Otherwise it uses the orchestrator history rule.
+export function defaultCodeProjectManager(
+	preferred: string | undefined,
+	authorizedAgents: AgentInfo[],
+	sessions: RoleSession[],
+): string {
+	const id = preferred?.trim() || "claude-code";
+	const agent = authorizedAgents.find((item) => item.id === id);
+	if (agent && isReadyAgent(agent)) return id;
+	return defaultAuthorizedAgentForRole(authorizedAgents, sessions, "orchestrator");
+}
+
 export function defaultAuthorizedAgentForRole(
 	authorizedAgents: AgentInfo[],
 	sessions: RoleSession[],

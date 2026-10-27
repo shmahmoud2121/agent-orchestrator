@@ -20,6 +20,7 @@ import {
 	SANDBOXED_WORKER_HARNESSES,
 	WATCHED_WORKER_HARNESSES,
 	defaultAuthorizedAgentForRole,
+	defaultCodeProjectManager,
 	type AgentInfo,
 	unknownAgentReadiness,
 } from "../lib/agent-select-options";
@@ -56,6 +57,8 @@ type CreateProjectAgentSheetProps = {
 	isCreating: boolean;
 	isInitializing?: boolean;
 	kind: ProjectKind;
+	/** Code projects pre-select a manager. Work projects start with both pickers empty. */
+	agentDefaults?: "history" | "none";
 	onOpenChange: (open: boolean) => void;
 	onBack?: () => void;
 	onSubmit: (selection: CreateProjectAgentSelection) => Promise<void>;
@@ -117,6 +120,7 @@ export function CreateProjectAgentSheet({
 	hostId,
 	isCreating,
 	isInitializing = false,
+	agentDefaults = "history",
 	kind,
 	onBack,
 	onOpenChange,
@@ -214,14 +218,14 @@ export function CreateProjectAgentSheet({
 	}, [open]);
 
 	useEffect(() => {
-		if (!open) return;
+		if (!open || agentDefaults === "none") return;
 		if (!workerAgentTouched) {
 			setWorkerAgent(defaultAuthorizedAgentForRole(authorizedAgents, sessionHistory, "worker"));
 		}
 		if (!orchestratorAgentTouched) {
-			setOrchestratorAgent(defaultAuthorizedAgentForRole(authorizedAgents, sessionHistory, "orchestrator"));
+			setOrchestratorAgent(defaultCodeProjectManager(settings?.defaultCodeManager, authorizedAgents, sessionHistory));
 		}
-	}, [authorizedAgents, open, orchestratorAgentTouched, sessionHistory, workerAgentTouched]);
+	}, [agentDefaults, authorizedAgents, open, orchestratorAgentTouched, sessionHistory, settings?.defaultCodeManager, workerAgentTouched]);
 
 	if (isBusy) return null;
 
@@ -427,6 +431,8 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 	sandboxRequired = false,
 	sandboxAvailable,
 	showUnwatched = false,
+	watchedOnly = false,
+	unwatchedReason,
 }: {
 	agents?: AgentInfo[];
 	disabled?: boolean;
@@ -456,6 +462,10 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 	sandboxAvailable?: boolean;
 	/** Marks worker AIs the watchdog cannot check. Only while sandboxed workers are not required. */
 	showUnwatched?: boolean;
+	/** Work projects can only use an AI the watchdog covers. Others stay disabled. */
+	watchedOnly?: boolean;
+	/** Tooltip for a disabled unwatched AI. Work projects pass their own sentence. */
+	unwatchedReason?: string;
 }) {
 	const { t } = useTranslation();
 	// The daemon's readiness response is the registration list. An absent
@@ -484,12 +494,15 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 	const sandboxTitle = hostBlocksAllWorkers
 		? t("settings.project.workerSandboxRequireHostUnavailableReason")
 		: t("settings.project.workerSandboxRequireDisabledReason");
-	const unwatched = (id: string) => showUnwatched && !WATCHED_WORKER_HARNESSES.has(id);
-	const unwatchedTitle = t("agentSelector.notWatchedReason");
+	const unwatched = (id: string) => (showUnwatched || watchedOnly) && !WATCHED_WORKER_HARNESSES.has(id);
+	const unwatchedTitle = watchedOnly
+		? (unwatchedReason ?? t("agentSelector.workUnwatchedReason"))
+		: t("agentSelector.notWatchedReason");
+	const agentDisabled = (agent: (typeof visibleOptions)[number]) => agent.disabled || sandboxBlocked(agent.id) || (watchedOnly && unwatched(agent.id));
 	const withSandbox = (agent: (typeof visibleOptions)[number]) => ({
 		value: agent.id,
 		label: agent.label,
-		disabled: agent.disabled || sandboxBlocked(agent.id),
+		disabled: agentDisabled(agent),
 		title: sandboxBlocked(agent.id) ? sandboxTitle : unwatched(agent.id) ? unwatchedTitle : undefined,
 	});
 	const agentMenuItem = (agent: (typeof visibleOptions)[number], selected: boolean, disabled: boolean) => (
@@ -634,11 +647,11 @@ export const RequiredAgentField = memo(function RequiredAgentField({
 						<SelectItem
 							key={agent.id}
 							value={agent.id}
-							disabled={agent.disabled || sandboxBlocked(agent.id)}
+							disabled={agentDisabled(agent)}
 							title={sandboxBlocked(agent.id) ? sandboxTitle : unwatched(agent.id) ? unwatchedTitle : undefined}
 							className="[&>span:last-child]:w-full"
 						>
-							{agentMenuItem(agent, value === agent.id, agent.disabled || sandboxBlocked(agent.id))}
+							{agentMenuItem(agent, value === agent.id, agentDisabled(agent))}
 						</SelectItem>
 					))}
 					{manageAgents && visibleOptions.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">{t("agentSelector.noneReady")}</p>}

@@ -719,6 +719,9 @@ function ShellLayout() {
 	const createProject = useCallback(
 		async (input: {
 			path: string;
+			name?: string;
+			sources?: string[];
+			resultsDir?: string;
 			workerAgent: string;
 			orchestratorAgent: string;
 			trackerIntake?: components["schemas"]["TrackerIntakeConfig"];
@@ -738,9 +741,13 @@ function ShellLayout() {
 			const { data, error } = await apiClient.POST("/api/v1/projects", {
 				body: {
 					path: input.path,
+					...(input.name ? { name: input.name } : {}),
 					asWorkspace: input.asWorkspace || undefined,
 					clonePreparationId: input.clonePreparationId,
-					config: createProjectConfig(input),
+					config: {
+						...createProjectConfig(input),
+						...(input.sources && input.resultsDir ? { work: { sources: input.sources, resultsDir: input.resultsDir } } : {}),
+					},
 				},
 			});
 			if (error) {

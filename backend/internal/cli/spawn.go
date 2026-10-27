@@ -150,6 +150,14 @@ func newSpawnCommand(ctx *commandContext) *cobra.Command {
 					return usageError{fmt.Errorf("scratch projects do not support --claim-pr")}
 				}
 			}
+			if project.Kind == "work" {
+				if strings.TrimSpace(opts.branch) != "" {
+					return usageError{fmt.Errorf("work projects do not support --branch")}
+				}
+				if strings.TrimSpace(opts.claimPR) != "" {
+					return usageError{fmt.Errorf("work projects do not support --claim-pr")}
+				}
+			}
 
 			if !opts.skipAgentCheck {
 				if err := ctx.preflightSpawnAgentAuth(cmd.Context(), cmd, opts.harness); err != nil {

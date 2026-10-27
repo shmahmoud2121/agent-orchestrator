@@ -28,7 +28,7 @@ func (s *Service) recordBlock(ctx context.Context, session domain.SessionRecord,
 		return
 	}
 	now := time.Now().UTC()
-	s.recordTimeline(ctx, session.ID, decision.Path, now)
+	s.recordTimeline(ctx, session.ID, decision, now)
 	if s.shouldStop(session, decision.Tamper) && s.Stop != nil {
 		if err := s.Stop.KillPreservingWorkspace(ctx, session.ID); err == nil {
 			decision.Stopped = true
@@ -40,14 +40,14 @@ func (s *Service) recordBlock(ctx context.Context, session domain.SessionRecord,
 	if decision.Stopped {
 		action = "stopped"
 	}
-	s.appendLog(now, session, toolName, decision.Path, action, "")
+	s.appendLog(now, session, toolName, decision.Path, action, decision.Reason)
 	// Kill runs under its own timeout and can leave the request context
 	// cancelled, or the database briefly busy, by the time we get here.
 	// The person still has to hear about the block, so the save retries
 	// on a context that outlives this hook call.
-	s.notify(ctx, domain.NotificationWatchdogBlocked, session, decision.Path, now)
+	s.notify(ctx, domain.NotificationWatchdogBlocked, session, decision.Path, decision.Reason, now)
 	if decision.Stopped {
-		s.notify(ctx, domain.NotificationWatchdogStopped, session, decision.Path, now)
+		s.notify(ctx, domain.NotificationWatchdogStopped, session, decision.Path, decision.Reason, now)
 	}
 }
 
@@ -70,7 +70,7 @@ func (s *Service) clearBlocks(id domain.SessionID) {
 	delete(s.blocks, id)
 }
 
-func (s *Service) notify(ctx context.Context, typ domain.NotificationType, session domain.SessionRecord, path string, now time.Time) {
+func (s *Service) notify(ctx context.Context, typ domain.NotificationType, session domain.SessionRecord, path, reason string, now time.Time) {
 	if s.Notify == nil {
 		return
 	}
@@ -87,6 +87,7 @@ func (s *Service) notify(ctx context.Context, typ domain.NotificationType, sessi
 		SessionDisplayName: sessionLabel(session),
 		Agent:              agentName(session.Harness),
 		Subject:            path,
+		Reason:             reason,
 	}
 	ctx = context.WithoutCancel(ctx)
 	var err error
@@ -102,8 +103,8 @@ func (s *Service) notify(ctx context.Context, typ domain.NotificationType, sessi
 	s.appendLog(now, session, "", path, "alert-failed", err.Error())
 }
 
-func (s *Service) recordTimeline(ctx context.Context, id domain.SessionID, path string, now time.Time) {
-	if s.Activity == nil {
+func (s *Service) recordTimeline(ctx context.Context, id domain.SessionID, decision *Decision, now time.Time) {
+	if s.Activity == nil || decision == nil {
 		return
 	}
 	conversation, err := s.Activity.ConversationForSession(ctx, id)
@@ -112,16 +113,20 @@ func (s *Service) recordTimeline(ctx context.Context, id domain.SessionID, path 
 	}
 	detail, err := json.Marshal(map[string]string{
 		"event": "watchdog",
-		"path":  path,
+		"path":  decision.Path,
 	})
 	if err != nil {
 		return
+	}
+	summary := "Watchdog blocked reading " + decision.Path
+	if decision.Original {
+		summary = "Watchdog blocked a change: " + domain.WorkOriginalChangedReason
 	}
 	_ = s.Activity.UpsertActivity(ctx, conversation.ID, "", domain.ConversationActivity{
 		ID:      newActivityID(),
 		Kind:    domain.ActivityKindSystem,
 		Status:  domain.ActivityStatusCompleted,
-		Summary: "Watchdog blocked reading " + path,
+		Summary: summary,
 		Detail:  detail,
 	}, now)
 }
@@ -136,7 +141,10 @@ func (s *Service) appendLog(now time.Time, session domain.SessionRecord, toolNam
 	}
 	line := fmt.Sprintf("%s project=%s session=%s ai=%s tool=%s path=%q action=%s",
 		now.Format(time.RFC3339), session.ProjectID, session.ID, session.Harness, toolName, path, action)
-	if notifyErr != "" {
+	if notifyErr != "" && action != "alert-failed" {
+		line += " reason=" + fmt.Sprintf("%q", notifyErr)
+	}
+	if action == "alert-failed" && notifyErr != "" {
 		line += " error=" + fmt.Sprintf("%q", notifyErr)
 	}
 	line += "\n"

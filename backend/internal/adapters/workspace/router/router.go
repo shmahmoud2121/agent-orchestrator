@@ -25,6 +25,7 @@ type GitWorkspace interface {
 type Deps struct {
 	Git      GitWorkspace
 	Scratch  ports.Workspace
+	Work     ports.Workspace
 	Projects ProjectStore
 }
 
@@ -33,6 +34,7 @@ type Deps struct {
 type Workspace struct {
 	git      GitWorkspace
 	scratch  ports.Workspace
+	work     ports.Workspace
 	projects ProjectStore
 }
 
@@ -48,6 +50,7 @@ func New(deps Deps) *Workspace {
 	return &Workspace{
 		git:      deps.Git,
 		scratch:  deps.Scratch,
+		work:     deps.Work,
 		projects: deps.Projects,
 	}
 }
@@ -245,11 +248,19 @@ func (w *Workspace) adapterForProject(ctx context.Context, projectID domain.Proj
 		if err != nil {
 			return nil, fmt.Errorf("workspace router: project %q: %w", projectID, err)
 		}
-		if ok && project.Kind.WithDefault() == domain.ProjectKindScratch {
-			if w.scratch == nil {
-				return nil, errors.New("workspace router: scratch workspace is not configured")
+		if ok {
+			switch project.Kind.WithDefault() {
+			case domain.ProjectKindScratch:
+				if w.scratch == nil {
+					return nil, errors.New("workspace router: scratch workspace is not configured")
+				}
+				return w.scratch, nil
+			case domain.ProjectKindWork:
+				if w.work == nil {
+					return nil, errors.New("workspace router: work workspace is not configured")
+				}
+				return w.work, nil
 			}
-			return w.scratch, nil
 		}
 	}
 	if w.git == nil {

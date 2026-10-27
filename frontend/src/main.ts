@@ -2733,8 +2733,21 @@ ipcMain.handle("app:chooseDirectory", async (_event, input?: string | { title?: 
 	const defaultPath = typeof input === "object" && input !== null && typeof input.defaultPath === "string"
 		? input.defaultPath.trim()
 		: "";
-	return chooseDirectory(title?.trim() || "Choose a git repository", defaultPath === "~/ao/projects" ? path.join(os.homedir(), "ao", "projects") : undefined);
+	const requested = defaultPath === "~/ao/projects" ? path.join(os.homedir(), "ao", "projects") : defaultPath;
+	return chooseDirectory(title?.trim() || "Choose a git repository", requested || undefined);
 });
+async function chooseFiles(title: string): Promise<string[]> {
+	const result = await dialog.showOpenDialog({
+		title,
+		properties: ["openFile", "multiSelections"],
+	});
+	if (result.canceled) return [];
+	return result.filePaths;
+}
+ipcMain.handle("app:chooseFiles", async (_event, title?: string) => {
+	return chooseFiles(typeof title === "string" && title.trim() ? title.trim() : "Choose files");
+});
+ipcMain.handle("app:documentsPath", () => app.getPath("documents"));
 ipcMain.handle("app:checkGitRepository", async (_event, remoteUrl: string) => {
 	await ensureShellEnv();
 	try {

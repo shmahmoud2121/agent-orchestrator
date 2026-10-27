@@ -19,5 +19,12 @@ func refuseUnsandboxedWorkerForProject(project domain.ProjectRecord, kind domain
 	if project.ID == "" {
 		return nil
 	}
+	// Work sessions are guarded by the original-file watchdog. Codex is a
+	// watched Work harness and has no OS sandbox, and Claude's sandbox does
+	// not run on native Windows. The code-project sandbox requirement does
+	// not apply.
+	if project.Kind.WithDefault() == domain.ProjectKindWork {
+		return nil
+	}
 	return refuseUnsandboxedWorker(kind, harness, project.Config.WorkerSandbox, restore)
 }

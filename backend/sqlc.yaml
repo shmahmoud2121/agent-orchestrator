@@ -292,6 +292,10 @@ sql:
             go_type: "bool"
           - column: "app_settings.version_refresh"
             go_type: "bool"
+          - column: "app_settings.default_code_manager"
+            go_type:
+              import: "github.com/aoagents/agent-orchestrator/backend/internal/domain"
+              type: "AgentHarness"
           - column: "sessions.provision_state"
             go_type:
               import: "github.com/aoagents/agent-orchestrator/backend/internal/domain"

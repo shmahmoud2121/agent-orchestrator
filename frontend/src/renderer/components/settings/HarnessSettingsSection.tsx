@@ -2,14 +2,18 @@ import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { RadioGroup } from "radix-ui";
 import { useTranslation } from "react-i18next";
+import { useAgentReadinessQuery } from "../../hooks/useAgentReadinessQuery";
 import { useCloudGate } from "../../hooks/useCloudGate";
 import { useConnectedHosts } from "../../hooks/useHostConnection";
+import { useSettings, useUpdateDefaultCodeManager } from "../../hooks/useSettings";
+import { agentLabel } from "../../lib/agent-options";
 import { labelForHost } from "../../lib/host-clients";
 import { LOCAL_HOST } from "../../lib/hosts";
 import type { HarnessDiagnosticsRequest } from "../../stores/ui-store";
 import { CloudHarnessContent } from "./harness/CloudHarnessContent";
 import { LocalHarnessContent } from "./harness/LocalHarnessContent";
 import { SettingsOptionMenu } from "./SettingsOptionMenu";
+import { SettingsRow } from "./SettingsRow";
 import { SettingsSection } from "./SettingsSection";
 
 export type HarnessView = "local" | "cloud";
@@ -69,6 +73,28 @@ export function HarnessSettingsSection({
 				triggerClassName="w-fit max-w-full"
 			/> : null}
 		{showToolbar && !cloudView && selectedHostId !== LOCAL_HOST && !remoteOffline ? <p className="text-xs text-muted-foreground">{t("settings.harness.remoteBrowserAuthNote")}</p> : null}
+		{showToolbar && !cloudView && !remoteOffline && selectedHostId === LOCAL_HOST ? <DefaultCodeManagerSetting /> : null}
 		{cloudView ? <CloudHarnessContent focusAgentId={focusAgentId} search={search} /> : remoteOffline ? <p className="text-xs text-error" role="alert">{t("remote.hostOffline")}</p> : <LocalHarnessContent key={selectedHostId} focusAgentId={focusAgentId} hostId={selectedHostId === LOCAL_HOST ? undefined : selectedHostId} search={search} onDetailChange={setDetailOpen} startLogin={startLogin && selectedHostId === (hostId ?? LOCAL_HOST)} showDiagnostics={selectedHostId === (hostId ?? LOCAL_HOST) ? showDiagnostics : undefined} />}
 	</SettingsSection>;
+}
+
+function DefaultCodeManagerSetting() {
+	const { t } = useTranslation();
+	const { settings } = useSettings();
+	const { update, saving } = useUpdateDefaultCodeManager();
+	const agentsQuery = useAgentReadinessQuery(true);
+	const value = settings?.defaultCodeManager || "claude-code";
+	const listed = (agentsQuery.data?.agents ?? []).map((agent) => ({ value: agent.id, label: agent.label }));
+	if (!listed.some((option) => option.value === value)) listed.unshift({ value, label: agentLabel(value) });
+	return (
+		<SettingsRow label={t("settings.agents.defaultCodeManager")} description={t("settings.agents.defaultCodeManagerDescription")}>
+			<SettingsOptionMenu
+				aria-label={t("settings.agents.defaultCodeManager")}
+				value={value}
+				options={listed}
+				disabled={saving || listed.length === 0}
+				onChange={(next) => { void update(next); }}
+			/>
+		</SettingsRow>
+	);
 }
