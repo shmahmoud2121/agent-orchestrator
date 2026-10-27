@@ -568,6 +568,8 @@ type WorkspaceConfig struct {
 	RepoPath string
 	// Path optionally supplies an existing managed worktree path for restore.
 	Path string
+	// TaskTitle names a Work worker's task folder. Git workspaces ignore it.
+	TaskTitle string
 }
 
 // WorkspaceInfo describes a created workspace — where it lives and its branch.

@@ -469,7 +469,7 @@ func (s *Service) load(ctx context.Context, id domain.SessionID) (target, error)
 		return target{}, apierr.NotFound("PROJECT_NOT_FOUND", "Unknown project")
 	}
 	switch project.Kind.WithDefault() {
-	case domain.ProjectKindScratch:
+	case domain.ProjectKindScratch, domain.ProjectKindWork:
 		return target{}, unsupported("Project %s is a scratch project without a git repository; there is nothing to merge", project.ID)
 	case domain.ProjectKindWorkspace:
 		return target{}, unsupported("Project %s is a multi-repository workspace; local merge supports single-repository projects only, because it cannot yet land every child repository atomically", project.ID)

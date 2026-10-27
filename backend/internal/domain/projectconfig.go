@@ -120,6 +120,11 @@ type ProjectConfig struct {
 	// though they look secret (see IsSecretEnvName). A trailing "*" keeps a
 	// prefix. Every worker harness honors it; only the person may change it.
 	WorkerEnvKeep []string `json:"workerEnvKeep,omitempty"`
+
+	// Work is set only on a Work project. It names the person's original files
+	// and the results folder. Filesystem checks live in ValidateWorkLayout,
+	// not in Validate, because they read the disk.
+	Work *WorkConfig `json:"work,omitempty"`
 }
 
 // DefaultVerifyTimeoutSeconds bounds a project VerifyCommand without its own

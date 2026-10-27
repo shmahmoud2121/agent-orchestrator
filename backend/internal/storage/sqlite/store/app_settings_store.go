@@ -30,7 +30,9 @@ type AppSettings struct {
 	// VersionRefresh moves idle open sessions to a harness release installed
 	// while they ran.
 	VersionRefresh bool
-	UpdatedAt      time.Time
+	// DefaultCodeManager is the manager pre-selected for a new Code project.
+	DefaultCodeManager domain.AgentHarness
+	UpdatedAt          time.Time
 }
 
 // GetAppSettings reads the preference row.
@@ -50,6 +52,7 @@ func (s *Store) GetAppSettings(ctx context.Context) (AppSettings, error) {
 		DefaultSessionMode: domain.NormalizeSessionMode(row.DefaultSessionMode),
 		CloudOffering:      row.CloudOffering,
 		VersionRefresh:     row.VersionRefresh,
+		DefaultCodeManager: row.DefaultCodeManager,
 		UpdatedAt:          row.UpdatedAt,
 	}, nil
 }
@@ -110,4 +113,17 @@ func (s *Store) SetHarnessDefault(ctx context.Context, agent domain.AgentHarness
 		return err
 	}
 	return s.qw.SetHarnessDefault(ctx, gen.SetHarnessDefaultParams{HarnessPath: path, Config: string(data), UpdatedAt: now})
+}
+
+// SetDefaultCodeManager persists the manager pre-selected for a new Code project.
+func (s *Store) SetDefaultCodeManager(ctx context.Context, harness domain.AgentHarness, now time.Time) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	if err := s.qw.SetDefaultCodeManager(ctx, gen.SetDefaultCodeManagerParams{
+		DefaultCodeManager: harness,
+		UpdatedAt:          now,
+	}); err != nil {
+		return fmt.Errorf("set default code manager: %w", err)
+	}
+	return nil
 }

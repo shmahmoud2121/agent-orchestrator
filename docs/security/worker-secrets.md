@@ -54,3 +54,21 @@ Each block is also one line in `watchdog.log` under AO's data directory
 (`~/.ao`, or `AO_DATA_DIR`). The line records the time, project, session, AI,
 tool, path, and whether the call was blocked or the worker was stopped. The
 file is capped the same way as `hooks.log`.
+
+## Read-only originals
+
+A Work project's original folders and files are a second list, next to the
+protected-file list. The person added them. Agents may read them. They may
+not edit, move, rename, or delete them, and they may not copy or redirect
+output into them. The list is applied to every Work session, including the
+manager, for Claude Code and Codex, through the same pre-tool-use hook.
+
+A blocked call uses the same alert, the same 3-strike stop, and the same
+audit log. The reason is "tried to change an original file".
+
+Command inspection cannot catch every write. A script that hides the write
+inside another program, for example `python -c` creating a file, can get
+past the word split. On Mac, Linux, and WSL2 the Claude Code sandbox denies
+those writes as well: a Work worker may write only in its task folder and
+its scratch folder. On native Windows the sandbox does not run. There the
+built-in instructions and this watchdog are the guards.

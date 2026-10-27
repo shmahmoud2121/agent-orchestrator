@@ -83,7 +83,7 @@ func (s *Service) ClaimPR(ctx context.Context, id domain.SessionID, ref string, 
 	if !ok {
 		return ClaimPRResult{}, apierr.Invalid("PROJECT_NOT_RESOLVABLE", "Project is not registered or has no repo — register it with `ao project add`", nil)
 	}
-	if project.Kind.WithDefault() == domain.ProjectKindScratch {
+	if project.Kind.WithDefault().IsGitless() {
 		return ClaimPRResult{}, ErrSessionNotClaimable
 	}
 	if err := project.Config.ValidateCanonicalRepository(project.RepoOriginURL); err != nil {

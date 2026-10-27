@@ -11272,6 +11272,43 @@ paths:
       summary: Turn the cloud offering on or off for this machine
       tags:
       - settings
+  /api/v1/settings/default-code-manager:
+    patch:
+      operationId: updateDefaultCodeManager
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDefaultCodeManagerRequest'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SettingsResponse'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Bad Request
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Internal Server Error
+        "501":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+          description: Not Implemented
+      summary: Choose the manager pre-selected for a new Code project
+      tags:
+      - settings
   /api/v1/settings/harness-defaults/{agent}:
     patch:
       operationId: updateHarnessDefault
@@ -15485,6 +15522,7 @@ components:
           - single_repo
           - workspace
           - scratch
+          - work
           type: string
         name:
           type: string
@@ -15729,6 +15767,18 @@ components:
       - revision
       - selection
       - sourceRole
+      type: object
+    DomainWorkConfig:
+      properties:
+        resultsDir:
+          type: string
+        sources:
+          items:
+            type: string
+          type: array
+      required:
+      - sources
+      - resultsDir
       type: object
     EditConversationMessageRequest:
       properties:
@@ -17078,6 +17128,7 @@ components:
           - single_repo
           - workspace
           - scratch
+          - work
           type: string
         name:
           type: string
@@ -17217,6 +17268,8 @@ components:
           type: array
         verifyTimeoutSeconds:
           type: integer
+        work:
+          $ref: '#/components/schemas/DomainWorkConfig'
         worker:
           $ref: '#/components/schemas/RoleOverride'
         workerEnvKeep:
@@ -17264,6 +17317,7 @@ components:
           - single_repo
           - workspace
           - scratch
+          - work
           type: string
         name:
           type: string
@@ -18923,6 +18977,10 @@ components:
           type: boolean
         cloudOffering:
           type: boolean
+        defaultCodeManager:
+          description: The manager pre-selected for a new Code project. Work projects
+            always ask.
+          type: string
         defaultSessionMode:
           enum:
           - chat
@@ -18948,6 +19006,7 @@ components:
       - cloudOffering
       - chatHibernationEnabled
       - versionRefresh
+      - defaultCodeManager
       - cloudEnabled
       - cloudControlPlaneUrl
       - trackerIntakeEnabled
@@ -20134,6 +20193,14 @@ components:
           - boolean
       required:
       - enabled
+      type: object
+    UpdateDefaultCodeManagerRequest:
+      properties:
+        harness:
+          minLength: 1
+          type: string
+      required:
+      - harness
       type: object
     UpdateHarnessDefaultRequest:
       properties:

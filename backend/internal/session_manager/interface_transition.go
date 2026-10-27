@@ -943,7 +943,7 @@ func (m *Manager) preflightTerminalLaunch(
 	}
 	config := restoredAgentConfig(rec, project.Config)
 	config.Permissions = domain.WorkerLaunchPermission(rec.Kind, config.Permissions)
-	workerSandbox := m.workerSandboxLaunchFields(rec.Kind, project, rec.Metadata.WorkspacePath)
+	workerSandbox := m.workerSandboxLaunchFields(rec.Kind, project, rec.Metadata.WorkspacePath, rec.ID)
 	var cmd []string
 	if nativeConversationID == "" {
 		cmd, _, _, err = freshLaunchArgv(ctx, agent, rec.ID, rec.Metadata.WorkspacePath,

@@ -20,6 +20,7 @@ import (
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/workspace/gitworktree"
 	workspacerouter "github.com/aoagents/agent-orchestrator/backend/internal/adapters/workspace/router"
 	scratchworkspace "github.com/aoagents/agent-orchestrator/backend/internal/adapters/workspace/scratch"
+	workworkspace "github.com/aoagents/agent-orchestrator/backend/internal/adapters/workspace/work"
 	"github.com/aoagents/agent-orchestrator/backend/internal/artifactversions"
 	"github.com/aoagents/agent-orchestrator/backend/internal/config"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
@@ -308,6 +309,7 @@ func startSession(ctx context.Context, cfg config.Config, runtime runtimeselect.
 	ws := workspacerouter.New(workspacerouter.Deps{
 		Git:      gitWS,
 		Scratch:  scratchWS,
+		Work:     workworkspace.New(),
 		Projects: store,
 	})
 	mgr := sessionmanager.New(sessionmanager.Deps{

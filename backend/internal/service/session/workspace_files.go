@@ -292,7 +292,7 @@ func (s *Service) ListWorkspaceFiles(ctx context.Context, id domain.SessionID) (
 	if projectOK {
 		projectKind = project.Kind.WithDefault()
 	}
-	if projectKind == domain.ProjectKindScratch {
+	if projectKind.IsGitless() {
 		files, truncated, err := scratchWorkspaceFiles(rec.Metadata.WorkspacePath)
 		if err != nil {
 			return WorkspaceFiles{}, err
@@ -566,7 +566,7 @@ func (s *Service) resolveWorkspaceFileTargetWithCompare(ctx context.Context, id 
 	if projectOK {
 		projectKind = project.Kind.WithDefault()
 	}
-	if projectKind == domain.ProjectKindScratch {
+	if projectKind.IsGitless() {
 		return workspaceFileTarget{root: rec.Metadata.WorkspacePath, rel: rel, scratch: true}, nil
 	}
 	if projectKind == domain.ProjectKindWorkspace {

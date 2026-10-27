@@ -87,3 +87,9 @@ func (p *Plugin) UninstallHooks(ctx context.Context, workspacePath string) error
 func (p *Plugin) AreHooksInstalled(ctx context.Context, workspacePath string) (bool, error) {
 	return claudeHooks.AreInstalled(ctx, workspacePath)
 }
+
+// WorkHooksReady reports whether the pre-tool-use hook is installed in this
+// workspace. Work sessions fail closed when it is not.
+func (p *Plugin) WorkHooksReady(ctx context.Context, workspacePath string) (bool, error) {
+	return p.AreHooksInstalled(ctx, workspacePath)
+}

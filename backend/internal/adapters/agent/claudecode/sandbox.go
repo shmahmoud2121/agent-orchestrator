@@ -290,6 +290,13 @@ func buildWorkerSandboxSettings(
 			"denyRead": denyRead,
 		},
 	}
+	filesystem := sandboxBlock["filesystem"].(map[string]any)
+	if len(sandbox.Launch.WriteAllow) > 0 {
+		filesystem["allowWrite"] = append([]string(nil), sandbox.Launch.WriteAllow...)
+	}
+	if len(sandbox.Launch.WriteDeny) > 0 {
+		filesystem["denyWrite"] = append([]string(nil), sandbox.Launch.WriteDeny...)
+	}
 
 	// acceptEdits auto-approves Edit/Write only inside the working directory
 	// and additionalDirectories; edits elsewhere prompt the user, so they do

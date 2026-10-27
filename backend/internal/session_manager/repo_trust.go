@@ -22,6 +22,9 @@ func (m *Manager) repoTrustChildren(ctx context.Context, p domain.ProjectRecord)
 	return children, nil
 }
 func (m *Manager) checkSpawnRepoTrust(ctx context.Context, p domain.ProjectRecord, branch string) error {
+	if p.Kind.WithDefault().IsGitless() {
+		return nil
+	}
 	children, err := m.repoTrustChildren(ctx, p)
 	if err != nil {
 		return err
@@ -53,6 +56,9 @@ func (m *Manager) checkSpawnRepoTrust(ctx context.Context, p domain.ProjectRecor
 	return repotrust.Required(p.ID, scan)
 }
 func (m *Manager) checkWorkspaceRepoTrust(ctx context.Context, p domain.ProjectRecord, workspace string) error {
+	if p.Kind.WithDefault().IsGitless() {
+		return nil
+	}
 	children, err := m.repoTrustChildren(ctx, p)
 	if err != nil {
 		return err

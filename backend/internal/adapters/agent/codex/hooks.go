@@ -261,6 +261,20 @@ func removeLegacyWorkspaceHooks(workspacePath string) error {
 	return writeCodexHooks(hooksPath, topLevel, rawHooks)
 }
 
+// WorkHooksReady reports whether this process can attach Codex's pre-tool-use
+// hook as launch flags. Codex does not install a workspace hook file, so the
+// legacy file check cannot decide this.
+func (p *Plugin) WorkHooksReady(ctx context.Context, _ string) (bool, error) {
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+	var args []string
+	if err := appendSessionHookFlags(&args); err != nil {
+		return false, err
+	}
+	return len(args) > 0, nil
+}
+
 // AreHooksInstalled reports whether any legacy AO Codex hook is still present
 // in the workspace-local hooks file. A missing file means none are installed.
 func (p *Plugin) AreHooksInstalled(ctx context.Context, workspacePath string) (bool, error) {

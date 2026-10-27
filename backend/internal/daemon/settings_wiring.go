@@ -27,6 +27,7 @@ func (s settingsStore) GetAppSettings(ctx context.Context) (settingssvc.Snapshot
 		HarnessDefaults:    row.HarnessDefaults,
 		CloudOffering:      row.CloudOffering,
 		VersionRefresh:     row.VersionRefresh,
+		DefaultCodeManager: row.DefaultCodeManager,
 		UpdatedAt:          row.UpdatedAt,
 	}, nil
 }
@@ -49,4 +50,8 @@ func (s settingsStore) SetVersionRefresh(ctx context.Context, enabled bool, now 
 
 func (s settingsStore) SetHarnessDefault(ctx context.Context, agent domain.AgentHarness, value domain.HarnessDefault, now time.Time) error {
 	return s.store.SetHarnessDefault(ctx, agent, value, now)
+}
+
+func (s settingsStore) SetDefaultCodeManager(ctx context.Context, harness domain.AgentHarness, now time.Time) error {
+	return s.store.SetDefaultCodeManager(ctx, harness, now)
 }

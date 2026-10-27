@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -202,6 +203,9 @@ func (m *Service) Get(ctx context.Context, id domain.ProjectID) (GetResult, erro
 // check and the store write — two concurrent calls for the same path would both
 // pass FindProjectByPath and then race on those mutations.
 func (m *Service) Add(ctx context.Context, in AddInput) (Project, error) {
+	if in.Config != nil && in.Config.Work != nil {
+		return m.addWork(ctx, in)
+	}
 	path, err := normalizePath(in.Path)
 	if err != nil {
 		return Project{}, err
@@ -741,24 +745,39 @@ func (m *Service) UpdateSettings(ctx context.Context, id domain.ProjectID, in Up
 	if utf8.RuneCountInString(inDisplayName) > maxDisplayNameLen && inDisplayName != strings.TrimSpace(projectDisplayName(row)) {
 		return Project{}, apierr.Invalid("DISPLAY_NAME_TOO_LONG", fmt.Sprintf("Display name must be %d characters or fewer", maxDisplayNameLen), nil)
 	}
-	if row.Kind.WithDefault() == domain.ProjectKindScratch {
-		if err := validateScratchProjectConfig(in.Config); err != nil {
+	if row.Kind.WithDefault().IsGitless() {
+		if err := validateGitlessProjectConfig(row.Kind, in.Config); err != nil {
 			return Project{}, apierr.Invalid("INVALID_PROJECT_CONFIG", err.Error(), nil)
 		}
+	}
+	nextPath := row.Path
+	if row.Kind.WithDefault() == domain.ProjectKindWork {
+		path, err := m.prepareWorkConfig(ctx, id, row.Path, &in.Config)
+		if err != nil {
+			return Project{}, err
+		}
+		nextPath = path
 	}
 	if err := in.Config.ValidateCanonicalRepository(row.RepoOriginURL); err != nil {
 		return Project{}, apierr.Invalid("INVALID_PROJECT_CONFIG", err.Error(), nil)
 	}
 	in.Config.TrustedRepoConfigFingerprint = row.Config.TrustedRepoConfigFingerprint
-	updated, err := m.store.UpdateProjectSettings(ctx, string(id), inDisplayName, in.Config)
-	if err != nil {
-		return Project{}, apierr.Internal("PROJECT_SETTINGS_UPDATE_FAILED", "Failed to update project settings")
-	}
-	if !updated {
-		return Project{}, apierr.NotFound("PROJECT_NOT_FOUND", "Unknown project")
-	}
 	row.DisplayName = inDisplayName
 	row.Config = in.Config
+	if nextPath != row.Path {
+		row.Path = nextPath
+		if err := m.store.UpsertProject(ctx, row); err != nil {
+			return Project{}, apierr.Internal("PROJECT_SETTINGS_UPDATE_FAILED", "Failed to update project settings")
+		}
+	} else {
+		updated, err := m.store.UpdateProjectSettings(ctx, string(id), inDisplayName, in.Config)
+		if err != nil {
+			return Project{}, apierr.Internal("PROJECT_SETTINGS_UPDATE_FAILED", "Failed to update project settings")
+		}
+		if !updated {
+			return Project{}, apierr.NotFound("PROJECT_NOT_FOUND", "Unknown project")
+		}
+	}
 	m.modelScopeChanged(row.ID)
 	return m.projectFromRow(ctx, row), nil
 }
@@ -793,10 +812,17 @@ func (m *Service) SetConfig(ctx context.Context, id domain.ProjectID, in SetConf
 	if err := validateProtectedPathsForProject(row.Path, in.Config); err != nil {
 		return Project{}, err
 	}
-	if row.Kind.WithDefault() == domain.ProjectKindScratch {
-		if err := validateScratchProjectConfig(in.Config); err != nil {
+	if row.Kind.WithDefault().IsGitless() {
+		if err := validateGitlessProjectConfig(row.Kind, in.Config); err != nil {
 			return Project{}, apierr.Invalid("INVALID_PROJECT_CONFIG", err.Error(), nil)
 		}
+	}
+	if row.Kind.WithDefault() == domain.ProjectKindWork {
+		path, err := m.prepareWorkConfig(ctx, id, row.Path, &in.Config)
+		if err != nil {
+			return Project{}, err
+		}
+		row.Path = path
 	}
 	if err := in.Config.ValidateCanonicalRepository(row.RepoOriginURL); err != nil {
 		return Project{}, apierr.Invalid("INVALID_PROJECT_CONFIG", err.Error(), nil)
@@ -820,18 +846,169 @@ func validateProtectedPathsForProject(projectPath string, cfg domain.ProjectConf
 	return nil
 }
 
-func validateScratchProjectConfig(cfg domain.ProjectConfig) error {
+func validateGitlessProjectConfig(kind domain.ProjectKind, cfg domain.ProjectConfig) error {
+	label := "scratch"
+	if kind.WithDefault() == domain.ProjectKindWork {
+		label = "work"
+	}
 	if cfg.CanonicalRepoURL != "" {
-		return errors.New("scratch projects do not support canonicalRepoURL")
+		return fmt.Errorf("%s projects do not support canonicalRepoURL", label)
 	}
 	if strings.TrimSpace(cfg.DefaultBranch) != "" {
-		return errors.New("scratch projects do not support defaultBranch")
+		return fmt.Errorf("%s projects do not support defaultBranch", label)
 	}
 	if cfg.TrackerIntake.Enabled {
-		return errors.New("scratch projects do not support tracker intake")
+		return fmt.Errorf("%s projects do not support tracker intake", label)
 	}
 	if len(cfg.Reviewers) > 0 {
-		return errors.New("scratch projects do not support reviewers")
+		return fmt.Errorf("%s projects do not support reviewers", label)
+	}
+	return nil
+}
+
+func (m *Service) addWork(ctx context.Context, in AddInput) (Project, error) {
+	if in.AsWorkspace {
+		return Project{}, apierr.Invalid("INVALID_PROJECT_CONFIG", "A Work project cannot be a workspace", nil)
+	}
+	if in.Config == nil || in.Config.Work == nil {
+		return Project{}, apierr.Invalid("WORK_CONFIG_REQUIRED", "A Work project needs its original files and a results folder.", nil)
+	}
+	cfg := *in.Config
+	cfg.TrustedRepoConfigFingerprint = ""
+	if err := cfg.Validate(); err != nil {
+		return Project{}, apierr.Invalid("INVALID_PROJECT_CONFIG", err.Error(), nil)
+	}
+	if err := validateGitlessProjectConfig(domain.ProjectKindWork, cfg); err != nil {
+		return Project{}, apierr.Invalid("INVALID_PROJECT_CONFIG", err.Error(), nil)
+	}
+	results, err := m.prepareWorkConfig(ctx, "", "", &cfg)
+	if err != nil {
+		return Project{}, err
+	}
+	path, err := normalizePath(results)
+	if err != nil {
+		return Project{}, err
+	}
+	id := defaultProjectID(path)
+	if in.Name != nil && strings.TrimSpace(*in.Name) != "" {
+		id = defaultProjectID(*in.Name)
+	}
+	if in.ProjectID != nil {
+		id = domain.ProjectID(strings.TrimSpace(*in.ProjectID))
+	}
+	if err := validateProjectID(id); err != nil {
+		return Project{}, err
+	}
+	name := string(id)
+	if in.Name != nil {
+		name = strings.TrimSpace(*in.Name)
+	}
+	if name == "" {
+		name = string(id)
+	}
+	if utf8.RuneCountInString(name) > maxDisplayNameLen {
+		return Project{}, apierr.Invalid("DISPLAY_NAME_TOO_LONG", fmt.Sprintf("Display name must be %d characters or fewer", maxDisplayNameLen), nil)
+	}
+
+	m.addMu.Lock()
+	defer m.addMu.Unlock()
+	existing, registered, err := m.store.FindProjectByPath(ctx, path)
+	if err != nil {
+		return Project{}, apierr.Internal("PROJECT_LOAD_FAILED", "Failed to load project")
+	}
+	if registered {
+		return Project{}, apierr.Conflict("PATH_ALREADY_REGISTERED", "A project at this path is already registered", map[string]any{
+			"existingProjectId":  existing.ID,
+			"suggestedProjectId": string(m.suggestID(ctx, id)),
+		})
+	}
+	if existing, ok, err := m.store.GetProject(ctx, string(id)); err != nil {
+		return Project{}, apierr.Internal("PROJECT_LOAD_FAILED", "Failed to load project")
+	} else if ok && existing.ArchivedAt.IsZero() {
+		if in.ProjectID != nil {
+			return Project{}, apierr.Conflict("ID_ALREADY_REGISTERED", "A project with this id is already registered for a different path", map[string]any{
+				"existingProjectId":  existing.ID,
+				"suggestedProjectId": string(m.suggestID(ctx, id)),
+			})
+		}
+		id = m.suggestID(ctx, id)
+	}
+	activeProjects, err := m.store.ListProjects(ctx)
+	if err != nil {
+		return Project{}, apierr.Internal("PROJECT_LOAD_FAILED", "Failed to load project")
+	}
+	row := domain.ProjectRecord{
+		ID:           string(id),
+		Path:         path,
+		DisplayName:  name,
+		RegisteredAt: time.Now(),
+		Kind:         domain.ProjectKindWork,
+		Config:       cfg,
+	}
+	if err := m.store.UpsertProject(ctx, row); err != nil {
+		return Project{}, apierr.Internal("PROJECT_ADD_FAILED", "Failed to register project")
+	}
+	m.modelScopeChanged(row.ID)
+	m.emitProjectAdded(ctx, row, len(activeProjects) == 0)
+	return m.projectFromRow(ctx, row), nil
+}
+
+func (m *Service) prepareWorkConfig(ctx context.Context, id domain.ProjectID, currentPath string, cfg *domain.ProjectConfig) (string, error) {
+	if cfg == nil || cfg.Work == nil {
+		return "", apierr.Invalid("WORK_CONFIG_REQUIRED", "A Work project needs its original files and a results folder.", nil)
+	}
+	home, err := os.UserHomeDir()
+	aoHome := ""
+	if err == nil {
+		aoHome = filepath.Join(home, ".ao")
+	}
+	if err := domain.ValidateWorkLayout(cfg.Work, aoHome); err != nil {
+		var workErr *domain.WorkConfigError
+		if errors.As(err, &workErr) {
+			return "", apierr.Invalid(workErr.Code, workErr.Message, nil)
+		}
+		return "", apierr.Invalid("WORK_CONFIG_REQUIRED", err.Error(), nil)
+	}
+	next, err := normalizePath(cfg.Work.ResultsDir)
+	if err != nil {
+		return "", err
+	}
+	cfg.Work.ResultsDir = next
+	if currentPath != "" && !sameWorkPath(currentPath, next) {
+		if err := m.rejectResultsChange(ctx, id); err != nil {
+			return "", err
+		}
+	}
+	return next, nil
+}
+
+func sameWorkPath(a, b string) bool {
+	left, errA := domain.CanonicalPath(a)
+	right, errB := domain.CanonicalPath(b)
+	if errA != nil || errB != nil {
+		return filepath.Clean(a) == filepath.Clean(b)
+	}
+	if runtime.GOOS == "windows" {
+		return strings.EqualFold(left, right)
+	}
+	return left == right
+}
+
+func (m *Service) rejectResultsChange(ctx context.Context, id domain.ProjectID) error {
+	lister, ok := m.store.(interface {
+		ListSessions(context.Context, domain.ProjectID) ([]domain.SessionRecord, error)
+	})
+	if !ok {
+		return apierr.Conflict("WORK_RESULTS_LOCKED", "The results folder can change only when nothing in this project is running.", nil)
+	}
+	recs, err := lister.ListSessions(ctx, id)
+	if err != nil {
+		return apierr.Conflict("WORK_RESULTS_LOCKED", "The results folder can change only when nothing in this project is running.", nil)
+	}
+	for _, rec := range recs {
+		if !rec.IsTerminated {
+			return apierr.Conflict("WORK_RESULTS_LOCKED", "The results folder can change only when nothing in this project is running.", nil)
+		}
 	}
 	return nil
 }
@@ -908,7 +1085,7 @@ func (m *Service) projectFromRow(ctx context.Context, row domain.ProjectRecord) 
 		folderMissing = !exists
 	}
 	defaultBranch := ""
-	if kind != domain.ProjectKindScratch {
+	if !kind.IsGitless() {
 		defaultBranch = row.Config.WorktreeBaseBranch()
 		if defaultBranch == "" {
 			if !folderMissing {

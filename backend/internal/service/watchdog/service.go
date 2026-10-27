@@ -26,11 +26,12 @@ var ErrSessionNotFound = errors.New("watchdog: session not found")
 type Decision struct {
 	// Action is allow, deny, or skip. Skip means this session is not watched
 	// (no project); the hook prints nothing.
-	Action  string
-	Path    string
-	Reason  string
-	Tamper  bool
-	Stopped bool
+	Action   string
+	Path     string
+	Reason   string
+	Tamper   bool
+	Stopped  bool
+	Original bool
 }
 
 // Store loads the session and project the decision is based on.
@@ -114,13 +115,26 @@ func (s *Service) Decide(ctx context.Context, id domain.SessionID, toolName stri
 		},
 	})
 	hit := watchdog.Check(list, workDir, toolName, toolInput)
-	if !hit.Blocked {
-		return Decision{Action: "allow"}, nil
+	if hit.Blocked {
+		decision := denyDecision(hit.Path)
+		decision.Tamper = hit.Tamper
+		s.recordBlock(ctx, session, toolName, &decision)
+		return decision, nil
 	}
-	decision := denyDecision(hit.Path)
-	decision.Tamper = hit.Tamper
-	s.recordBlock(ctx, session, toolName, &decision)
-	return decision, nil
+	if project.Kind.WithDefault() == domain.ProjectKindWork && project.Config.Work != nil && len(project.Config.Work.Sources) > 0 {
+		original := watchdog.CheckOriginalWrite(project.Config.Work.Sources, workDir, toolName, toolInput)
+		if original.Blocked {
+			decision := Decision{
+				Action:   "deny",
+				Path:     original.Path,
+				Reason:   domain.WorkOriginalChangedReason,
+				Original: true,
+			}
+			s.recordBlock(ctx, session, toolName, &decision)
+			return decision, nil
+		}
+	}
+	return Decision{Action: "allow"}, nil
 }
 
 func denyDecision(path string) Decision {

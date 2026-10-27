@@ -28,8 +28,11 @@ type NotificationIntent struct {
 	Repo               string
 	// Agent names the AI a watchdog alert is about.
 	Agent string
-	// Subject names the protected file a watchdog alert is about.
+	// Subject names the file a watchdog alert is about.
 	Subject string
+	// Reason is the watchdog's short explanation. Empty keeps the secret-read
+	// wording. An original-file block uses domain.WorkOriginalChangedReason.
+	Reason string
 }
 
 // NotificationResolution is the lifecycle-to-notification-producer contract for

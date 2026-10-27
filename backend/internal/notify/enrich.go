@@ -54,6 +54,9 @@ func titleForIntent(intent Intent) string {
 	case domain.NotificationWatchdogBlocked:
 		return fmt.Sprintf("Watchdog blocked %s", sessionLabel(intent))
 	case domain.NotificationWatchdogStopped:
+		if strings.TrimSpace(intent.Reason) == domain.WorkOriginalChangedReason {
+			return fmt.Sprintf("Watchdog stopped %s after it kept trying to change an original file.", sessionLabel(intent))
+		}
 		return fmt.Sprintf("Watchdog stopped %s after it kept trying to read protected files.", sessionLabel(intent))
 	default:
 		return "Notification"
@@ -102,8 +105,14 @@ func bodyForIntent(intent Intent) string {
 		if subject == "" {
 			subject = "a protected file"
 		}
+		if strings.TrimSpace(intent.Reason) == domain.WorkOriginalChangedReason {
+			return fmt.Sprintf("%s tried to change an original file: %s.", agent, subject)
+		}
 		return fmt.Sprintf("%s tried to read %s.", agent, subject)
 	case domain.NotificationWatchdogStopped:
+		if strings.TrimSpace(intent.Reason) == domain.WorkOriginalChangedReason {
+			return fmt.Sprintf("Watchdog stopped %s after it kept trying to change an original file.", sessionLabel(intent))
+		}
 		return fmt.Sprintf("Watchdog stopped %s after it kept trying to read protected files.", sessionLabel(intent))
 	default:
 		return ""

@@ -115,6 +115,59 @@ func buildSystemPromptText(cfg systemPromptConfig) string {
 	return strings.Join(sections, "\n\n")
 }
 
+const workOriginalsHeading = "## Original files"
+
+// applyWorkOriginals appends the fixed Work rule. It replaces an earlier copy
+// so a refresh can point a worker at its task folder. Code projects are unchanged.
+func applyWorkOriginals(prompt string, project domain.ProjectRecord, writeDir string) string {
+	section := workOriginalsSection(project, writeDir)
+	base := stripWorkOriginals(prompt)
+	if section == "" {
+		return strings.TrimRight(base, "\n")
+	}
+	if strings.TrimSpace(base) == "" {
+		return section
+	}
+	return strings.TrimRight(base, "\n") + "\n\n" + section
+}
+
+func stripWorkOriginals(prompt string) string {
+	idx := strings.Index(prompt, workOriginalsHeading)
+	if idx < 0 {
+		return prompt
+	}
+	return strings.TrimRight(prompt[:idx], "\n")
+}
+
+func workOriginalsSection(project domain.ProjectRecord, writeDir string) string {
+	if project.Kind.WithDefault() != domain.ProjectKindWork || project.Config.Work == nil {
+		return ""
+	}
+	writeDir = strings.TrimSpace(writeDir)
+	if writeDir == "" {
+		writeDir = strings.TrimSpace(project.Path)
+	}
+	var b strings.Builder
+	b.WriteString(workOriginalsHeading)
+	b.WriteString("\n\nNever edit, move, rename or delete any file under these original folders or files. You may read them.\n")
+	for _, source := range project.Config.Work.Sources {
+		source = strings.TrimSpace(source)
+		if source == "" {
+			continue
+		}
+		b.WriteString("- ")
+		b.WriteString(source)
+		b.WriteString("\n")
+	}
+	b.WriteString("\nWrite everything you produce into ")
+	b.WriteString(writeDir)
+	b.WriteString(".\n\n")
+	b.WriteString("Never overwrite an existing file in the results folder. Save a new version with ` (2)`, ` (3)`.\n\n")
+	b.WriteString("Use `$AO_WORK_SCRATCH` for temporary files and copies.\n\n")
+	b.WriteString("If you believe a task needs an original changed, stop and ask the person.")
+	return b.String()
+}
+
 // userOrientationPrompt asks for a sentence alongside tool calls. Left to
 // itself, Claude's narration varies widely from run to run in both the terminal
 // and chat (measured: anywhere from none to one per call on the same task), and

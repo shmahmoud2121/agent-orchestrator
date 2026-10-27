@@ -213,6 +213,10 @@ type chatSpawn struct {
 // first so no app-server process is left behind holding the worktree.
 func (m *Manager) launchChatController(ctx context.Context, in chatSpawn) (domain.SessionRecord, error) {
 	id := in.record.ID
+	if err := m.refreshWorkInstructions(id, in.cfg.Harness, in.project, in.cfg.Kind, in.workspace.Path, &in.systemPrompt, &in.systemPromptFile); err != nil {
+		m.rollbackSeedSpawnWorkspace(ctx, in.record, in.workspace, in.workspaceProject, false, in.promptQueued)
+		return domain.SessionRecord{}, wrapSpawnStage(id, ErrSpawnSystemPrompt, err)
+	}
 	releaseCodexAdmission, err := m.acquireCodexControllerAdmission(ctx, in.cfg.Harness)
 	if err != nil {
 		m.rollbackSeedSpawnWorkspace(ctx, in.record, in.workspace, in.workspaceProject, false, in.promptQueued)
@@ -262,9 +266,9 @@ func (m *Manager) launchChatController(ctx context.Context, in chatSpawn) (domai
 		Model:                   agentConfig.Model,
 		Effort:                  agentConfig.Effort,
 		Permissions:             agentConfig.Permissions,
-		WorkerSandbox:           m.workerSandboxLaunchFields(in.cfg.Kind, in.project, in.workspace.Path),
+		WorkerSandbox:           m.workerSandboxLaunchFields(in.cfg.Kind, in.project, in.workspace.Path, id),
 		SystemPrompt:            in.systemPrompt,
-		AdditionalDirectories:   workspaceProjectDirectories(in.workspace.Path, in.workspaceProject),
+		AdditionalDirectories:   workChatDirectories(in.cfg.Harness, in.project, workspaceProjectDirectories(in.workspace.Path, in.workspaceProject)),
 		MCPServers:              m.aoMCPServers(in.cfg.Harness, env),
 		ExpectedControllerOwner: in.record.ControllerOwner(),
 		PrepareControllerEnv: func(launchCtx context.Context, expected domain.SessionControllerOwner) (map[string]string, error) {
@@ -278,6 +282,9 @@ func (m *Manager) launchChatController(ctx context.Context, in chatSpawn) (domai
 				m.augmentAgentRuntimeEnv(agent, launchEnv)
 			}
 			markWorkerEnv(launchEnv, in.cfg.Kind, in.cfg.Harness, in.project.Config)
+			if err := m.requireWorkScratch(launchEnv, in.project, id); err != nil {
+				return nil, fmt.Errorf("%w", ErrWorkGuardUnavailable)
+			}
 			in.record = prepared
 			return launchEnv, nil
 		},
@@ -505,6 +512,7 @@ func (m *Manager) resumeChatController(
 	if err != nil {
 		return RestoreResult{}, fmt.Errorf("%s %s: system prompt: %w", operation, rec.ID, err)
 	}
+	systemPrompt = applyWorkOriginals(systemPrompt, project, workWriteDir(project, rec.Kind, ws.Path))
 	systemPrompt, err = m.systemPromptForNativeRestore(ctx, rec, systemPrompt)
 	if err != nil {
 		return RestoreResult{}, fmt.Errorf("%s %s: switched continuation: %w", operation, rec.ID, err)
@@ -523,6 +531,19 @@ func (m *Manager) resumeChatController(
 		m.augmentAgentRuntimeEnv(agent, env)
 	}
 	markWorkerEnv(env, rec.Kind, rec.Harness, project.Config)
+	if project.Kind.WithDefault() == domain.ProjectKindWork {
+		systemPromptFile, fileErr := m.prepareSystemPromptFile(rec.ID, rec.Harness, systemPrompt)
+		if fileErr != nil {
+			return RestoreResult{}, fmt.Errorf("%s %s: system prompt file: %w", operation, rec.ID, fileErr)
+		}
+		agent, ok := m.agents.Agent(rec.Harness)
+		if !ok {
+			return RestoreResult{}, fmt.Errorf("%s %s: %w", operation, rec.ID, ErrWorkGuardUnavailable)
+		}
+		if err := m.prepareWorkspace(ctx, agent, rec.ID, rec.ProjectID, ws.Path, systemPrompt, systemPromptFile, agentConfig, env); err != nil {
+			return RestoreResult{}, fmt.Errorf("%s %s: %w", operation, rec.ID, err)
+		}
+	}
 	historyMode := ports.ChatHistoryImport
 	var providerHandoff *domain.ChatProviderHandoff
 	if requireNativeHistory {
@@ -558,9 +579,9 @@ func (m *Manager) resumeChatController(
 		Model:                   agentConfig.Model,
 		Effort:                  agentConfig.Effort,
 		Permissions:             agentConfig.Permissions,
-		WorkerSandbox:           m.workerSandboxLaunchFields(rec.Kind, project, ws.Path),
+		WorkerSandbox:           m.workerSandboxLaunchFields(rec.Kind, project, ws.Path, rec.ID),
 		SystemPrompt:            systemPrompt,
-		AdditionalDirectories:   additionalDirectories,
+		AdditionalDirectories:   workChatDirectories(rec.Harness, project, additionalDirectories),
 		MCPServers:              m.aoMCPServers(rec.Harness, env),
 		ExpectedControllerOwner: rec.ControllerOwner(),
 		PrepareControllerEnv: func(launchCtx context.Context, expected domain.SessionControllerOwner) (map[string]string, error) {
@@ -574,6 +595,9 @@ func (m *Manager) resumeChatController(
 				m.augmentAgentRuntimeEnv(agent, launchEnv)
 			}
 			markWorkerEnv(launchEnv, rec.Kind, rec.Harness, project.Config)
+			if err := m.requireWorkScratch(launchEnv, project, rec.ID); err != nil {
+				return nil, fmt.Errorf("%w", ErrWorkGuardUnavailable)
+			}
 			rec = prepared
 			return launchEnv, nil
 		},
