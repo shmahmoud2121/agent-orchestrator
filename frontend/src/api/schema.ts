@@ -3631,6 +3631,23 @@ export interface paths {
         patch: operations["updateCloudOffering"];
         trace?: never;
     };
+    "/api/v1/settings/default-code-manager": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Choose the manager pre-selected for a new Code project */
+        patch: operations["updateDefaultCodeManager"];
+        trace?: never;
+    };
     "/api/v1/settings/harness-defaults/{agent}": {
         parameters: {
             query?: never;
@@ -5236,7 +5253,7 @@ export interface components {
         DegradedProject: {
             id: string;
             /** @enum {string} */
-            kind: "single_repo" | "workspace" | "scratch";
+            kind: "single_repo" | "workspace" | "scratch" | "work";
             name: string;
             path: string;
             resolveError: string;
@@ -5315,6 +5332,10 @@ export interface components {
             revision: number;
             selection: string;
             sourceRole: string;
+        };
+        DomainWorkConfig: {
+            resultsDir: string;
+            sources: string[];
         };
         EditConversationMessageRequest: {
             clientMessageId?: string;
@@ -5827,7 +5848,7 @@ export interface components {
             folderMissing: boolean;
             id: string;
             /** @enum {string} */
-            kind: "single_repo" | "workspace" | "scratch";
+            kind: "single_repo" | "workspace" | "scratch" | "work";
             name: string;
             path: string;
             repo: string;
@@ -5878,6 +5899,7 @@ export interface components {
             trustedRepoConfigFingerprint?: string;
             verifyCommand?: string[];
             verifyTimeoutSeconds?: number;
+            work?: components["schemas"]["DomainWorkConfig"];
             worker?: components["schemas"]["RoleOverride"];
             workerEnvKeep?: string[];
             workerSandbox?: components["schemas"]["WorkerSandboxConfig"];
@@ -5896,7 +5918,7 @@ export interface components {
             folderMissing: boolean;
             id: string;
             /** @enum {string} */
-            kind: "single_repo" | "workspace" | "scratch";
+            kind: "single_repo" | "workspace" | "scratch" | "work";
             name: string;
             orchestratorAgent?: string;
             path: string;
@@ -6559,6 +6581,8 @@ export interface components {
             cloudControlPlaneUrl: string;
             cloudEnabled: boolean;
             cloudOffering: boolean;
+            /** @description The manager pre-selected for a new Code project. Work projects always ask. */
+            defaultCodeManager: string;
             /** @enum {string} */
             defaultSessionMode: "chat" | "tui";
             harnessDefaults?: {
@@ -7030,6 +7054,9 @@ export interface components {
         };
         UpdateChatHibernationRequest: {
             enabled: null | boolean;
+        };
+        UpdateDefaultCodeManagerRequest: {
+            harness: string;
         };
         UpdateHarnessDefaultRequest: {
             disabledModels: null | string[];
@@ -21116,6 +21143,57 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ControllersUpdateCloudOfferingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["APIError"];
+                };
+            };
+        };
+    };
+    updateDefaultCodeManager: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDefaultCodeManagerRequest"];
             };
         };
         responses: {

@@ -760,7 +760,7 @@ describe("Sidebar", () => {
 		const content = document.querySelector('[data-sidebar="content"]');
 		expect(content).toHaveClass("overflow-y-auto", "scrollbar-none");
 		expect(content).not.toHaveClass("project-sidebar-scrollbar");
-		expect(content).not.toContainElement(screen.getByText("Projects"));
+		expect(content).not.toContainElement(screen.getByText("Code"));
 	});
 
 	it("opens project settings instead of spawning when no orchestrator agent is configured", async () => {
@@ -2576,16 +2576,48 @@ describe("Sidebar", () => {
 		const user = userEvent.setup();
 		renderSidebar();
 
-		await user.click(screen.getByRole("button", { name: "Projects" }));
-		expect(screen.getByRole("button", { name: "Projects" })).toHaveAttribute("aria-expanded", "false");
+		await user.click(screen.getByRole("button", { name: "Code" }));
+		expect(screen.getByRole("button", { name: "Code" })).toHaveAttribute("aria-expanded", "false");
 		expect(screen.queryByTestId("sidebar-projects-scroller")).not.toBeInTheDocument();
 		expect(screen.queryByText("Project One")).not.toBeInTheDocument();
 
-		await user.click(screen.getByRole("button", { name: "Projects" }));
-		expect(screen.getByRole("button", { name: "Projects" })).toHaveAttribute("aria-expanded", "true");
+		await user.click(screen.getByRole("button", { name: "Code" }));
+		expect(screen.getByRole("button", { name: "Code" })).toHaveAttribute("aria-expanded", "true");
 		expect(screen.getByText("Project One")).toBeInTheDocument();
 		expect(screen.getByTestId("sidebar-projects-scroller")).toBeInTheDocument();
 		expect(screen.queryByRole("button", { name: /Show (more|fewer) projects/ })).not.toBeInTheDocument();
+	});
+
+	it("splits Code and Work, and remembers a collapsed Work section", async () => {
+		const user = userEvent.setup();
+		renderSidebar({
+			workspaces: [
+				workspace,
+				{ ...workspace, id: "work-1", name: "Notes", path: "C:/results/Notes", kind: "work" },
+			],
+		});
+
+		expect(screen.getByRole("button", { name: "Code" })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /^Work$/ })).toHaveAttribute("aria-expanded", "true");
+		const scroller = screen.getByTestId("sidebar-projects-scroller");
+		expect(scroller).toHaveTextContent("Project One");
+		expect(scroller).not.toHaveTextContent("Notes");
+		expect(screen.getByText("Notes")).toBeInTheDocument();
+		expect(document.querySelector("[data-project-id='work-1'] [data-project-icon='document']")).toBeInTheDocument();
+		expect(document.querySelector("[data-project-id='proj-1'] [data-project-icon='folder']")).toBeInTheDocument();
+		expect(screen.queryByText("New Work project")).not.toBeInTheDocument();
+
+		await user.click(screen.getByRole("button", { name: /^Work$/ }));
+		expect(screen.getByRole("button", { name: /^Work$/ })).toHaveAttribute("aria-expanded", "false");
+		expect(screen.queryByText("Notes")).not.toBeInTheDocument();
+		expect(screen.getByText("Project One")).toBeInTheDocument();
+		expect(window.localStorage.getItem("ao.sidebar.section.work")).toBe("0");
+	});
+
+	it("shows one quiet New Work project row when Work is empty", () => {
+		renderSidebar();
+		expect(screen.getByText("New Work project")).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /^Work$/ })).toHaveAttribute("aria-expanded", "true");
 	});
 
 	it("keeps the project list capped behind Show more while the sidebar is toggled off", () => {
@@ -2607,8 +2639,8 @@ describe("Sidebar", () => {
 		const user = userEvent.setup();
 		renderSidebar();
 
-		await user.click(screen.getByRole("button", { name: "Projects" }));
-		expect(screen.getByRole("button", { name: "Projects" })).toHaveAttribute("aria-expanded", "false");
+		await user.click(screen.getByRole("button", { name: "Code" }));
+		expect(screen.getByRole("button", { name: "Code" })).toHaveAttribute("aria-expanded", "false");
 		await waitFor(() => expect(screen.queryByText(workspace.name)).not.toBeInTheDocument());
 
 		await user.click(screen.getByRole("button", { name: "Collapse sidebar" }));
@@ -2616,7 +2648,7 @@ describe("Sidebar", () => {
 		expect(screen.queryByText(workspace.name)).not.toBeInTheDocument();
 		await user.click(screen.getAllByRole("button", { hidden: true, name: "Expand sidebar" })[0]);
 
-		expect(screen.getByRole("button", { name: "Projects" })).toHaveAttribute("aria-expanded", "false");
+		expect(screen.getByRole("button", { name: "Code" })).toHaveAttribute("aria-expanded", "false");
 		expect(screen.queryByText(workspace.name)).not.toBeInTheDocument();
 	});
 
@@ -3675,12 +3707,12 @@ describe("Sidebar active-session reveal", () => {
 	it("reopens a closed Projects section to reveal the active session", async () => {
 		const user = userEvent.setup();
 		const { go } = mount([workspace.id]);
-		await user.click(screen.getByRole("button", { name: "Projects" }));
-		expect(screen.getByRole("button", { name: "Projects" })).toHaveAttribute("aria-expanded", "false");
+		await user.click(screen.getByRole("button", { name: "Code" }));
+		expect(screen.getByRole("button", { name: "Code" })).toHaveAttribute("aria-expanded", "false");
 
 		go(session.id);
 
-		await waitFor(() => expect(screen.getByRole("button", { name: "Projects" })).toHaveAttribute("aria-expanded", "true"));
+		await waitFor(() => expect(screen.getByRole("button", { name: "Code" })).toHaveAttribute("aria-expanded", "true"));
 		expect(await screen.findByLabelText("Open fix login")).toHaveAttribute("aria-current", "page");
 	});
 

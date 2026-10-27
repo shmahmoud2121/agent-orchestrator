@@ -165,6 +165,8 @@ export type UiState = {
 	// Bumps to ask the sidebar's create-project flow to open (the ⌘N fallback
 	// when no project is in scope).
 	createProjectNonce: number;
+	/** Bumps to open the New Work project sheet. Work projects have no history default. */
+	createWorkNonce: number;
 	// Transient "a folder was dropped onto the app window — open the
 	// create-project flow for this path" signal, mirroring newTaskRequest: the
 	// nonce always bumps so dropping the same folder twice in a row still
@@ -236,6 +238,7 @@ export type UiState = {
 	requestWorkspaceFileOpen: (sessionId: string, path: string, hostId?: string, source?: "artifact") => void;
 	clearWorkspaceFileOpenRequest: (nonce: number) => void;
 	requestCreateProject: () => void;
+	requestCreateWorkProject: () => void;
 	requestCreateProjectFromPath: (path: string) => void;
 	requestNewShellTerminal: () => void;
 	setActiveShellTerminal: (handleId: string | null) => void;
@@ -359,6 +362,7 @@ export const useUiStore = create<UiState>((set, get) => ({
 	newTaskRequest: null,
 	workspaceFileOpenRequest: null,
 	createProjectNonce: 0,
+	createWorkNonce: 0,
 	folderDropRequest: null,
 	newShellTerminalNonce: 0,
 	activeShellTerminalHandleId: null,
@@ -663,6 +667,7 @@ export const useUiStore = create<UiState>((set, get) => ({
 			? { workspaceFileOpenRequest: null }
 			: state),
 	requestCreateProject: () => set((state) => ({ createProjectNonce: state.createProjectNonce + 1 })),
+	requestCreateWorkProject: () => set((state) => ({ createWorkNonce: state.createWorkNonce + 1 })),
 	requestCreateProjectFromPath: (path) =>
 		set((state) => ({ folderDropRequest: { path, nonce: (state.folderDropRequest?.nonce ?? 0) + 1 } })),
 	requestNewShellTerminal: () => set((state) => ({ newShellTerminalNonce: state.newShellTerminalNonce + 1 })),

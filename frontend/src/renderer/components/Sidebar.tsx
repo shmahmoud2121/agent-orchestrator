@@ -21,6 +21,7 @@ import {
 	ChevronRight,
 	Download,
 	File,
+	FileText,
 	Folder,
 	FolderOpen,
 	MoreVertical,
@@ -461,6 +462,24 @@ function AnimatedSectionBody({ open, children, className }: { open: boolean; chi
 }
 const expandedProjectsStorageKey = "ao.sidebar.expanded-projects";
 const projectOrderStorageKey = "ao.sidebar.project-order";
+const codeSectionStorageKey = "ao.sidebar.section.code";
+const workSectionStorageKey = "ao.sidebar.section.work";
+
+function readSectionOpen(key: string): boolean {
+	try {
+		return window.localStorage?.getItem(key) !== "0";
+	} catch {
+		return true;
+	}
+}
+
+function writeSectionOpen(key: string, open: boolean) {
+	try {
+		window.localStorage?.setItem(key, open ? "1" : "0");
+	} catch {
+		// Private mode and broken storage leave the section at its in-memory state.
+	}
+}
 
 function readExpandedProjectIds(): ReadonlySet<string> {
 	if (typeof window === "undefined" || !window.localStorage) return new Set();
@@ -628,6 +647,7 @@ export function Sidebar({
 	const commandPaletteEnabled = useCommandPaletteEnabled();
 	const settingsPage = useSettingsPage();
 	const setCommandPaletteOpen = useUiStore((s) => s.setCommandPaletteOpen);
+	const requestCreateWorkProject = useUiStore((state) => state.requestCreateWorkProject);
 	const artifactTotal = useMemo(() => artifactCount(groupArtifactsByProject(workspaces)), [workspaces]);
 	const existingProjectPaths = useMemo(
 		() => workspaces
@@ -684,7 +704,8 @@ export function Sidebar({
 	}, [dismissedInitialActiveProjectIds, expandedIds, initialActiveSessionProjectId]);
 	// Section disclosure: every section header collapses its own body.
 	const [pinnedOpen, setPinnedOpen] = useState(true);
-	const [projectsOpen, setProjectsOpen] = useState(true);
+	const [projectsOpen, setProjectsOpen] = useState(() => readSectionOpen(codeSectionStorageKey));
+	const [workOpen, setWorkOpen] = useState(() => readSectionOpen(workSectionStorageKey));
 	const [scratchpadOpen, setScratchpadOpen] = useState(true);
 
 	// Keyboard navigation (⌘⇧[ / ⌘⇧], ⌘1-9, attention jumps) can land on a row
@@ -719,6 +740,9 @@ export function Sidebar({
 			if (attempts === 0) {
 				setPinnedOpen(true);
 				setProjectsOpen(true);
+				writeSectionOpen(codeSectionStorageKey, true);
+				setWorkOpen(true);
+				writeSectionOpen(workSectionStorageKey, true);
 				setScratchpadOpen(true);
 			}
 			if (attempts++ < 3) frame = requestAnimationFrame(reveal);
@@ -790,6 +814,15 @@ export function Sidebar({
 		() => orderedWorkspaces.filter((workspace) => workspace.kind !== STANDALONE_PROJECT_KIND),
 		[orderedWorkspaces],
 	);
+	const codeWorkspaces = useMemo(
+		() => projectWorkspaces.filter((workspace) => workspace.kind !== "work"),
+		[projectWorkspaces],
+	);
+	const workWorkspaces = useMemo(
+		() => projectWorkspaces.filter((workspace) => workspace.kind === "work"),
+		[projectWorkspaces],
+	);
+	const cappedWorkspaces = isIconRail ? projectWorkspaces : codeWorkspaces;
 	const standaloneWorkspace = useMemo(
 		() => workspaces.find((workspace) => workspace.kind === STANDALONE_PROJECT_KIND),
 		[workspaces],
@@ -799,11 +832,11 @@ export function Sidebar({
 		hiddenCount: hiddenProjectCount,
 		showAll: showAllProjects,
 		toggleShowAll: toggleShowAllProjects,
-	} = useShowMoreCap(projectWorkspaces, SIDEBAR_INITIAL_SECTION_LIMIT, selection.activeProjectId, isIconRail);
-	const projectContentOpen = (projectWorkspaces.length > 0 || remoteHosts.length > 0) && (projectsOpen || isIconRail);
+	} = useShowMoreCap(cappedWorkspaces, SIDEBAR_INITIAL_SECTION_LIMIT, selection.activeProjectId, isIconRail);
+	const projectContentOpen = (cappedWorkspaces.length > 0 || remoteHosts.length > 0) && (projectsOpen || isIconRail);
 	const projectIds = useMemo(
-		() => projectWorkspaces.map((workspace) => workspace.id),
-		[projectWorkspaces],
+		() => cappedWorkspaces.map((workspace) => workspace.id),
+		[cappedWorkspaces],
 	);
 	const projectDragClickGuard = usePostDragClickGuard();
 	const [draggingProjectId, setDraggingProjectId] = useState<string | null>(null);
@@ -1064,9 +1097,13 @@ export function Sidebar({
 				    state so it keeps owning the ⌘N create flow. */}
 				<div className="sidebar-expanded-chrome flex shrink-0 pb-0.5 group-data-[collapsible=icon]:hidden">
 					<SectionDisclosure
-						label={t("shell.projects")}
+						label={t("shell.code")}
 						open={projectsOpen}
-						onToggle={() => setProjectsOpen((open) => !open)}
+						onToggle={() => setProjectsOpen((open) => {
+							const next = !open;
+							writeSectionOpen(codeSectionStorageKey, next);
+							return next;
+						})}
 						trailing={
 							<CreateProjectButton
 								existingProjectPaths={existingProjectPaths}
@@ -1185,6 +1222,62 @@ export function Sidebar({
 									/>
 								) : null}
 							</AnimatedSectionBody>
+						) : null}
+						{!isIconRail && !workspaceError ? (
+							<div className="sidebar-expanded-chrome flex flex-col group-data-[collapsible=icon]:hidden">
+								<SectionDisclosure
+									label={t("shell.work")}
+									open={workOpen}
+									onToggle={() => setWorkOpen((open) => {
+										const next = !open;
+										writeSectionOpen(workSectionStorageKey, next);
+										return next;
+									})}
+									trailing={
+										<button
+											aria-label={t("shell.newWorkProject")}
+											className={ROW_ACTION_BUTTON_CLASS}
+											onClick={() => requestCreateWorkProject()}
+											type="button"
+										>
+											<Plus aria-hidden="true" />
+										</button>
+									}
+								/>
+								{workOpen ? (
+									workWorkspaces.length > 0 ? (
+										<SidebarMenu className="gap-0.5">
+											{workWorkspaces.map((workspace) => (
+												<ProjectItem
+													key={workspace.id}
+													workspace={workspace}
+													expanded={expandedIds.has(workspace.id) || (initialActiveSessionProjectId === workspace.id && !dismissedInitialActiveProjectIds.has(workspace.id))}
+													suppressInitialExpandAnimation={expandedIds.has(workspace.id)}
+													selection={selection}
+													isDragged={false}
+													projectDragInProgress={false}
+													consumeDragClick={projectDragClickGuard.consumeClick}
+													onToggle={toggleProjectDisclosure}
+													onRemoveProject={onRemoveProject}
+													reorderable={false}
+													onProjectDragStart={() => undefined}
+													onProjectDragEnd={() => undefined}
+													onProjectDragOver={() => undefined}
+													onProjectDrop={() => undefined}
+												/>
+											))}
+										</SidebarMenu>
+									) : (
+										<button
+											className={cn(NAV_ROW_CLASS, SIDEBAR_ROW_CLASS, "w-full text-left")}
+											onClick={() => requestCreateWorkProject()}
+											type="button"
+										>
+											{t("shell.newWorkProject")}
+										</button>
+									)
+								) : null}
+							</div>
 						) : null}
 						{!workspaceError && standaloneWorkspace ? (
 							<ScratchpadSection
@@ -1350,6 +1443,8 @@ type ProjectItemProps = {
 	onProjectDragEnd: () => void;
 	onProjectDragOver: (event: ReactDragEvent<HTMLElement>, overId: string) => void;
 	onProjectDrop: (event: ReactDragEvent<HTMLElement>) => void;
+	/** Work rows stay put. Reordering is a Code-list gesture. */
+	reorderable?: boolean;
 };
 
 // The part of the route selection one project row renders from. A switch
@@ -1392,6 +1487,7 @@ const ProjectItem = memo(function ProjectItem({
 	onProjectDragEnd,
 	onProjectDragOver,
 	onProjectDrop,
+	reorderable = true,
 }: ProjectItemProps) {
 	const { t } = useTranslation();
 	const nameWithHost = hostLabel ? `${workspace.name} · ${hostLabel}` : workspace.name;
@@ -1642,7 +1738,7 @@ const ProjectItem = memo(function ProjectItem({
 						)}
 						data-project-drag-row=""
 						data-project-id={workspace.id}
-						draggable={!workspace.hostId}
+						draggable={reorderable && !workspace.hostId}
 						onDragStart={(event) => onProjectDragStart(event, workspace.id)}
 						onDragEnd={onProjectDragEnd}
 					>
@@ -1685,8 +1781,9 @@ const ProjectItem = memo(function ProjectItem({
 										<span
 											className="inline-flex size-icon-md items-center justify-center transition-[scale] duration-normal ease-[var(--ease-out)] motion-reduce:transition-none"
 											data-project-folder-icon=""
+											data-project-icon={workspace.kind === "work" ? "document" : "folder"}
 										>
-											{expanded ? <FolderOpen strokeWidth={1.75} /> : <Folder strokeWidth={1.75} />}
+											{workspace.kind === "work" ? <FileText strokeWidth={1.75} /> : expanded ? <FolderOpen strokeWidth={1.75} /> : <Folder strokeWidth={1.75} />}
 										</span>
 										<span
 											className={cn(
@@ -1705,7 +1802,7 @@ const ProjectItem = memo(function ProjectItem({
 										aria-hidden="true"
 										className="relative z-[1] hidden size-8 items-center justify-center group-data-[collapsible=icon]:inline-flex"
 									>
-										{expanded ? <FolderOpen className="size-5" strokeWidth={1.75} /> : <Folder className="size-5" strokeWidth={1.75} />}
+										{workspace.kind === "work" ? <FileText className="size-5" strokeWidth={1.75} /> : expanded ? <FolderOpen className="size-5" strokeWidth={1.75} /> : <Folder className="size-5" strokeWidth={1.75} />}
 									</span>
 									<span
 										className="sidebar-expanded-chrome relative z-[1] min-w-0 flex-1 translate-y-px truncate group-data-[collapsible=icon]:hidden"
@@ -3219,6 +3316,7 @@ function CreateProjectButton({
 	// openSignal for ⌘N on every shell route. The collapsed rail button below
 	// reuses this flow via requestCreateProject().
 	const createProjectNonce = useUiStore((state) => state.createProjectNonce);
+	const createWorkNonce = useUiStore((state) => state.createWorkNonce);
 	const folderDropRequest = useUiStore((state) => state.folderDropRequest);
 	const requestNewTask = useUiStore((state) => state.requestNewTask);
 	const [hostId, setHostId] = useState<string>();
@@ -3236,7 +3334,7 @@ function CreateProjectButton({
 			mode="choose"
 			onCloneProject={onCloneProject}
 			onCreateProject={async (input) => {
-				if (hostId) {
+				if (hostId && !input.sources) {
 					await onCreateRemoteProject(hostId, input);
 					setHostId(undefined);
 				} else await onCreateProject(input);
@@ -3245,6 +3343,7 @@ function CreateProjectButton({
 			onInitializeProject={(path) => hostId ? onInitializeRemoteProject(hostId, path) : onInitializeProject(path)}
 			onOpenExistingProject={onOpenExistingProject}
 			openSignal={createProjectNonce}
+			workOpenSignal={createWorkNonce}
 		>
 			{({ disabled, choosePath, label }) => (
 				<Tooltip>

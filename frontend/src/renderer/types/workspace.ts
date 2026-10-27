@@ -284,7 +284,7 @@ export function canonicalTrackerIssueId(issueId?: string): string | undefined {
 	return TRACKER_PROVIDER_PREFIXES.some((prefix) => issueId.startsWith(prefix)) ? issueId : undefined;
 }
 
-export type ProjectKind = "single_repo" | "workspace" | "scratch";
+export type ProjectKind = "single_repo" | "workspace" | "scratch" | "work";
 
 /** UI-only grouping for sessions that have no daemon project row. */
 export const STANDALONE_WORKSPACE_ID = "__standalone__" as const;
@@ -293,7 +293,7 @@ export const STANDALONE_PROJECT_KIND = "standalone" as const;
 /** Sentinel `kind` value for projects hosted by the AO cloud control plane. */
 export const CLOUD_PROJECT_KIND = "cloud" as const;
 
-const projectKinds = new Set<ProjectKind>(["single_repo", "workspace", "scratch"]);
+const projectKinds = new Set<ProjectKind>(["single_repo", "workspace", "scratch", "work"]);
 
 export function toProjectKind(kind?: string): ProjectKind | undefined {
 	return projectKinds.has(kind as ProjectKind) ? (kind as ProjectKind) : undefined;

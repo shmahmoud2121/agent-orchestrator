@@ -401,6 +401,51 @@ describe("CreateProjectAgentSheet", () => {
 		});
 	});
 
+	it("pre-selects Claude Code as the Code project manager even when history prefers Codex", async () => {
+		const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+		queryClient.setQueryData(workspaceQueryKey, [
+			{
+				sessions: [
+					{ id: "w1", kind: "worker", provider: "codex", createdAt: hoursAgo(2) },
+					{ id: "o1", kind: "orchestrator", provider: "codex", createdAt: hoursAgo(1) },
+				],
+			},
+		]);
+		const onSubmit = renderSheet(vi.fn().mockResolvedValue(undefined), queryClient);
+
+		await userEvent.click(screen.getByRole("button", { name: "Create and start" }));
+
+		await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+		expect(onSubmit).toHaveBeenCalledWith({
+			workerAgent: "codex",
+			orchestratorAgent: "claude-code",
+			trackerIntake: undefined,
+		});
+	});
+
+	it("falls back to orchestrator history when Claude Code is not ready", async () => {
+		const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+		queryClient.setQueryData(agentReadinessQueryKey, {
+			agents: [
+				agentReadiness("claude-code", "Claude Code", { authentication: "unauthorized" }),
+				agentReadiness("codex", "Codex"),
+			],
+		});
+		queryClient.setQueryData(workspaceQueryKey, [
+			{
+				sessions: [{ id: "o1", kind: "orchestrator", provider: "codex", createdAt: hoursAgo(1) }],
+			},
+		]);
+		const onSubmit = renderSheet(vi.fn().mockResolvedValue(undefined), queryClient);
+
+		await userEvent.click(screen.getByRole("button", { name: "Create and start" }));
+
+		await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+		expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+			orchestratorAgent: "codex",
+		}));
+	});
+
 	it("defaults each role from its own session history", async () => {
 		const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 		queryClient.setQueryData(workspaceQueryKey, [

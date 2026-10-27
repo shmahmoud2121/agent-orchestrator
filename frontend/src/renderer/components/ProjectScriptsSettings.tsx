@@ -45,6 +45,7 @@ export function ProjectScriptsSettings({ projectId, onSaveState }: { projectId: 
 	if (query.isLoading) return <p className="px-(--settings-row-inset) text-sm text-settings-muted">{t("settings.project.loading")}</p>;
 	if (query.isError || !query.data) return <p role="alert" className="px-(--settings-row-inset) text-sm text-error">{query.error instanceof Error ? query.error.message : t("settings.project.loadFailed")}</p>;
 	const project = query.data;
+	if (project.kind === "work") return null;
 	const scratch = project.kind === "scratch";
 	const save = async (steps: ScriptSteps) => {
 		// A local step always runs in the project's own workspace; its own time

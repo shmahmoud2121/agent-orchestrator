@@ -37,6 +37,8 @@ export interface Settings {
 	trackerIntakeEnabled: boolean;
 	/** Idle open sessions move to a harness release installed while they ran. */
 	versionRefresh?: boolean;
+	/** Manager pre-selected for a new Code project. Work projects always ask. */
+	defaultCodeManager?: string;
 }
 
 export function useSettings(hostId?: string, enabled = true) {
@@ -67,6 +69,7 @@ export function useSettings(hostId?: string, enabled = true) {
 				trackerIntakeEnabled: data?.trackerIntakeEnabled ?? false,
 				// A daemon that predates the setting never moves sessions.
 				versionRefresh: data?.versionRefresh ?? false,
+				defaultCodeManager: data?.defaultCodeManager || "claude-code",
 			};
 		},
 	});
@@ -159,6 +162,25 @@ export function useUpdateVersionRefresh() {
 
 	return {
 		update: (enabled: boolean) => mutation.mutate(enabled),
+		saving: mutation.isPending,
+		error: mutation.error ? apiErrorMessage(mutation.error) : undefined,
+	};
+}
+
+/** Saves the manager pre-selected for a new Code project. */
+export function useUpdateDefaultCodeManager() {
+	const queryClient = useQueryClient();
+	const mutation = useMutation({
+		mutationFn: async (harness: string) => {
+			const { error } = await apiClient.PATCH("/api/v1/settings/default-code-manager", {
+				body: { harness },
+			});
+			if (error) throw error;
+		},
+		onSuccess: () => queryClient.invalidateQueries({ queryKey: settingsQueryKey }),
+	});
+	return {
+		update: mutation.mutateAsync,
 		saving: mutation.isPending,
 		error: mutation.error ? apiErrorMessage(mutation.error) : undefined,
 	};

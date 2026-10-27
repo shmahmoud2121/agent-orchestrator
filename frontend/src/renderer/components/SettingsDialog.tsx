@@ -85,6 +85,11 @@ function useSettingsLayer(settingsModal: SettingsModal | null) {
 		enabled: localProjectScope,
 		select: (workspaces) => workspaces.some((workspace) => workspace.id === projectId),
 	}).data === true;
+	const localProjectKind = useQuery({
+		...workspaceQueryOptions,
+		enabled: localProjectScope,
+		select: (workspaces) => workspaces.find((workspace) => workspace.id === projectId)?.kind,
+	}).data;
 	const cloudProjectsPending = localProjectScope && !knownLocal && cloudProjects.isLoading;
 	const cloudLookupFailed = localProjectScope && !cloudProject && !knownLocal && cloudProjects.isError;
 
@@ -107,7 +112,7 @@ function useSettingsLayer(settingsModal: SettingsModal | null) {
 		projectSections.push({ id: "repositories", label: t("settings.project.repositories", { defaultValue: "Repositories" }), icon: FolderGit2 });
 		projectSections.push({ id: "instructions", label: t("settings.project.instructions", { defaultValue: "Instructions" }), icon: ScrollText });
 	}
-	if (!remoteHostId) projectSections.push({ id: "scripts", label: t("settings.project.scripts"), icon: Wrench });
+	if (!remoteHostId && localProjectKind !== "work") projectSections.push({ id: "scripts", label: t("settings.project.scripts"), icon: Wrench });
 	if (!remoteHostId && !isCloudProjectSettings) {
 		projectSections.push({ id: "environment", label: t("settings.project.environment"), icon: KeyRound });
 		projectSections.push({ id: "cues", label: t("cues.title"), icon: Play });
