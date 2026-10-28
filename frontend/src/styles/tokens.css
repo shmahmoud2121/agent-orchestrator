@@ -21,37 +21,38 @@
 
 	/* True black canvas. Hue 80 is warm, kept at very low chroma so nested
 	   surfaces read as lamp-lit black. Starlight gold is the only accent. */
-	--accent-star: oklch(0.80 0.12 80);
-	--background: oklch(0 0 0);
-	--foreground: oklch(0.93 0.012 85);
-	--card: oklch(0.155 0.004 80);
-	--card-foreground: oklch(0.93 0.012 85);
-	--popover: oklch(0.195 0.005 80);
-	--popover-foreground: oklch(0.93 0.012 85);
+	--accent-star: #E5B451;
+	--accent-star-ink: #E5B451;
+	--background: #050506;
+	--foreground: #ECE7DC;
+	--card: #0B0B0D;
+	--card-foreground: #ECE7DC;
+	--popover: #100F0C;
+	--popover-foreground: #ECE7DC;
 	--primary: oklch(0.90 0.014 85);
 	--primary-foreground: oklch(0 0 0);
-	--secondary: oklch(0.225 0.005 80);
+	--secondary: #15130F;
 	--secondary-foreground: oklch(0.93 0.012 85);
-	--muted: oklch(0.225 0.005 80);
-	--muted-foreground: oklch(0.70 0.010 85);
-	--accent: oklch(0.225 0.005 80);
+	--muted: #15130F;
+	--muted-foreground: #B3AD9F;
+	--accent: #15130F;
 	--accent-foreground: oklch(0.93 0.012 85);
 	--destructive: oklch(0.704 0.191 22.216);
 	/* Hairlines separate, they do not decorate. 7% white disappears on true black. */
-	--border: oklch(1 0.02 85 / 9%);
-	--input: oklch(1 0.02 85 / 5%);
+	--border: #1E1C18;
+	--input: #2B2820;
 	--ring: var(--accent-star);
 	--chart-1: oklch(0.84 0 0);
 	--chart-2: oklch(0.6 0 0);
 	--chart-3: oklch(0.48 0 0);
 	--chart-4: oklch(0.4 0 0);
 	--chart-5: oklch(0.29 0 0);
-	--radius: 0.625rem;
-	--sidebar: oklch(0.115 0.003 80);
+	--radius: 0.5rem;
+	--sidebar: #08080A;
 	--sidebar-foreground: oklch(0.93 0.012 85);
 	--sidebar-primary: oklch(0.90 0.014 85);
 	--sidebar-primary-foreground: oklch(0 0 0);
-	--sidebar-accent: oklch(0.225 0.005 80);
+	--sidebar-accent: #15130F;
 	--sidebar-accent-foreground: oklch(0.93 0.012 85);
 	--sidebar-border: var(--border);
 	--sidebar-ring: var(--accent-star);
@@ -77,7 +78,7 @@
 	/* Text */
 	--color-text-primary: var(--foreground);
 	--color-text-muted: var(--muted-foreground);
-	--color-text-passive: var(--chart-3);
+	--color-text-passive: #8E887A;
 	--color-brand-logo: #79b0dc;
 	--color-brand-logo-bright: #a5cde7;
 	--color-brand-logo-foreground: #0a0b0d;
@@ -100,7 +101,7 @@
 	--color-border-topbar-strong: var(--input);
 	--color-text-topbar: var(--foreground);
 	--color-text-topbar-muted: var(--muted-foreground);
-	--color-text-topbar-passive: var(--chart-3);
+	--color-text-topbar-passive: var(--color-text-passive);
 
 	/* Accent and destructive roles */
 	--color-accent: var(--primary);
@@ -133,7 +134,7 @@
 
 	/* Interactive overlays */
 	--color-interactive-hover: color-mix(in oklch, var(--foreground) 4%, transparent);
-	--color-interactive-active: color-mix(in oklch, var(--foreground) 7%, transparent);
+	--color-interactive-active: #15130F;
 	--color-overlay-subtle: color-mix(in oklch, var(--foreground) 1.8%, transparent);
 	--color-overlay-faint: color-mix(in oklch, var(--foreground) 2%, transparent);
 	--color-scrollbar: color-mix(in oklch, var(--foreground) 12%, transparent);
@@ -146,11 +147,9 @@
 	   TYPOGRAPHY
 	   ═══════════════════════════════════════════════════════════════ */
 
-	--font-family-base: "Geist Variable", "Geist", ui-sans-serif, system-ui, sans-serif;
-	--font-family-mono:
-		"Geist Mono Variable", "Geist Mono", "JetBrainsMono Nerd Font Mono", "JetBrainsMono Nerd Font",
-		"FiraCode Nerd Font Mono", "FiraCode Nerd Font", "MesloLGS NF", ui-monospace, SFMono-Regular, Menlo, Monaco,
-		Consolas, "Liberation Mono", "Courier New", monospace;
+	--font-family-base: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+	--font-family-display: "Space Grotesk", "IBM Plex Sans", sans-serif;
+	--font-family-mono: "IBM Plex Mono", ui-monospace, monospace;
 
 	/* Scale — dense UI chrome uses half-steps between base sizes */
 	--font-size-2xs: 10.5px; /* uppercase meta, board footers */
@@ -240,8 +239,8 @@
 	   ═══════════════════════════════════════════════════════════════ */
 
 	--radius-xs: calc(var(--radius) * 0.4);
-	--radius-sm: calc(var(--radius) * 0.6);
-	--radius-md: calc(var(--radius) * 0.8);
+	--radius-sm: 4px; /* small controls and rows */
+	--radius-md: 6px; /* primary button, composer, popovers */
 	--radius-lg: var(--radius);
 	--radius-panel: calc(var(--radius) * 1.4);
 	--radius-full: 999px; /* pills, avatars, status dots */
@@ -430,7 +429,7 @@
 	--size-import-folder-dialog: 640px;
 	--size-composer-prompt-min: 112px;
 	--size-composer-start-button: 7.25rem;
-	--radius-chat-composer: 20px;
+	--radius-chat-composer: 6px;
 	/* Task composer — inline toolbar values. Quieter than a filled control at rest
 	 * so the task field stays the only thing with visual weight. */
 	--color-bg-composer-chip: color-mix(in oklab, var(--input) 55%, transparent);
@@ -640,53 +639,44 @@
 	--font-mono: var(--font-family-mono);
 }
 
-/* macOS uses the system faces (SF Pro / SF Mono). Preload sets data-ao-platform
-   before first paint; the Nerd Font entries stay as per-glyph fallbacks for
-   terminal powerline and file-type icons. */
-:root[data-ao-platform="darwin"] {
-	--font-family-base: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-	--font-family-mono:
-		"SF Mono", SFMono-Regular, ui-monospace, "JetBrainsMono Nerd Font Mono", "JetBrainsMono Nerd Font",
-		"FiraCode Nerd Font Mono", "FiraCode Nerd Font", "MesloLGS NF", Menlo, monospace;
-}
-
 /* Light theme — set via data-theme (apply-initial-theme + Zustand toggle). */
 
 :root[data-theme="light"] {
 	color-scheme: light;
 
 	/* Warm paper. Hue 80 at low chroma; nothing here is pure white. */
-	--accent-star: oklch(0.60 0.13 70);
-	--background: oklch(0.955 0.018 80);
-	--foreground: oklch(0.22 0.020 60);
-	--card: oklch(0.975 0.013 80);
-	--card-foreground: oklch(0.22 0.020 60);
-	--popover: oklch(0.975 0.013 80);
-	--popover-foreground: oklch(0.22 0.020 60);
+	--accent-star: #D9A441;
+	--accent-star-ink: #8A5E0E;
+	--background: #F4F0E6;
+	--foreground: #1E1B15;
+	--card: #FBF8F1;
+	--card-foreground: #1E1B15;
+	--popover: #FBF8F1;
+	--popover-foreground: #1E1B15;
 	--primary: oklch(0.26 0.020 60);
 	--primary-foreground: oklch(0.975 0.013 80);
-	--secondary: oklch(0.915 0.022 78);
+	--secondary: #E6DFCF;
 	--secondary-foreground: oklch(0.22 0.020 60);
-	--muted: oklch(0.915 0.022 78);
-	--muted-foreground: oklch(0.47 0.025 65);
-	--accent: oklch(0.915 0.022 78);
+	--muted: #E6DFCF;
+	--muted-foreground: #4F493D;
+	--accent: #E6DFCF;
 	--accent-foreground: oklch(0.22 0.020 60);
 	--destructive: oklch(0.577 0.245 27.325);
 	/* Translucent like dark: hairlines and input wells are overlays on whatever
 	 * surface they sit on, so a card edge never reads as an opaque gray stroke. */
-	--border: oklch(0.30 0.040 60 / 10%);
-	--input: oklch(0.30 0.040 60 / 6%);
+	--border: #D8D0BE;
+	--input: #CFC6B2;
 	--ring: var(--accent-star);
 	--chart-1: oklch(0.72 0 0);
 	--chart-2: oklch(0.52 0 0);
 	--chart-3: oklch(0.4 0 0);
 	--chart-4: oklch(0.32 0 0);
 	--chart-5: oklch(0.24 0 0);
-	--sidebar: oklch(0.935 0.022 78);
+	--sidebar: #EDE8DC;
 	--sidebar-foreground: oklch(0.22 0.020 60);
 	--sidebar-primary: oklch(0.26 0.020 60);
 	--sidebar-primary-foreground: oklch(0.975 0.013 80);
-	--sidebar-accent: oklch(0.915 0.022 78);
+	--sidebar-accent: #E6DFCF;
 	--sidebar-accent-foreground: oklch(0.22 0.020 60);
 	--sidebar-border: var(--border);
 	--sidebar-ring: var(--accent-star);
@@ -702,7 +692,7 @@
 
 	--color-text-primary: var(--foreground);
 	--color-text-muted: var(--muted-foreground);
-	--color-text-passive: oklch(0.62 0 0);
+	--color-text-passive: #6B6455;
 	--color-brand-logo: #304c83;
 	--color-brand-logo-bright: #466daa;
 	--color-brand-logo-foreground: #ffffff;
@@ -733,10 +723,10 @@
 
 	/* Same lane hues as dark, deepened so they hold contrast on a light canvas. */
 	--color-status-working: #2563eb;
-	--color-status-needs-you: #c2412d;
+	--color-status-needs-you: #B8371C;
 	--color-status-validating: #b87d00;
-	--color-status-in-review: #ce7000;
-	--color-status-ready: #059e45;
+	--color-status-in-review: #A15C00;
+	--color-status-ready: #1F7A3E;
 	--color-status-merged: #9333ea;
 	--color-status-idle: var(--muted-foreground);
 	--color-status-exited: var(--destructive);
@@ -752,7 +742,7 @@
 	--color-purple: var(--chart-4);
 
 	--color-interactive-hover: color-mix(in oklch, var(--foreground) 4%, transparent);
-	--color-interactive-active: color-mix(in oklch, var(--foreground) 7%, transparent);
+	--color-interactive-active: #E6DFCF;
 	--color-overlay-subtle: color-mix(in oklch, var(--foreground) 2%, transparent);
 	--color-overlay-faint: color-mix(in oklch, var(--foreground) 3%, transparent);
 	--color-scrollbar: color-mix(in oklch, var(--foreground) 12%, transparent);
@@ -833,7 +823,6 @@
 	--color-term-bright-cyan: #316061;
 	--color-term-bright-white: #24292f;
 }
-
 
 /* ═══════════════════════════════════════════════════════════════
    NAMED THEMES — applied via data-style-theme on :root.

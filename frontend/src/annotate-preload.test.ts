@@ -144,10 +144,10 @@ describe("annotation adjustment preload", () => {
 		expect(styles).toContain("--radius:8px");
 		expect(styles).toContain("--pad:8px");
 		expect(styles).not.toContain("border-radius:999px");
-		expect(styles).not.toContain('font:700 10px "Geist Mono Variable"');
-		expect(styles).toContain('font:600 10px/1 "Geist Variable"');
-		expect(styles).toMatch(/\.field input,\.field select,\.property-textarea\{[^}]*Geist Variable/);
-		expect(styles).toMatch(/\.field input\[data-unit\]\{[^}]*Geist Mono Variable/);
+		expect(styles).not.toContain('font:700 10px "IBM Plex Mono"');
+		expect(styles).toContain('font:600 10px/1 "IBM Plex Sans"');
+		expect(styles).toMatch(/\.field input,\.field select,\.property-textarea\{[^}]*IBM Plex Sans/);
+		expect(styles).toMatch(/\.field input\[data-unit\]\{[^}]*IBM Plex Mono/);
 		expect(styles).toContain("button:focus-visible{outline:none;box-shadow:inset");
 		// The lock wears the same chrome as the composer's icon buttons.
 		expect(styles).toMatch(/\.link-button:not\(:disabled\):hover,\.link-button--active\{background:var\(--muted\);color:var\(--fg\)\}/);
