@@ -595,6 +595,8 @@
 	"createProject.footerResolve_one": "{{count}} fehlgeschlagenes Repository beheben, um fortzufahren",
 	"createProject.footerResolve_other": "{{count}} fehlgeschlagene Repositories beheben, um fortzufahren",
 	"createProject.footerReview": "Fehler oben prüfen oder einen anderen Ordner wählen",
+	"createProject.allowUnsandboxedWorkers": "Let workers run without a sandbox",
+	"createProject.allowUnsandboxedWorkersHint": "Windows can't sandbox workers. Workers can then read any file and use the internet; the protected-file guard still blocks secrets and stops a worker that keeps trying. Only Claude Code and Codex workers are allowed.",
 	"createProject.gitSetupNotice": "Falls dieser Ordner eine Git-Einrichtung benötigt, initialisiert Altair ihn und erstellt den ersten Commit vor dem Start.",
 	"createProject.githubOwner": "Owner",
 	"createProject.otherGitHubOwner": "Andere",

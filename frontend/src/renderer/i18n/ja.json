@@ -595,6 +595,8 @@
 	"createProject.footerResolve_one": "続行するには失敗したリポジトリ {{count}} 件を解決してください",
 	"createProject.footerResolve_other": "続行するには失敗したリポジトリ {{count}} 件を解決してください",
 	"createProject.footerReview": "上記のエラーを確認するか、別のフォルダーを選択してください",
+	"createProject.allowUnsandboxedWorkers": "Let workers run without a sandbox",
+	"createProject.allowUnsandboxedWorkersHint": "Windows can't sandbox workers. Workers can then read any file and use the internet; the protected-file guard still blocks secrets and stops a worker that keeps trying. Only Claude Code and Codex workers are allowed.",
 	"createProject.gitSetupNotice": "このフォルダーに Git のセットアップが必要な場合、Altair は開始前に初期化し、最初のコミットを作成します。",
 	"createProject.githubOwner": "Owner",
 	"createProject.otherGitHubOwner": "その他",

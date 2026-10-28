@@ -43,6 +43,33 @@ func writeLegacyRoot(t *testing.T) string {
 	return root
 }
 
+// The GitHub remote step is off in the local-only build; these tests keep
+// covering it so it can be switched back on.
+func init() { projectRemoteRequired = true }
+
+func TestValidateProjectImportLocalOnlySkipsRemote(t *testing.T) {
+	projectRemoteRequired = false
+	t.Cleanup(func() { projectRemoteRequired = true })
+	ctx := context.Background()
+	svc := New(Deps{Store: newFakeStore()})
+
+	plain, err := svc.Validate(ctx, ImportValidationInput{ImportKind: ImportKindProject, Path: t.TempDir()})
+	if err != nil {
+		t.Fatalf("Validate plain folder: %v", err)
+	}
+	wantActions(t, plain.Root.RequiredActions, []string{GitPreparationActionInit, GitPreparationActionCommit})
+
+	repo := t.TempDir()
+	gitRepoWithCommitNoOrigin(t, repo)
+	local, err := svc.Validate(ctx, ImportValidationInput{ImportKind: ImportKindProject, Path: repo})
+	if err != nil {
+		t.Fatalf("Validate local repo: %v", err)
+	}
+	if !local.IsValid || local.NextStep != ImportNextStepContinue || len(local.Root.RequiredActions) != 0 {
+		t.Fatalf("result = %#v, want a local repository without origin to continue", local)
+	}
+}
+
 func TestStatus_NoLegacyData(t *testing.T) {
 	svc := New(Deps{Store: newFakeStore(), Root: filepath.Join(t.TempDir(), "nope")})
 	st, err := svc.Status(context.Background())

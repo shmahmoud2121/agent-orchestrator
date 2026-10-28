@@ -121,6 +121,9 @@ export function createTrayController(options: TrayControllerOptions): TrayContro
 	};
 
 	render();
+	// Windows users expect a left click on the notification-area icon to bring
+	// the window back; the menu stays on right click.
+	if (process.platform !== "darwin") tray.on("click", () => options.focusWindow());
 
 	return {
 		setState(state) {

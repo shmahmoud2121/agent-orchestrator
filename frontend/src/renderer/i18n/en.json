@@ -592,6 +592,8 @@
 	"createProject.footerResolve_one": "Resolve {{count}} failed repository to continue",
 	"createProject.footerResolve_other": "Resolve {{count}} failed repositories to continue",
 	"createProject.footerReview": "Review the error above or choose a different folder",
+	"createProject.allowUnsandboxedWorkers": "Let workers run without a sandbox",
+	"createProject.allowUnsandboxedWorkersHint": "Windows can't sandbox workers. Workers can then read any file and use the internet; the protected-file guard still blocks secrets and stops a worker that keeps trying. Only Claude Code and Codex workers are allowed.",
 	"createProject.gitSetupNotice": "If this folder needs Git setup, Altair will initialize it and create the first commit before starting.",
 	"createProject.githubOwner": "Owner",
 	"createProject.otherGitHubOwner": "Other",

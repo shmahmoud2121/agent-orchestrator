@@ -595,6 +595,8 @@
 	"createProject.footerResolve_one": "请先解决 {{count}} 个失败的仓库后再继续",
 	"createProject.footerResolve_other": "请先解决 {{count}} 个失败的仓库后再继续",
 	"createProject.footerReview": "请查看上方错误，或选择其他文件夹",
+	"createProject.allowUnsandboxedWorkers": "Let workers run without a sandbox",
+	"createProject.allowUnsandboxedWorkersHint": "Windows can't sandbox workers. Workers can then read any file and use the internet; the protected-file guard still blocks secrets and stops a worker that keeps trying. Only Claude Code and Codex workers are allowed.",
 	"createProject.gitSetupNotice": "如果此文件夹需要设置 Git，Altair 会先初始化仓库并创建首次提交，然后再启动。",
 	"createProject.githubOwner": "Owner",
 	"createProject.otherGitHubOwner": "其他",

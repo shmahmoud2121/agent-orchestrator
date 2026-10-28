@@ -38,6 +38,7 @@ import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { appI18n } from "../i18n";
 import { Button } from "./ui/button";
+import { Checkbox } from "./ui/checkbox";
 
 type TrackerIntakeConfig = components["schemas"]["TrackerIntakeConfig"];
 
@@ -45,6 +46,8 @@ export type CreateProjectAgentSelection = {
 	workerAgent: string;
 	orchestratorAgent: string;
 	trackerIntake?: TrackerIntakeConfig;
+	/** Windows cannot sandbox workers; the person may let them run unsandboxed. */
+	allowUnsandboxedWorkers?: boolean;
 };
 
 const EMPTY_INTAKE: IntakeForm = { enabled: false, repo: "", assignee: "" };
@@ -178,6 +181,12 @@ export function CreateProjectAgentSheet({
 	const [orchestratorAgent, setOrchestratorAgent] = useState("");
 	const [workerAgentTouched, setWorkerAgentTouched] = useState(false);
 	const [orchestratorAgentTouched, setOrchestratorAgentTouched] = useState(false);
+	// Offered only when this computer cannot sandbox workers (native Windows).
+	// Off by default. Unsandboxed workers are limited to the harnesses the
+	// protected-file watchdog covers.
+	const offerUnsandboxedWorkers = !hostId && kind !== "workspace" && agents?.workerSandboxAvailable === false;
+	const [allowUnsandboxedWorkers, setAllowUnsandboxedWorkers] = useState(false);
+	const unsandboxedWorkers = offerUnsandboxedWorkers && allowUnsandboxedWorkers;
 	useEnsureAgentReadiness({
 		agentIds: [workerAgent, orchestratorAgent],
 		enabled: contentOpen && connected && (workerAgent !== "" || orchestratorAgent !== ""),
@@ -198,7 +207,8 @@ export function CreateProjectAgentSheet({
 		}) &&
 		!intakeIncomplete &&
 		!isBusy &&
-		!isLoadingAgents && connected && (!hostId || (
+		!isLoadingAgents && connected &&
+		(!unsandboxedWorkers || WATCHED_WORKER_HARNESSES.has(workerAgent)) && (!hostId || (
 			agents !== undefined && selectableAgents.some((agent) => agent.id === workerAgent) && selectableAgents.some((agent) => agent.id === orchestratorAgent)
 		));
 	const sheetError = displayedError.current
@@ -212,6 +222,7 @@ export function CreateProjectAgentSheet({
 			setOrchestratorAgent("");
 			setWorkerAgentTouched(false);
 			setOrchestratorAgentTouched(false);
+			setAllowUnsandboxedWorkers(false);
 			setIntake(EMPTY_INTAKE);
 		}
 		wasOpen.current = open;
@@ -284,7 +295,8 @@ export function CreateProjectAgentSheet({
 									value={workerAgent}
 									agents={selectableAgents}
 									disabled={isLoadingAgents}
-									sandboxRequired
+									sandboxRequired={!unsandboxedWorkers}
+									watchedOnly={unsandboxedWorkers}
 									sandboxAvailable={agents?.workerSandboxAvailable}
 									labelClassName="agents-sheet-label"
 									triggerClassName="agents-sheet-control"
@@ -342,20 +354,43 @@ export function CreateProjectAgentSheet({
 						}
 						canSubmit={canSubmit}
 						intakeControl={
-							intakeVisible ? (
-								<IntakeFields
-									form={intake}
-									onChange={(patch) => setIntake((f) => ({ ...f, ...patch }))}
-									compact
-									controlClassName="agents-sheet-control"
-									labelClassName="agents-sheet-label"
-								/>
+							offerUnsandboxedWorkers || intakeVisible ? (
+								<>
+									{offerUnsandboxedWorkers ? (
+										<label className="flex items-start gap-2 text-xs">
+											<Checkbox
+												checked={allowUnsandboxedWorkers}
+												className="mt-0.5"
+												disabled={isBusy}
+												onCheckedChange={(checked) => setAllowUnsandboxedWorkers(checked === true)}
+											/>
+											<span className="min-w-0 flex-1">
+												<span className="block font-medium">{t("createProject.allowUnsandboxedWorkers")}</span>
+												<span className="block text-muted-foreground">{t("createProject.allowUnsandboxedWorkersHint")}</span>
+											</span>
+										</label>
+									) : null}
+									{intakeVisible ? (
+										<IntakeFields
+											form={intake}
+											onChange={(patch) => setIntake((f) => ({ ...f, ...patch }))}
+											compact
+											controlClassName="agents-sheet-control"
+											labelClassName="agents-sheet-label"
+										/>
+									) : null}
+								</>
 							) : null
 						}
 						isBusy={isBusy}
 						onCancel={() => onOpenChange(false)}
 						onSubmit={() =>
-							void onSubmit({ workerAgent, orchestratorAgent, trackerIntake: intakeVisible ? buildIntake(intake) : undefined })
+							void onSubmit({
+								workerAgent,
+								orchestratorAgent,
+								trackerIntake: intakeVisible ? buildIntake(intake) : undefined,
+								...(unsandboxedWorkers ? { allowUnsandboxedWorkers: true } : {}),
+							})
 						}
 						setupNotice={
 							repositorySetupNeeded

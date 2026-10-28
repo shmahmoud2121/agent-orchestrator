@@ -595,6 +595,8 @@
 	"createProject.footerResolve_one": "계속하려면 실패한 저장소 {{count}}개를 해결하세요",
 	"createProject.footerResolve_other": "계속하려면 실패한 저장소 {{count}}개를 해결하세요",
 	"createProject.footerReview": "위 오류를 확인하거나 다른 폴더를 선택하세요",
+	"createProject.allowUnsandboxedWorkers": "Let workers run without a sandbox",
+	"createProject.allowUnsandboxedWorkersHint": "Windows can't sandbox workers. Workers can then read any file and use the internet; the protected-file guard still blocks secrets and stops a worker that keeps trying. Only Claude Code and Codex workers are allowed.",
 	"createProject.gitSetupNotice": "이 폴더에 Git 설정이 필요하면 Altair가 시작 전에 초기화하고 첫 커밋을 만듭니다.",
 	"createProject.githubOwner": "Owner",
 	"createProject.otherGitHubOwner": "기타",

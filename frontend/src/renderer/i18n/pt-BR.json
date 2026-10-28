@@ -600,6 +600,8 @@
 	"createProject.footerResolve_many": "Resolva {{count}} repositórios com falha para continuar",
 	"createProject.footerResolve_other": "Resolva {{count}} repositórios com falha para continuar",
 	"createProject.footerReview": "Revise o erro acima ou escolha outra pasta",
+	"createProject.allowUnsandboxedWorkers": "Let workers run without a sandbox",
+	"createProject.allowUnsandboxedWorkersHint": "Windows can't sandbox workers. Workers can then read any file and use the internet; the protected-file guard still blocks secrets and stops a worker that keeps trying. Only Claude Code and Codex workers are allowed.",
 	"createProject.gitSetupNotice": "Se esta pasta precisar de configuração Git, o Altair a inicializará e criará o primeiro commit antes de iniciar.",
 	"createProject.githubOwner": "Owner",
 	"createProject.otherGitHubOwner": "Outro",

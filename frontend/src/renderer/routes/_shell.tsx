@@ -199,6 +199,7 @@ type CreateProjectConfigInput = {
 	orchestratorAgent: string;
 	trackerIntake?: components["schemas"]["TrackerIntakeConfig"];
 	defaultBranch?: string;
+	allowUnsandboxedWorkers?: boolean;
 };
 
 export function createProjectConfig(input: CreateProjectConfigInput): components["schemas"]["ProjectConfig"] {
@@ -207,6 +208,7 @@ export function createProjectConfig(input: CreateProjectConfigInput): components
 		worker: { agent: input.workerAgent as components["schemas"]["RoleOverride"]["agent"] },
 		orchestrator: { agent: input.orchestratorAgent as components["schemas"]["RoleOverride"]["agent"] },
 		...(input.trackerIntake ? { trackerIntake: input.trackerIntake } : {}),
+		...(input.allowUnsandboxedWorkers ? { workerSandbox: { requireSandbox: false } } : {}),
 	};
 }
 
@@ -725,6 +727,7 @@ function ShellLayout() {
 			workerAgent: string;
 			orchestratorAgent: string;
 			trackerIntake?: components["schemas"]["TrackerIntakeConfig"];
+			allowUnsandboxedWorkers?: boolean;
 			asWorkspace?: boolean;
 			clonePreparationId?: string;
 		}) => {
@@ -807,6 +810,7 @@ function ShellLayout() {
 			workerAgent: string;
 			orchestratorAgent: string;
 			trackerIntake?: components["schemas"]["TrackerIntakeConfig"];
+			allowUnsandboxedWorkers?: boolean;
 			signal?: AbortSignal;
 		}) => {
 			void addRendererExceptionStep("Project clone requested", {

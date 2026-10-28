@@ -217,11 +217,13 @@ func (m *Manager) Validate(ctx context.Context, in ImportValidationInput) (Impor
 	}
 
 	root := inspectImportRepo(ctx, path)
-	if importKind == ImportKindProject {
+	if importKind == ImportKindProject && projectRemoteRequired {
 		root.RequiredActions = addProjectRemoteRepositoryAction(root.RequiredActions)
 		if root.HasOrigin && root.HasCommit && importGitHubPreparationIncomplete(ctx, path) && !slices.Contains(root.RequiredActions, GitPreparationActionCreateRemoteRepository) {
 			root.RequiredActions = append(root.RequiredActions, GitPreparationActionCreateRemoteRepository)
 		}
+	} else if importKind == ImportKindProject {
+		root.RequiredActions = withoutRemoteActions(root.RequiredActions)
 	}
 	result.Root = root
 	if len(root.BlockingErrors) > 0 {
@@ -418,6 +420,22 @@ func inspectImportRepo(ctx context.Context, path string) RepoGitStatus {
 		status.RequiredActions = append(status.RequiredActions, GitPreparationActionSetRemote)
 	}
 	return status
+}
+
+// projectRemoteRequired makes a project import ask for an origin remote or a
+// new GitHub repository. The local-only build needs just a Git repository with
+// a commit, so a folder opens without any remote. Workspace imports still need
+// origins on their child repositories.
+var projectRemoteRequired = false
+
+func withoutRemoteActions(actions []string) []string {
+	next := make([]string, 0, len(actions))
+	for _, action := range actions {
+		if action != GitPreparationActionSetRemote && action != GitPreparationActionCreateRemoteRepository {
+			next = append(next, action)
+		}
+	}
+	return next
 }
 
 func addProjectRemoteRepositoryAction(actions []string) []string {
