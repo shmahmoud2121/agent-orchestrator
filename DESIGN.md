@@ -68,14 +68,14 @@ Never use visual polish to obscure a state transition, destructive action, conne
 
 ## 2. Visual thesis
 
-**Dark-first precision instrument.** Dark is true black with warm off-white text. Light is warm paper under a lamp, never pure white. Both share one starlight-gold accent, used only for focus, selection, and the active state. Typography stays calm, color stays disciplined, and the surface stays dense enough to scan all day.
+**Observatory: a true-black instrument.** Dark is true black with warm off-white text. Light is warm "paper under a lamp", never pure white. Starlight gold is the brand colour in both: primary actions, the wordmark star, the agent reply rule and label, the composer caret and send button, plus focus, selection, and the active edge. Typography stays calm, color stays disciplined, and the surface stays dense enough to scan all day.
 
 - **Decoration:** minimal. Type, alignment, spacing, surface tone, and only necessary one-pixel boundaries establish hierarchy.
 - **Material:** true black in dark and warm paper in light, with small tonal steps reserved for nesting, hover, and elevation.
 - **Color:** rare, semantic, and stateful. A colored element must answer “what does this mean?”
 - **Shape:** modest radius, not a field of pills. A rounded control should read as a control; a panel should read as one composed container; ordinary metadata should remain text.
 - **Density:** compact by default. Altair is used all day and needs high information capacity without cramped target sizes.
-- **Personality:** quiet competence. No gradients, glass, glow, stock imagery, decorative textures, emoji, or novelty visual language in the working UI.
+- **Personality:** quiet competence. No gradients, glass, stock imagery, decorative textures, emoji, or novelty visual language in the working UI. The only glow is the primary button's soft gold halo in dark (see §9).
 
 ## 3. App architecture expressed visually
 
@@ -119,12 +119,13 @@ The sidebar brand mark/name is the home control. Click navigates home. Do **not*
 
 The sidebar is a compact directory, not a second dashboard.
 
-- Use a quiet sentence-case section label only when a section needs disambiguation. Prefer no label to ornamental chrome. Never use ALL CAPS labels.
+- Use a section label only when a section needs disambiguation. Prefer no label to ornamental chrome. The sidebar's Code and Work section labels are the one ALL CAPS exception: mono 11px uppercase, 1.2px letter-spacing, an `aria-hidden` `// ` prefix, and a right-aligned count. The prefix is rendered by the component and is never part of a locale string.
+- Project and session names in the sidebar are mono 13px (`.sidebar-name`).
 - Projects form one shared list container: no card gap and no individual row border. Use a subtle divider only between sibling rows.
-- Project rows are compact: 28–32px visual height in expanded rail, 12–13px label text, and 14px folder/provider icon. Keep the hit target at least 32px high.
+- Project rows are compact: 28–32px visual height in expanded rail, 13px mono label text, and 14px folder/provider icon. Keep the hit target at least 32px high.
 - Project icon/avatar and label are the primary scan anchors. Do not place status pills, branches, diffs, or PR counts in the row by default.
 - Expanded sessions are visibly children through indentation and reduced contrast, never through heavy nesting or permanent decorative rails.
-- The active project/session uses restrained surface contrast plus a clear selection cue. The starlight-gold accent is the focus ring and the active edge, not a broad row fill.
+- The active project/session uses restrained surface contrast plus a clear selection cue. The selected row uses `--color-bg-tertiary` plus an inset 1px outline (`#3A3222` in dark, `--accent-star` in light). Gold is the focus ring and the active edge, never a broad row fill.
 - Row actions appear on hover or focus without moving the label. Actions must not change the row's measured width or trigger navigation.
 - The collapsed rail is icon-first and keeps tooltips, keyboard focus, and fixed titlebar controls usable.
 - Interactive nav rows share `NavRowHighlight`: host backgrounds stay transparent on hover/active/focus; the growing pill owns the fill. Keyboard focus uses `:focus-visible` (not `:focus-within`) so mouse click focus does not stick the pill on.
@@ -139,10 +140,10 @@ Status is derived from durable runtime, PR, CI, and review facts. The renderer c
 | Meaning | Token / visual treatment | Use |
 | --- | --- | --- |
 | Working | `--color-status-working` / #60a5fa | active spinner, live activity, progress that is currently observed |
-| Needs human input | `--color-status-needs-you` / #f06445 | blocked, question, actionable interruption |
+| Needs human input | `--color-status-needs-you` / #f06445 (light #B8371C) | blocked, question, actionable interruption |
 | Validating | `--color-status-validating` / #facc15 | checks or verification in progress |
-| Review / caution | `--color-status-in-review` / #f59e0b | review pending, changes requested |
-| Ready / success | `--color-status-ready` / #4ade80 | mergeable, approved, completed actionable success |
+| Review / caution | `--color-status-in-review` / #f59e0b (light #A15C00) | review pending, changes requested |
+| Ready / success | `--color-status-ready` / #4ade80 (light #1F7A3E) | mergeable, approved, completed actionable success |
 | Merged | `--color-status-merged` / #c084fc | historical terminal completion state |
 | Failure | `--color-status-exited` / `--destructive` | failed CI, destructive or failed operation |
 | Idle / unknown | muted or passive tokens | neutral, not a hidden failure |
@@ -153,7 +154,7 @@ Use one fixed status slot where status belongs. Prefer an icon/glyph over a pros
 
 1. If the session is actively working, show the working spinner.
 2. Otherwise, if a PR is relevant, show the PR glyph tinted by its actionable state.
-3. Otherwise, show a dot: amber/red for attention, muted for idle/complete.
+3. Otherwise, show a diamond: a 6px square rotated 45° in the status colour (amber/red for attention, muted for idle/complete). It replaces the round dot.
 
 Do not show multiple competing status chips on a session card or sidebar row. Text labels are allowed when needed for accessibility, an empty state, an inspector summary, or a decision the user must make.
 
@@ -163,34 +164,37 @@ Do not introduce one-off hex values, arbitrary radius, or unreviewed spacing. Us
 
 ### Surface stack
 
-- Canvas: `--color-bg-primary`
-- Raised card / grouped content: `--color-bg-secondary`
-- Hover or selected sub-surface: `--color-bg-tertiary` or `--color-interactive-active`
-- Popover / modal elevation: `--color-bg-elevated`
-- Sidebar: `--color-bg-sidebar`
+- Canvas: `--color-bg-primary` (dark #050506, light #F4F0E6)
+- Raised card / grouped content: `--color-bg-secondary` (dark #0B0B0D, light #FBF8F1)
+- Hover or selected sub-surface: `--color-bg-tertiary` (dark #15130F, light #E6DFCF) or `--color-interactive-active`
+- Popover / modal elevation: `--color-bg-elevated` (dark #100F0C, light #FBF8F1)
+- Sidebar: `--color-bg-sidebar` (dark #08080A, light #EDE8DC)
 - Terminal: `--color-bg-terminal-opaque` as a painted surface; preserve terminal-specific text colors
-- Boundaries: `--color-border` for ordinary hairlines; `--color-border-strong` only when separation must survive dense content
+- Boundaries: `--color-border` (dark #1E1C18, light #D8D0BE) for ordinary hairlines; `--color-border-strong` (dark #2B2820, light #CFC6B2) only when separation must survive dense content. Borders are opaque warm hex in both themes, never translucent white overlays.
 
 ### Text stack
 
-- Primary content: `--color-text-primary`
-- Secondary explanation: `--color-text-muted`
-- Passive metadata / de-emphasized chrome: `--color-text-passive`
+- Primary content: `--color-text-primary` (dark #ECE7DC, light #1E1B15)
+- Secondary explanation: `--color-text-muted` (dark #B3AD9F, light #4F493D)
+- Passive metadata / de-emphasized chrome: `--color-text-passive` (dark #8E887A, light #6B6455)
 - Code and links: `--color-text-markdown-code` and `--color-text-markdown-link`
 - Never reduce essential task information to passive contrast.
 
 ### Accent rules
 
-- `--color-accent` is the neutral primary fill for a primary action. Starlight gold (`--accent-star`, aliased to `--ring`) is only the focus ring, text selection, and the active-row edge.
+- Starlight gold is the brand colour. `--accent-star` (dark #E5B451, light fill #D9A441, aliased to `--ring`) is the gold *fill*: the wordmark star, solid buttons in light, the send button, focus rings, text selection, and the active edge. Never use `--accent-star` for text in light.
+- `--accent-star-ink` (dark #E5B451, light #8A5E0E) is gold used as text or thin rules and outlines, so it passes 4.5:1 on paper. Use it for the agent reply rule and label, the composer caret, and gold-ink text.
+- Gold marks brand, primary action, and active state only. It never decorates neutral UI or stands in for a status colour.
 - Success, warning, and destructive colors never decorate neutral UI.
 - Do not use color as the only state signal. Pair it with a distinct icon, label, position, or action affordance.
 
 ## 7. Typography
 
-Use the font tokens. On macOS they resolve to the system faces (SF Pro / SF Mono); elsewhere to the bundled Geist families. Do not add a new web font or substitute a generic font for visual novelty.
+Use the font tokens. Use only the three bundled families (offline, OFL, via @fontsource); do not add another web font or substitute a generic font for visual novelty. The app looks the same on every OS; there is no macOS system-font override.
 
-- **UI and body:** `--font-family-base` (`-apple-system` on macOS, `Geist Variable` elsewhere).
-- **Code, terminal, compact labels:** `--font-family-mono` (`SF Mono` on macOS, `Geist Mono Variable` elsewhere).
+- **UI and body:** `--font-family-base`, IBM Plex Sans 400/500/600.
+- **Labels, sidebar names, metadata, chat meta lines, code, terminal:** `--font-family-mono`, IBM Plex Mono 400/500. Nerd Fonts remain as per-glyph fallbacks for the terminal.
+- **Display:** `--font-family-display`, Space Grotesk 500/600, for page titles, dialog titles, and the wordmark only.
 - **Weights:** 500 medium for controls and small hierarchy; 600 only for headings, selected values, and genuinely primary emphasis.
 - **Numbers:** use tabular figures for metrics, timestamps, diffs, and columns where alignment matters.
 
@@ -208,7 +212,7 @@ Use the font tokens. On macOS they resolve to the system faces (SF Pro / SF Mono
 | Empty state | 17px / `--font-size-heading-sm` | short guidance headings |
 | Page heading | 21–22px | route-level title only |
 
-Use sentence case everywhere a user reads or acts: page titles, buttons, menu items, field labels, section labels, statuses, and compact metadata. Mono is for code-like values (branches, paths, repository URLs, commands, aligned numbers), not for making ordinary UI feel technical. Never use ALL CAPS labels.
+Use sentence case everywhere a user reads or acts: page titles, buttons, menu items, field labels, statuses, and compact metadata. Mono carries code-like values (branches, paths, repository URLs, commands, aligned numbers) and the Observatory label system (sidebar section labels, sidebar names, metadata, chat meta lines); do not extend it to ordinary prose. ALL CAPS is limited to the sidebar section labels and the wordmark; no other label is uppercase.
 
 ## 8. Spacing, dimensions, and shape
 
@@ -236,7 +240,7 @@ The base unit is 4px. Use the token scale, with 4/6/8/10/12/14/16/18px as the no
 - Borders are exceptional structure, never default decoration. Start with spacing, alignment, type, and a restrained surface shift.
 - A hairline is 1px and may separate durable regions: shell panes, a modal from its backdrop, a shared list's adjacent rows, a board lane boundary, or an input's hit area when contrast needs it.
 - Do not give every card, row, input group, and nested region its own outline. Never add a border simply because a component is rectangular.
-- `--radius-xs` and `--radius-sm` suit tiny controls; `--radius-md` suits buttons and inputs; `--radius-lg` is the maximum routine component radius.
+- `--radius` is 0.5rem. `--radius-sm` is 4px (small controls, rows); `--radius-md` is 6px (primary button, composer, popovers, inputs). `--radius-xs` suits tiny controls; `--radius-lg` is the maximum routine component radius.
 - `--radius-panel` is reserved for route-level framed surfaces and larger dialogs.
 - `--radius-full` is only for avatars, dots, and intentional pills.
 - Shadows are elevation cues for transient layers only: dialogs, menus, and tooltips. They are subtle, short-range, and neutral. No permanent card shadows, glow, or decorative drop shadow.
@@ -247,11 +251,21 @@ The base unit is 4px. Use the token scale, with 4/6/8/10/12/14/16/18px as the no
 
 ### Buttons
 
-- One clear primary action per focused region. It uses accent fill or strong foreground contrast.
+- One clear primary action per focused region. It uses the gold primary treatment (`primary` variant, `btn-primary-star`): in dark a 1px gold border, 10% gold fill, gold-ink text, and a soft 18px glow; in light solid gold with `#1E1505` text and no glow.
 - Secondary actions use a quiet surface; tertiary actions are text/icon controls. An outline is a contrast fallback, not the default secondary-button style.
 - Icon-only buttons require an accessible label and tooltip when their meaning is not universally obvious.
 - Destructive actions require destructive color and confirmation when the operation is difficult to reverse.
 - Disabled states explain why when the missing prerequisite is not obvious.
+
+### Observatory signature details
+
+- **Wordmark:** `AltairWordmark` (`frontend/src/renderer/components/AltairWordmark.tsx`) is a four-point long-ray star (`M32 6 L37 27 L58 32 L37 37 L32 58 L27 37 L6 32 L27 27 Z`, 64×64 viewBox, `--accent-star`, `aria-hidden`) beside "ALTAIR" in the display font, 600, letter-spacing 3px. It appears in the sidebar brand and TitlebarNav.
+- **Primary button:** gold treatment as described under Buttons.
+- **Sidebar labels and names:** see §4.
+- **Selected row:** `--color-bg-tertiary` plus an inset 1px outline; no gold fill.
+- **Status glyph:** the 6px diamond from §5.
+- **Chat:** human messages have no bubble and are left-aligned, with an `aria-hidden` mono meta line such as `YOU · 14:02` in passive colour; queued human messages keep the dashed outline. Agent replies carry a 1px `--accent-star-ink` left rule and, once per turn on the latest answer, a gold-ink mono label `<NAME> · time` (the sender's display name, else AGENT).
+- **Composer:** an `aria-hidden` `›` caret in gold ink before the input; the send, steer, and queue button is solid `--accent-star` with a `#1E1505` icon; stop and continue keep the neutral style.
 
 ### Tooltips and iconography
 
@@ -318,7 +332,7 @@ The manager chat is home for a project. The person talks to one manager. Workers
 
 **Layout**
 - One centered conversation column, `max-w-[760px]`, with generous side space. Nothing sits beside it except the collapsible inspector.
-- User messages sit on the right in a quiet filled bubble (`bg-card`, modest radius, no border). Manager replies are plain text on the page background, with no bubble, using short sentence-case headings, bullets, and inline code.
+- User messages are left-aligned with no bubble, under a mono meta line (`YOU · 14:02`). Manager replies are plain text on the page background, with no bubble, a 1px gold-ink left rule, and a gold-ink label on the latest answer (see Observatory signature details), using short sentence-case headings, bullets, and inline code.
 - Code blocks use one filled surface with a hairline edge and mono text. No syntax-colored chrome around them.
 
 **Collapsed work line**
@@ -339,7 +353,7 @@ The manager chat is home for a project. The person talks to one manager. Workers
 
 **Composer**
 - A context strip sits directly above the input, attached to it: project, where it runs (local worktree or main checkout), and a branch chip with a dropdown. It's mono for the branch and muted for everything else.
-- The input is one composed surface: placeholder "Describe a task…", then a single row of controls under the text: `+` (attach), model picker, permission mode, Team toggle, and the send button on the right. Nothing else goes in it.
+- The input is one composed surface: placeholder "Describe a task…", then a single row of controls under the text: `+` (attach), model picker, permission mode, Team toggle, and the gold send button on the right. A gold-ink `›` caret precedes the input. Nothing else goes in it.
 - The Team toggle decides whether the manager may hand work to workers. Off, the manager does the task itself. It is on by default and is saved per project.
 - Context size ("200K context") sits as muted text under the right edge of the composer, shown only when known.
 - `Enter` sends. While the manager is working, `Enter` queues the message, and `Ctrl/⌘ Enter` interrupts and steers. The send button's icon and tooltip reflect which one will happen.
@@ -417,8 +431,10 @@ Test meaningful variants: dark/light theme, expanded/collapsed sidebar, long pro
 Reject these patterns in renderer work unless a specific exception is approved:
 
 - Generic SaaS hero/feature-grid language inside the application shell.
-- Decorative gradients, glows, glass, blobs, textures, or ornamental shadows.
-- ALL CAPS labels, uppercase tracking used as decoration, or mono used to make ordinary prose look technical.
+- Decorative gradients, glows (other than the dark primary button's halo), glass, blobs, textures, or ornamental shadows.
+- ALL CAPS labels or uppercase tracking beyond the sidebar section labels and the wordmark, or mono used to make ordinary prose look technical.
+- Gold used as text in light via `--accent-star` (use `--accent-star-ink`), a broad gold row fill, gold as a status colour, or a font outside the three bundled families.
+- Round status dots (use the diamond glyph), pure white surfaces in light, or translucent white borders.
 - A rainbow of status colors, decorative accent borders, or color-only meaning.
 - Oversized avatars or icons that compete with task names and state.
 - Large empty padding that lowers operational density without aiding comprehension.
@@ -450,7 +466,7 @@ Before calling a visual change done, verify:
 
 1. Does the reader see the active task and next useful action before secondary metadata?
 2. Is every color semantic and every status truthful?
-3. Did we reuse existing tokens and primitives?
+3. Did we reuse existing tokens and primitives, with gold only on brand, primary action, and active state (`--accent-star-ink` for gold text)?
 4. Is every word sentence case, necessary, and at the right point in the decision—not a label or subtext duplicate?
 5. Did we remove default borders/shadows and then add back only the structural ones this surface genuinely needs?
 6. Are peer choices a shared list with dividers rather than spaced, individually bordered cards?
@@ -464,7 +480,7 @@ Before calling a visual change done, verify:
 Approve only when the answer to every applicable check is yes. Otherwise classify the finding so the next step is concrete:
 
 - **Blocker:** creates misleading operational state, inaccessible action/focus, unsafe destructive affordance, or a new one-off primitive.
-- **Must fix:** violates an explicit visual rule: heavy/individual borders, gradient, permanent decorative shadow, ALL CAPS label, noisy helper copy, or duplicated component treatment.
+- **Must fix:** violates an explicit visual rule: heavy/individual borders, gradient, permanent decorative shadow, ALL CAPS label (outside the sidebar section labels and wordmark), noisy helper copy, or duplicated component treatment.
 - **Follow-up migration:** a legacy surface outside this reference boundary that should be aligned later; record it without using it to lower the standard for this change.
 
 ## Decisions log
@@ -472,9 +488,9 @@ Approve only when the answer to every applicable check is yes. Otherwise classif
 | Date | Decision | Rationale |
 | --- | --- | --- |
 | 2026-09-03 | Dark-first, token-led, compact operational UI | Matches Altair's long-running desktop workflow and renderer source of truth. |
-| 2026-09-03 | Geist/Geist Mono remain the typographic system | They are bundled, legible at dense sizes, and already define renderer hierarchy. |
-| 2026-10-09 | macOS uses SF Pro / SF Mono; Geist stays the bundled default elsewhere | System faces match native macOS chrome and get optical sizing for free. |
-| 2026-09-03 | Color is reserved for semantics and active focus | Parallel-agent supervision depends on fast, trustworthy scanning. |
+| 2026-09-03 | Geist/Geist Mono remain the typographic system | They are bundled, legible at dense sizes, and already define renderer hierarchy. Superseded 2026-10-28. |
+| 2026-10-09 | macOS uses SF Pro / SF Mono; Geist stays the bundled default elsewhere | System faces match native macOS chrome and get optical sizing for free. Superseded 2026-10-28. |
+| 2026-09-03 | Color is reserved for semantics and active focus (gold now also marks brand and primary action, 2026-10-28) | Parallel-agent supervision depends on fast, trustworthy scanning. |
 | 2026-09-03 | Shared list containers with dividers are preferred over spaced sibling cards | Better density and clearer grouping for projects and sessions. |
 | 2026-09-03 | Existing platform shell behavior is part of the design system | macOS traffic lights, Windows titlebar, and collapsible inspector are product behavior, not incidental CSS. |
 | 2026-09-03 | The approved reference set is intentionally narrow | Altair is mid-migration; unfinished screens must not become accidental design authority. |
@@ -509,3 +525,4 @@ Approve only when the answer to every applicable check is yes. Otherwise classif
 | 2026-10-26 | A watchdog checks every agent tool call against the protected list and blocks it; workers are stopped after repeated attempts | On Windows no sandbox exists, and the manager is never sandboxed, so Altair checks reads itself. Blocking before the read keeps the secret from reaching the AI at all. |
 | 2026-10-27 | Product renamed Altair; four-point star mark in starlight gold on black. Internal `ao` names, `~/.ao` data and the `ao` command alias stay for compatibility. | The name a person sees and types changes. Existing installs, hooks, and data keep working. |
 | 2026-10-27 | Sidebar has Code and Work sections; Work rows use a document icon; same visual language for both. | Code and Work sit side by side. A section header and a small icon show which kind a project is, without a separate colour or a mode switch. |
+| 2026-10-28 | Adopted the Observatory look (true black, warm paper light theme, starlight gold brand colour, bundled Plex + Space Grotesk). Supersedes the Geist/system-font rule and the gold-is-focus-only rule. | One consistent identity on every OS, with a brand colour that also reads as the primary action. |
