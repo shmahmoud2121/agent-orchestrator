@@ -25,10 +25,15 @@ type Result struct {
 // hookConfigRelPaths are AO hook settings files relative to the workspace.
 // Editing them would remove the watchdog. Codex also receives its hooks as
 // launch flags; the workspace file is the legacy config those flags replaced.
+// Grok reads its AO hooks from .claude/settings.local.json; its project config
+// can turn that Claude-compat loading off.
 var hookConfigRelPaths = []string{
 	filepath.Join(".claude", "settings.local.json"),
 	filepath.Join(".claude", "settings.json"),
 	filepath.Join(".codex", "hooks.json"),
+	filepath.Join(".gemini", "settings.json"),
+	filepath.Join(".cursor", "hooks.json"),
+	filepath.Join(".grok", "config.toml"),
 }
 
 // Check reports whether toolName with raw tool-input JSON touches a protected
@@ -61,6 +66,19 @@ func Check(protected []ReadDeny, workDir, toolName string, input json.RawMessage
 			}
 		}
 	}
+	if name == "readmanyfiles" {
+		// Gemini's read_many_files takes a list of paths and globs.
+		for _, key := range []string{"include", "paths"} {
+			for _, raw := range fieldStrings(fields, key) {
+				if next := checkPath(protected, workDir, raw); worse(next, hit) {
+					hit = next
+				}
+				if next := checkGlob(protected, raw); worse(next, hit) {
+					hit = next
+				}
+			}
+		}
+	}
 	if isGrepTool(name) || isGlobTool(name) {
 		globKey := "glob"
 		if isGlobTool(name) {
@@ -78,7 +96,7 @@ func Check(protected []ReadDeny, workDir, toolName string, input json.RawMessage
 			}
 		}
 		if isGrepTool(name) {
-			for _, raw := range fieldStrings(fields, "glob") {
+			for _, raw := range append(fieldStrings(fields, "glob"), fieldStrings(fields, "include_pattern")...) {
 				if next := checkGlob(protected, raw); worse(next, hit) {
 					hit = next
 				}
@@ -419,7 +437,10 @@ func canonicalTool(name string) string {
 
 func isWriteTool(name string) bool {
 	switch name {
-	case "edit", "write", "multiedit", "notebookedit", "applypatch":
+	case "edit", "write", "multiedit", "notebookedit", "applypatch",
+		// Gemini, Grok, and Cursor names.
+		"writefile", "replace", "searchreplace", "strreplace", "editfile", "createfile",
+		"deletefile", "delete", "hashlineedit":
 		return true
 	default:
 		return false
@@ -428,7 +449,9 @@ func isWriteTool(name string) bool {
 
 func isShellTool(name string) bool {
 	switch name {
-	case "bash", "shell", "shellcommand", "exec", "execcommand", "localshell", "powershell", "command":
+	case "bash", "shell", "shellcommand", "exec", "execcommand", "localshell", "powershell", "command",
+		// Gemini's run_shell_command and Grok's run_terminal_cmd.
+		"runshellcommand", "runterminalcmd", "runterminalcommand":
 		return true
 	default:
 		return false
@@ -436,7 +459,7 @@ func isShellTool(name string) bool {
 }
 
 func isGrepTool(name string) bool {
-	return name == "grep" || name == "grepfiles" || name == "search"
+	return name == "grep" || name == "grepfiles" || name == "search" || name == "grepsearch" || name == "searchfilecontent"
 }
 
 func isGlobTool(name string) bool {
@@ -448,7 +471,9 @@ func pathKeys(name string) []string {
 	case "notebookedit":
 		return []string{"notebook_path", "notebookpath", "file_path", "filepath", "path"}
 	default:
-		return []string{"file_path", "filepath", "path", "target_file", "targetfile", "notebook_path", "notebookpath"}
+		return []string{"file_path", "filepath", "path", "target_file", "targetfile", "notebook_path", "notebookpath",
+			// Gemini's absolute_path and dir_path; Grok's and Cursor's target_directory.
+			"absolute_path", "absolutepath", "dir_path", "dirpath", "target_directory", "targetdirectory"}
 	}
 }
 

@@ -621,9 +621,24 @@ func (c *commandContext) runHook(ctx context.Context, agent, event string) error
 		c.emitSessionStartContext(agent, event, sessionID)
 	}
 	if isWatchdogHook(agent, event) {
-		if reason, deny := c.watchdogDecision(ctx, sessionID, payload); deny {
-			if err := json.NewEncoder(c.deps.Out).Encode(preToolUseDeny(reason)); err != nil {
+		toolName, toolInput := watchdogToolCall(agent, event, payload)
+		reason, deny := c.watchdogDecision(ctx, sessionID, agent, toolName, toolInput)
+		if deny {
+			if err := json.NewEncoder(c.deps.Out).Encode(watchdogDenyOutput(agent, reason)); err != nil {
 				c.reportHookFailure(agent, event, sessionID, fmt.Errorf("write watchdog denial: %w", err))
+			}
+		}
+		if domain.AgentHarness(agent) == domain.HarnessCursor {
+			// Cursor reads one permission document. A denial ends the hook; a
+			// read or generic tool check that passed answers allow.
+			if deny {
+				return nil
+			}
+			if event == "before-read-file" || event == "pre-tool-use" {
+				if err := json.NewEncoder(c.deps.Out).Encode(cursorPermissionHookOutput{Permission: "allow"}); err != nil {
+					c.reportHookFailure(agent, event, sessionID, fmt.Errorf("write permission response: %w", err))
+				}
+				return nil
 			}
 		}
 	}
@@ -980,18 +995,87 @@ type watchdogDecisionResponse struct {
 	Reason   string `json:"reason"`
 }
 
-// isWatchdogHook reports the PreToolUse callbacks that ask the daemon before
+// isWatchdogHook reports the before-tool callbacks that ask the daemon before
 // the tool runs. Claude Code is always watched. Codex is watched because
-// 0.163's PreToolUse hook can refuse Bash and apply_patch.
+// 0.163's PreToolUse hook can refuse Bash and apply_patch. Grok honors
+// Claude's PreToolUse deny, Gemini's BeforeTool honors decision deny, and
+// Cursor's before hooks honor permission deny.
 func isWatchdogHook(agent, event string) bool {
-	if event != "pre-tool-use" {
-		return false
-	}
 	switch domain.AgentHarness(agent) {
-	case domain.HarnessClaudeCode, domain.HarnessCodex:
-		return true
+	case domain.HarnessClaudeCode, domain.HarnessCodex, domain.HarnessGrok, domain.HarnessGemini:
+		return event == "pre-tool-use"
+	case domain.HarnessCursor:
+		switch event {
+		case "pre-tool-use", "before-read-file", "before-shell-execution", "before-mcp-execution":
+			return true
+		}
+	}
+	return false
+}
+
+// watchdogToolCall lifts the tool name and input from a native before-tool
+// payload. Cursor's specialized hooks carry no tool_input, so they are mapped
+// onto the matching generic tool. A file read's content is never forwarded.
+func watchdogToolCall(agent, event string, payload []byte) (string, json.RawMessage) {
+	if domain.AgentHarness(agent) == domain.HarnessCursor {
+		var p struct {
+			Command   string          `json:"command"`
+			FilePath  string          `json:"file_path"`
+			ToolName  string          `json:"tool_name"`
+			Arguments json.RawMessage `json:"arguments"`
+			ToolInput json.RawMessage `json:"tool_input"`
+		}
+		_ = json.Unmarshal(normalizeHookPayload(payload), &p)
+		switch event {
+		case "before-shell-execution":
+			input, _ := json.Marshal(map[string]string{"command": p.Command})
+			return "Shell", input
+		case "before-read-file":
+			input, _ := json.Marshal(map[string]string{"file_path": p.FilePath})
+			return "Read", input
+		case "before-mcp-execution", "pre-tool-use":
+			args := p.ToolInput
+			if event == "before-mcp-execution" && len(p.Arguments) > 0 {
+				args = p.Arguments
+			}
+			if len(p.ToolName) > maxActivityMetaLen {
+				p.ToolName = ""
+			}
+			return p.ToolName, decodeStringToolInput(args)
+		}
+	}
+	return hookToolCall(payload)
+}
+
+// decodeStringToolInput unwraps tool input sent as a JSON-encoded string.
+// Text that is not JSON carries no fields to check.
+func decodeStringToolInput(input json.RawMessage) json.RawMessage {
+	var text string
+	if json.Unmarshal(input, &text) != nil {
+		return input
+	}
+	if !json.Valid([]byte(text)) {
+		return nil
+	}
+	return json.RawMessage(text)
+}
+
+// watchdogDenyOutput is the refusal each harness reads from a before-tool
+// hook. Every one exits 0 with this JSON on stdout.
+func watchdogDenyOutput(agent, reason string) any {
+	switch domain.AgentHarness(agent) {
+	case domain.HarnessGemini:
+		return map[string]string{"decision": "deny", "reason": reason}
+	case domain.HarnessCursor:
+		// Cursor documents permission with agent/user messages. The snake_case
+		// and decision keys cover builds that read those names instead.
+		return map[string]string{
+			"permission": "deny", "decision": "deny", "reason": reason,
+			"agentMessage": reason, "userMessage": reason,
+			"agent_message": reason, "user_message": reason,
+		}
 	default:
-		return false
+		return preToolUseDeny(reason)
 	}
 }
 
@@ -999,12 +1083,11 @@ func isWatchdogHook(agent, event string) bool {
 // run. A session with no AO_PROJECT_ID is standalone (or the person's own
 // terminal) and is not watched. If the daemon cannot be reached, a watched
 // session fails closed.
-func (c *commandContext) watchdogDecision(ctx context.Context, sessionID string, payload []byte) (reason string, deny bool) {
+func (c *commandContext) watchdogDecision(ctx context.Context, sessionID, agent, toolName string, toolInput json.RawMessage) (reason string, deny bool) {
 	if strings.TrimSpace(os.Getenv("AO_PROJECT_ID")) == "" {
 		return "", false
 	}
-	toolName, toolInput := hookToolCall(payload)
-	if len(toolInput) > watchdogMaxToolInput {
+	if len(toolInput) > watchdogMaxToolInput || (domain.AgentHarness(agent) == domain.HarnessGrok && truncatedToolInput(toolInput)) {
 		return watchdogInputTooLargeReason, true
 	}
 	reqCtx, cancel := context.WithTimeout(ctx, watchdogHookTimeout)
@@ -1025,6 +1108,14 @@ func (c *commandContext) watchdogDecision(ctx context.Context, sessionID string,
 		return reason, true
 	}
 	return "", false
+}
+
+// truncatedToolInput reports tool input that arrived as a JSON string. Grok
+// replaces input over 128 KiB with a cut-off string, which hides the fields
+// the check reads, so such a call is denied rather than allowed unchecked.
+func truncatedToolInput(input json.RawMessage) bool {
+	trimmed := strings.TrimSpace(string(input))
+	return strings.HasPrefix(trimmed, `"`)
 }
 
 func hookToolCall(payload []byte) (toolName string, toolInput json.RawMessage) {

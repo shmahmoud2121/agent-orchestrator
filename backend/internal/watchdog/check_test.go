@@ -74,6 +74,29 @@ func TestCheckBlocksProtectedReads(t *testing.T) {
 		{"grep source", work, "Grep", `{"path":"src","pattern":"password"}`, false, false, ""},
 		{"edit hook settings", work, "Edit", `{"file_path":".claude/settings.local.json"}`, true, true, ".claude/settings.local.json"},
 		{"git internals", work, "Bash", `{"command":"git show .git/config"}`, false, false, ""},
+		// Gemini CLI tools.
+		{"gemini read_file", work, "read_file", `{"file_path":".env"}`, true, false, ".env"},
+		{"gemini read_file absolute_path", work, "read_file", jsonInput("absolute_path", envAbs), true, false, ".env"},
+		{"gemini read_file source", work, "read_file", `{"file_path":"src/main.go"}`, false, false, ""},
+		{"gemini shell", work, "run_shell_command", `{"command":"type .env"}`, true, false, ".env"},
+		{"gemini read_many_files", work, "read_many_files", `{"include":["src/main.go",".env"]}`, true, false, ".env"},
+		{"gemini read_many_files glob", work, "read_many_files", `{"include":["**/.env*"]}`, true, false, ".env*"},
+		{"gemini grep include", work, "grep_search", `{"pattern":"KEY","include_pattern":"*.env"}`, true, false, "*.env"},
+		{"gemini grep source", work, "grep_search", `{"pattern":"KEY","dir_path":"src"}`, false, false, ""},
+		{"gemini edit hook settings", work, "replace", `{"file_path":".gemini/settings.json"}`, true, true, ".gemini/settings.json"},
+		{"gemini write hook settings", work, "write_file", `{"file_path":".gemini/settings.json","content":"{}"}`, true, true, ".gemini/settings.json"},
+		// Grok Build tools.
+		{"grok read_file", work, "read_file", `{"target_file":".env"}`, true, false, ".env"},
+		{"grok terminal", work, "run_terminal_cmd", `{"command":"cat .env"}`, true, false, ".env"},
+		{"grok terminal ok", work, "run_terminal_cmd", `{"command":"go test ./..."}`, false, false, ""},
+		{"grok grep glob", work, "grep", `{"pattern":"x","glob":".env*"}`, true, false, ".env*"},
+		{"grok edit hook settings", work, "search_replace", `{"file_path":".claude/settings.local.json"}`, true, true, ".claude/settings.local.json"},
+		{"grok config", work, "search_replace", `{"file_path":".grok/config.toml"}`, true, true, ".grok/config.toml"},
+		// Cursor tools.
+		{"cursor shell", work, "Shell", `{"command":"cat .env"}`, true, false, ".env"},
+		{"cursor edit hooks", work, "edit_file", `{"target_file":".cursor/hooks.json"}`, true, true, ".cursor/hooks.json"},
+		{"cursor delete hooks", work, "delete_file", `{"target_file":".cursor/hooks.json"}`, true, true, ".cursor/hooks.json"},
+		{"cursor shell hooks", work, "Shell", `{"command":"echo {} > .cursor/hooks.json"}`, true, true, ".cursor/hooks.json"},
 	}
 	// The main checkout's database glob applies when the command runs there.
 	// Rebuild the list the way a worker outside the main checkout sees it, then

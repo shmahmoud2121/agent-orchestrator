@@ -45,10 +45,30 @@ A standalone session with no project, and the person's own terminals, are
 not checked. If AO is not running, a watched session's tool call is refused.
 The check gives up after a few seconds rather than waiting on a stopped daemon.
 
-Claude Code is watched. Codex is watched when it can refuse a tool call from
-its PreToolUse hook (Codex 0.163 can, for shell commands and `apply_patch`).
+An AI is watched when its before-tool hook can refuse the call:
+
+- Claude Code: PreToolUse.
+- Codex: PreToolUse (Codex 0.163 can refuse shell commands and `apply_patch`).
+- Grok Build: the Claude-style PreToolUse hook AO writes to
+  `.claude/settings.local.json`. Grok reads it through its Claude
+  compatibility. Grok replaces tool input over 128 KiB with a cut-off string;
+  AO refuses such a call because it cannot check it.
+- Gemini CLI: BeforeTool in `.gemini/settings.json`, answered with
+  `decision: deny`.
+
+Cursor's hooks are wired too: `beforeReadFile`, `beforeShellExecution`,
+`beforeMCPExecution` and `preToolUse` ask the watchdog and answer
+`permission: deny`. Cursor is closed source, and some Cursor builds have been
+reported to ignore a read deny, so Cursor is not counted as watched until a
+live test on the person's build shows the block holds.
+
 Other AIs are not watched. While "Only allow sandboxed workers" is off, the
 worker picker marks those AIs "Not watched".
+
+Each AI's hook settings file is protected: a tool call that writes
+`.claude/settings*.json`, `.codex/hooks.json`, `.gemini/settings.json`,
+`.cursor/hooks.json` or `.grok/config.toml` counts as tampering and stops the
+worker.
 
 Each block is also one line in `watchdog.log` under AO's data directory
 (`~/.ao`, or `AO_DATA_DIR`). The line records the time, project, session, AI,
@@ -61,7 +81,7 @@ A Work project's original folders and files are a second list, next to the
 protected-file list. The person added them. Agents may read them. They may
 not edit, move, rename, or delete them, and they may not copy or redirect
 output into them. The list is applied to every Work session, including the
-manager, for Claude Code and Codex, through the same pre-tool-use hook.
+manager, for every watched AI, through the same before-tool hook.
 
 A blocked call uses the same alert, the same 3-strike stop, and the same
 audit log. The reason is "tried to change an original file".

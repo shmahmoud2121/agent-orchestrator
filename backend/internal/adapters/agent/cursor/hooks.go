@@ -119,6 +119,9 @@ var cursorManagedHooks = []cursorHookSpec{
 	{Event: "stop", Command: cursorHookCommandPrefix + "stop"},
 	{Event: "beforeShellExecution", Command: cursorHookCommandPrefix + "before-shell-execution", FailClosed: true},
 	{Event: "beforeMCPExecution", Command: cursorHookCommandPrefix + "before-mcp-execution", FailClosed: true},
+	// The watchdog refuses protected-file reads and tool calls through these.
+	{Event: "beforeReadFile", Command: cursorHookCommandPrefix + "before-read-file", FailClosed: true},
+	{Event: "preToolUse", Command: cursorHookCommandPrefix + "pre-tool-use", FailClosed: true},
 	{Event: "afterShellExecution", Command: cursorHookCommandPrefix + "after-shell-execution"},
 	{Event: "afterMCPExecution", Command: cursorHookCommandPrefix + "after-mcp-execution"},
 	{Event: "postToolUse", Command: cursorHookCommandPrefix + "post-tool-use"},

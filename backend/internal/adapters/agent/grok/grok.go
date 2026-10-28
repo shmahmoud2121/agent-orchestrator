@@ -188,6 +188,12 @@ func (p *Plugin) GetAgentHooks(ctx context.Context, cfg ports.WorkspaceHookConfi
 	return grokHooks.Install(ctx, cfg.WorkspacePath)
 }
 
+// WorkHooksReady reports whether the PreToolUse hook the watchdog answers is
+// installed for every tool. A Work session will not start without it.
+func (p *Plugin) WorkHooksReady(ctx context.Context, workspacePath string) (bool, error) {
+	return grokHooks.HasHook(ctx, workspacePath, "PreToolUse", grokHookCommandPrefix+"pre-tool-use")
+}
+
 // UninstallHooks removes the Claude Code-compatible AO hooks Grok uses.
 func (p *Plugin) UninstallHooks(ctx context.Context, workspacePath string) error {
 	return grokHooks.Uninstall(ctx, workspacePath)

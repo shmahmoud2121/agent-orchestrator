@@ -68,7 +68,7 @@ func TestSpawn_WorkRejectsUnwatchedHarnessBeforeSessionRow(t *testing.T) {
 	_, _, _, err := m.Spawn(ctx, ports.SpawnConfig{
 		ProjectID: "docs",
 		Kind:      domain.KindWorker,
-		Harness:   domain.HarnessGemini,
+		Harness:   domain.HarnessCursor,
 		Prompt:    "summarise these files",
 	})
 	if !errors.Is(err, ErrWorkHarnessUnwatched) {

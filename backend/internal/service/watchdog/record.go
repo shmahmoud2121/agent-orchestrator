@@ -177,6 +177,12 @@ func agentName(harness domain.AgentHarness) string {
 		return "Claude Code"
 	case domain.HarnessCodex:
 		return "Codex"
+	case domain.HarnessGrok:
+		return "Grok"
+	case domain.HarnessGemini:
+		return "Gemini"
+	case domain.HarnessCursor:
+		return "Cursor"
 	default:
 		if harness == "" {
 			return "The AI"
