@@ -6311,3 +6311,31 @@ html[data-window-translucent="true"][data-browser-hole="true"]:has(.browser-pane
 :root[data-theme="light"] .btn-primary-star:hover {
 	background: color-mix(in oklch, var(--accent-star) 88%, black);
 }
+
+/* Observatory: chat transcript and composer. */
+.obs-meta {
+	font-family: var(--font-family-mono);
+	font-size: 11px;
+	line-height: 1.4;
+	letter-spacing: 1px;
+	text-transform: uppercase;
+	margin-bottom: 4px;
+}
+.obs-meta-human {
+	color: var(--color-text-passive);
+}
+.obs-meta-assistant {
+	color: var(--accent-star-ink);
+}
+.obs-assistant-message {
+	border-left: 1px solid var(--accent-star-ink);
+	padding-left: 12px;
+}
+.obs-composer-caret {
+	font-family: var(--font-family-mono);
+	color: var(--accent-star-ink);
+	line-height: 1.5;
+	padding-top: 2px;
+	user-select: none;
+	pointer-events: none;
+}

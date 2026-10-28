@@ -231,12 +231,12 @@ describe("send keys", () => {
 	it("uses a muted circular send control that lights up when armed", async () => {
 		const { field } = renderComposer();
 		const send = screen.getByRole("button", { name: "Send message" });
-		expect(send).toHaveClass("rounded-full", "bg-primary", "text-primary-foreground");
+		expect(send).toHaveClass("rounded-full", "obs-send-button");
 		expect(send).toBeDisabled();
 
 		await typeInComposer(field, "hello");
 		expect(send).toBeEnabled();
-		expect(send).toHaveClass("bg-foreground", "text-background");
+		expect(send).toHaveClass("obs-send-button");
 	});
 
 	it("keeps ordinary typing local after the draft becomes nonempty", async () => {

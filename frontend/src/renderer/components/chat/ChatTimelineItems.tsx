@@ -634,7 +634,7 @@ export function HumanMessage({
 	);
 	return (
 		<div
-			className="group/message flex flex-col items-end gap-1"
+			className="group/message flex flex-col items-start gap-1"
 			data-chat-message-id={!queued && !editing ? message.id : undefined}
 			data-chat-message-revision={!queued && !editing ? message.revision : undefined}
 			data-chat-message-role={!queued && !editing ? message.role : undefined}
@@ -666,13 +666,19 @@ export function HumanMessage({
 					   apart in CSS because it paints an enclosure only around a sent one. */
 					data-queued={queued ? "" : undefined}
 					className={cn(
-						"cursor-chat-human-message w-fit max-w-[min(78%,560px)] rounded-[10px] px-3 py-2.5 text-sm leading-[1.55]",
+						"cursor-chat-human-message obs-human-message w-fit max-w-[min(78%,560px)] text-sm leading-[1.55]",
 						animateIn && "chat-human-message-enter",
 						queued
-							? "border border-dashed border-border-strong bg-transparent text-muted-foreground"
-							: "bg-raised text-foreground",
+							? "rounded-[10px] border border-dashed border-border-strong bg-transparent px-3 py-2.5 text-muted-foreground"
+							: "text-foreground",
 					)}
 				>
+					<div aria-hidden="true" className="obs-meta obs-meta-human">
+						{(() => {
+							const clock = formatTime(message.createdAt);
+							return clock ? `YOU · ${clock}` : "YOU";
+						})()}
+					</div>
 					{excerptReferences.length > 0 ? (
 						<ChatAnnotationSummary
 							annotations={excerptReferences.map((excerpt) => ({
@@ -905,12 +911,19 @@ export function AssistantMessage({
 	const showActions = !live && !renderingStreaming && (showCopy || Boolean(onRollback));
 	return (
 		<div
-			className="group/message relative"
+			className="group/message obs-assistant-message relative"
 			data-chat-streaming-output={renderingStreaming ? "" : undefined}
 			data-chat-message-id={!live && !renderingStreaming ? message.id : undefined}
 			data-chat-message-revision={!live && !renderingStreaming ? message.revision : undefined}
 			data-chat-message-role={!live && !renderingStreaming ? message.role : undefined}
 		>
+			<div aria-hidden="true" className="obs-meta obs-meta-assistant">
+				{(() => {
+					const name = (message.senderDisplayName || message.senderLabel || "AGENT").toUpperCase();
+					const clock = formatTime(message.createdAt);
+					return clock ? `${name} · ${clock}` : name;
+				})()}
+			</div>
 			<div data-chat-message-body=""><ChatMarkdown text={visibleText} streaming={renderingStreaming} /></div>
 			{showActions ? (
 				// One action row for the completed answer, not one after every prose
