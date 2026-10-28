@@ -123,7 +123,7 @@ func ValidateWorkLayout(cfg *WorkConfig, aoHome string) error {
 			return workErr("WORK_PATH_OVERLAP", "The results folder cannot be an original, and an original cannot be inside the results folder.")
 		}
 	}
-	if err := os.MkdirAll(results, 0o755); err != nil {
+	if err := os.MkdirAll(results, 0o755); err != nil { //nolint:gosec // the person's own results folder, readable like any folder they make
 		return workErr("WORK_RESULTS_CREATE", "The results folder could not be created.")
 	}
 	cfg.Sources = sources
@@ -174,7 +174,7 @@ func canonicalAOHome(aoHome string) (string, error) {
 	}
 	canon, err := CanonicalPath(aoHome)
 	if err != nil {
-		return filepath.Clean(aoHome), nil
+		return filepath.Clean(aoHome), nil //nolint:nilerr // ~/.ao may not exist yet; compare against the cleaned path
 	}
 	return canon, nil
 }

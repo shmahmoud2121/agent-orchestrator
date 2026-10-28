@@ -227,7 +227,7 @@ var workerPublishDenyRules = []string{
 
 // appendClaudeReadableDirs adds Work originals as readable folders. The flag
 // is omitted when the list is empty so Code launches stay unchanged.
-func appendClaudeReadableDirs(args []string, dirs []string) []string {
+func appendClaudeReadableDirs(args, dirs []string) []string {
 	for _, dir := range dirs {
 		dir = strings.TrimSpace(dir)
 		if dir == "" {

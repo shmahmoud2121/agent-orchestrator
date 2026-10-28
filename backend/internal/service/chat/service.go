@@ -2658,16 +2658,6 @@ func (s *Service) ownerIsWorker(owner domain.ConversationOwner) bool {
 	return err == nil && found && rec.Kind == domain.KindWorker
 }
 
-// sandboxedClaudeWorker reports whether the live controller was started as a
-// Claude Code worker with the project OS sandbox enabled.
-func (s *Service) sandboxedClaudeWorker(owner domain.ConversationOwner) bool {
-	s.mu.Lock()
-	cfg, ok := s.startConfigs[owner]
-	s.mu.Unlock()
-	return ok && cfg.Harness == domain.HarnessClaudeCode &&
-		cfg.Kind == domain.KindWorker && cfg.WorkerSandbox.IsEnabled()
-}
-
 func (s *Service) refuseSandboxedBypassConfig(
 	owner domain.ConversationOwner,
 	configID string,

@@ -33,7 +33,7 @@ func (w *Workspace) Create(_ context.Context, cfg ports.WorkspaceConfig) (ports.
 	if results == "" || !filepath.IsAbs(results) {
 		return ports.WorkspaceInfo{}, errors.New("work workspace: results folder is required")
 	}
-	if err := os.MkdirAll(results, 0o755); err != nil {
+	if err := os.MkdirAll(results, 0o755); err != nil { //nolint:gosec // the person's own results folder, readable like any folder they make
 		return ports.WorkspaceInfo{}, fmt.Errorf("work workspace: create results folder: %w", err)
 	}
 	path := results
@@ -44,7 +44,7 @@ func (w *Workspace) Create(_ context.Context, cfg ports.WorkspaceConfig) (ports.
 		if err != nil {
 			return ports.WorkspaceInfo{}, err
 		}
-		if err := os.Mkdir(created, 0o755); err != nil {
+		if err := os.Mkdir(created, 0o755); err != nil { //nolint:gosec // task folder inside the person's results folder
 			return ports.WorkspaceInfo{}, fmt.Errorf("work workspace: create task folder: %w", err)
 		}
 		path = created
