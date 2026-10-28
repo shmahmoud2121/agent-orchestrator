@@ -98,14 +98,26 @@ function compact(entries: BrowserHistoryEntry[]): BrowserHistoryEntry[] {
 	);
 }
 
+function serializeHistory(entries: BrowserHistoryEntry[]): string {
+	return `${JSON.stringify({ version: HISTORY_VERSION, entries }, null, 2)}\n`;
+}
+
+// Keeps the longest prefix that fits the file cap. Size grows with prefix
+// length, so a binary search needs ~log2(n) serializations, not one per entry.
 function fittedHistory(entries: BrowserHistoryEntry[]): { entries: BrowserHistoryEntry[]; serialized: string } {
-	const retained = [...entries];
-	while (retained.length > 0) {
-		const serialized = `${JSON.stringify({ version: HISTORY_VERSION, entries: retained }, null, 2)}\n`;
-		if (Buffer.byteLength(serialized) <= HISTORY_MAX_FILE_BYTES) return { entries: retained, serialized };
-		retained.pop();
+	const fits = (count: number) => Buffer.byteLength(serializeHistory(entries.slice(0, count))) <= HISTORY_MAX_FILE_BYTES;
+	let low = 0;
+	let high = entries.length;
+	if (!fits(high)) {
+		while (low < high) {
+			const middle = Math.ceil((low + high) / 2);
+			if (fits(middle)) low = middle;
+			else high = middle - 1;
+		}
+		high = low;
 	}
-	return { entries: [], serialized: `${JSON.stringify({ version: HISTORY_VERSION, entries: [] }, null, 2)}\n` };
+	const retained = entries.slice(0, high);
+	return { entries: retained, serialized: serializeHistory(retained) };
 }
 
 export class BrowserHistoryStore {
