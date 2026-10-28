@@ -3,7 +3,8 @@ import type { TrayController } from "./tray";
 import { TRAY_OPEN_SESSION_CHANNEL, type TrayAttentionState, type TrayOpenSessionTarget } from "../shared/tray";
 
 export function isTrayEnabled(platform: NodeJS.Platform): boolean {
-	return platform === "darwin";
+	// Windows keeps running in the notification area when the window closes.
+	return platform === "darwin" || platform === "win32";
 }
 
 export type TrayLifecycleDeps = {

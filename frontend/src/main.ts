@@ -3199,7 +3199,11 @@ app.on("second-instance", (_event, argv) => {
 		return;
 	}
 	const window = BaseWindow.getAllWindows()[0];
-	if (!window) return;
+	// Closed to the tray: reopening from the Start menu brings the window back.
+	if (!window) {
+		if (app.isReady() && !browserQuitRequested) focusMainWindow();
+		return;
+	}
 	if (window.isMinimized()) window.restore();
 	window.show();
 	window.focus();
@@ -3529,7 +3533,8 @@ process.on("exit", () => {
 });
 
 app.on("window-all-closed", () => {
-	if (process.platform !== "darwin") {
+	// With a tray icon the app keeps running; "Quit" in the tray menu exits.
+	if (process.platform !== "darwin" && (trayController === null || browserQuitRequested)) {
 		app.quit();
 	}
 });

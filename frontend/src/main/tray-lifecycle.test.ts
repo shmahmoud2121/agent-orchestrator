@@ -39,8 +39,12 @@ describe("isTrayEnabled", () => {
 		expect(isTrayEnabled("darwin")).toBe(true);
 	});
 
-	it.each(["win32", "linux"] as const)("is disabled on %s", (platform) => {
-		expect(isTrayEnabled(platform)).toBe(false);
+	it("is enabled on Windows", () => {
+		expect(isTrayEnabled("win32")).toBe(true);
+	});
+
+	it("is disabled on linux", () => {
+		expect(isTrayEnabled("linux")).toBe(false);
 	});
 });
 
