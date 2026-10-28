@@ -176,7 +176,7 @@ Do not introduce one-off hex values, arbitrary radius, or unreviewed spacing. Us
 
 - Primary content: `--color-text-primary` (dark #ECE7DC, light #1E1B15)
 - Secondary explanation: `--color-text-muted` (dark #B3AD9F, light #4F493D)
-- Passive metadata / de-emphasized chrome: `--color-text-passive` (dark #8E887A, light #6B6455)
+- Passive metadata / de-emphasized chrome: `--color-text-passive` (dark #8E887A, light #665F51)
 - Code and links: `--color-text-markdown-code` and `--color-text-markdown-link`
 - Never reduce essential task information to passive contrast.
 
