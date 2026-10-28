@@ -38,7 +38,7 @@
 	--accent: #15130F;
 	--accent-foreground: oklch(0.93 0.012 85);
 	--destructive: oklch(0.704 0.191 22.216);
-	/* Hairlines separate, they do not decorate. 7% white disappears on true black. */
+	/* Hairlines separate, they do not decorate. Opaque warm hex, not a white overlay. */
 	--border: #1E1C18;
 	--input: #2B2820;
 	--ring: var(--accent-star);
@@ -149,7 +149,11 @@
 
 	--font-family-base: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
 	--font-family-display: "Space Grotesk", "IBM Plex Sans", sans-serif;
-	--font-family-mono: "IBM Plex Mono", ui-monospace, monospace;
+	/* Nerd Font entries stay as per-glyph fallbacks: the terminal reads this
+	   stack, and powerline separators and file-type icons need them. */
+	--font-family-mono:
+		"IBM Plex Mono", "JetBrainsMono Nerd Font Mono", "JetBrainsMono Nerd Font", "FiraCode Nerd Font Mono",
+		"FiraCode Nerd Font", "MesloLGS NF", ui-monospace, monospace;
 
 	/* Scale — dense UI chrome uses half-steps between base sizes */
 	--font-size-2xs: 10.5px; /* uppercase meta, board footers */
@@ -662,8 +666,7 @@
 	--accent: #E6DFCF;
 	--accent-foreground: oklch(0.22 0.020 60);
 	--destructive: oklch(0.577 0.245 27.325);
-	/* Translucent like dark: hairlines and input wells are overlays on whatever
-	 * surface they sit on, so a card edge never reads as an opaque gray stroke. */
+	/* Warm opaque hairlines, matching dark. */
 	--border: #D8D0BE;
 	--input: #CFC6B2;
 	--ring: var(--accent-star);
