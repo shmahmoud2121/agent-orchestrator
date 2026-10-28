@@ -33,6 +33,9 @@ const { FakeTray, trayInstances } = vi.hoisted(() => {
 		destroy() {
 			this.destroyed = true;
 		}
+		on(_event: string, _listener: () => void) {
+			return this;
+		}
 	}
 	return { FakeTray, trayInstances };
 });
