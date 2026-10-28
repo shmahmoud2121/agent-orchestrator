@@ -4,7 +4,9 @@ import { useHostConnection } from "../hooks/useHostConnection";
 import type { FilesSource } from "../hooks/useSessionWorkspaceFiles";
 import { getApiBaseUrl } from "../lib/api-client";
 import { artifactContentUrl } from "../lib/artifact-content-url";
-import type { FileMediaKind } from "../lib/file-media";
+import { aoBridge } from "../lib/bridge";
+import { isDocumentKind, type FileMediaKind } from "../lib/file-media";
+import { FileDocumentPreview } from "./FileDocumentPreview";
 import { PanelMessage, RetryButton } from "./WorkspaceDiffView";
 
 export function FileMediaPreview({ hostId, kind, path, sessionId, source, version }: {
@@ -26,6 +28,13 @@ export function FileMediaPreview({ hostId, kind, path, sessionId, source, versio
 	const src = source.kind === "artifact" && rawUrl ? `${rawUrl}${rawUrl.includes("?") ? "&" : "?"}v=${encodeURIComponent(version)}` : rawUrl;
 	if (!src || failedSrc === src) {
 		return <PanelMessage action={src ? <RetryButton onClick={() => setFailedSrc(null)} /> : undefined}>{t("files.error.loadFile")}</PanelMessage>;
+	}
+	if (isDocumentKind(kind)) {
+		// Only a file on this computer can open in its default app.
+		const openExternal = hostId ? undefined : () => {
+			void aoBridge.editorHandoff.openFile({ sessionId, source: source.kind === "artifact" ? "artifact" : "workspace", path }).catch(() => undefined);
+		};
+		return <FileDocumentPreview kind={kind} onOpenExternal={openExternal} path={path} src={src} />;
 	}
 	const onError = () => setFailedSrc(src);
 	return (

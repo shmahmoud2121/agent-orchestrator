@@ -55,6 +55,23 @@ export type OpenSessionTargetInput = {
 
 export type OpenSessionTargetResult = OpenTarget;
 
+/** One document in a session's workspace or artifact directory to open in its default app. */
+export type OpenSessionFileInput = {
+	sessionId: string;
+	source: "workspace" | "artifact";
+	/** Relative to the workspace or artifact directory. */
+	path: string;
+};
+
+/**
+ * Documents "Open in default app" may hand to the operating system. Anything
+ * that could run (an .exe, a script, a shortcut) is refused.
+ */
+export const OPENABLE_DOCUMENT_EXTENSIONS: ReadonlySet<string> = new Set([
+	".pdf", ".doc", ".docx", ".xls", ".xlsx", ".xlsm", ".ppt", ".pptx", ".odt", ".ods", ".odp", ".rtf", ".csv", ".txt", ".md",
+	".png", ".jpg", ".jpeg", ".gif", ".webp",
+]);
+
 /** Where a session's artifact directory can open: the system file manager or a terminal. */
 export type OpenArtifactsTargetId = Extract<OpenTargetId, "file-manager" | "terminal">;
 
