@@ -71,10 +71,10 @@ var (
 	ErrWorkBranchUnsupported = errors.New("session: work projects do not support branches")
 	// ErrWorkHarnessUnwatched means a Work session named an AI the watchdog
 	// does not cover.
-	ErrWorkHarnessUnwatched = errors.New(domain.WorkHarnessUnwatchedMessage)
+	ErrWorkHarnessUnwatched = errors.New(domain.WorkHarnessUnwatchedMessage) //nolint:staticcheck // shown verbatim to the person
 	// ErrWorkGuardUnavailable means a Work session would have started without
 	// every original-file guard.
-	ErrWorkGuardUnavailable = errors.New(domain.WorkGuardUnavailableMessage)
+	ErrWorkGuardUnavailable = errors.New(domain.WorkGuardUnavailableMessage) //nolint:staticcheck // shown verbatim to the person
 	// ErrNotResumable means a terminated session cannot be relaunched: its adapter
 	// cannot natively resume it AND it has no prompt to fresh-launch from, and it is
 	// not an orchestrator (orchestrators are promptless by design and relaunch fresh

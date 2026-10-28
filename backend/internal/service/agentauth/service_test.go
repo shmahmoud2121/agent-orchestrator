@@ -268,7 +268,9 @@ func TestStartPrefersAdapterResolvedBinaryOverGenericPATHMatch(t *testing.T) {
 }
 
 func TestStartPreparesKimiAuthWorkspaceWithSeededTrust(t *testing.T) {
-	if !retiredAuthPlansEnabled { t.Skip("Kimi is retired in this build") }
+	if !retiredAuthPlansEnabled {
+		t.Skip("Kimi is retired in this build")
+	}
 	if runtime.GOOS == "windows" {
 		t.Skip("Windows resolves the home directory from USERPROFILE, so setting HOME does not isolate the seeded trust files")
 	}
@@ -312,7 +314,9 @@ func TestStartPreparesKimiAuthWorkspaceWithSeededTrust(t *testing.T) {
 }
 
 func TestStartPreparesCopilotAuthWorkspaceWithSeededTrust(t *testing.T) {
-	if !retiredAuthPlansEnabled { t.Skip("Copilot is retired in this build") }
+	if !retiredAuthPlansEnabled {
+		t.Skip("Copilot is retired in this build")
+	}
 	if runtime.GOOS == "windows" {
 		t.Skip("Windows resolves the home directory from USERPROFILE, so setting HOME does not isolate the seeded trust files")
 	}

@@ -27,9 +27,10 @@ func (m *Service) SetRepoTrust(ctx context.Context, id domain.ProjectID, fingerp
 		message := "Only the person can change repository trust. Ask them in your report."
 		if m.sessionCatalog != nil {
 			if sess, ok, err := m.sessionCatalog.GetSession(ctx, domain.SessionID(strings.TrimSpace(caller))); err == nil && ok && sess.ProjectID == id {
-				if sess.Kind == domain.KindWorker {
+				switch sess.Kind {
+				case domain.KindWorker:
 					message = "Only the person can change repository trust. You are a worker: ask the person in your report."
-				} else if sess.Kind == domain.KindOrchestrator {
+				case domain.KindOrchestrator:
 					message = "Only the person can change repository trust. You are the manager and can be misled by worker output. Ask the person in your report."
 				}
 			}

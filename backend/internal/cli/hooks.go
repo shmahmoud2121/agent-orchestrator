@@ -1095,7 +1095,7 @@ func (c *commandContext) watchdogDecision(ctx context.Context, sessionID, agent,
 	var resp watchdogDecisionResponse
 	err := c.postJSONTimeout(reqCtx, "sessions/"+url.PathEscape(sessionID)+"/watchdog", map[string]any{
 		"toolName":  toolName,
-		"toolInput": json.RawMessage(toolInput),
+		"toolInput": toolInput,
 	}, &resp, watchdogHookTimeout)
 	if err != nil {
 		return watchdogDaemonDownReason, true

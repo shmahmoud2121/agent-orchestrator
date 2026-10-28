@@ -17,17 +17,24 @@ import (
 
 const retiredTestAgentsAvailable = true
 
-func testAmpAgent() ports.Agent { return amp.New() }
-func testFXAgent() ports.Agent { return fx.New() }
+func testAmpAgent() ports.Agent         { return amp.New() }
+func testFXAgent() ports.Agent          { return fx.New() }
 func testCommandCodeAgent() ports.Agent { return commandcode.New() }
-func testAgyAgent() ports.Agent { return agy.New() }
-func testMemcodeAgent() ports.Agent { return memcode.New() }
-func testMemcodeHooks(ctx context.Context, cfg ports.WorkspaceHookConfig) error { return memcode.New().GetAgentHooks(ctx, cfg) }
+func testAgyAgent() ports.Agent         { return agy.New() }
+func testMemcodeAgent() ports.Agent     { return memcode.New() }
+func testMemcodeHooks(ctx context.Context, cfg ports.WorkspaceHookConfig) error {
+	return memcode.New().GetAgentHooks(ctx, cfg)
+}
 func testMemcodeAfterStart(ctx context.Context, cfg ports.LaunchConfig) error {
 	_, err := memcode.New().AfterStartCommand(ctx, cfg)
 	return err
 }
-func testMemcodeReadinessAgent() interface{ ports.Agent; ports.AgentPromptReadinessProvider } { return memcode.New() }
+func testMemcodeReadinessAgent() interface {
+	ports.Agent
+	ports.AgentPromptReadinessProvider
+} {
+	return memcode.New()
+}
 func retiredTerminalRefreshAgents() map[domain.AgentHarness]ports.Agent {
 	return map[domain.AgentHarness]ports.Agent{domain.HarnessPi: pi.New()}
 }

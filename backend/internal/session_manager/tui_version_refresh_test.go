@@ -122,7 +122,9 @@ func TestTerminalRefreshCapabilities(t *testing.T) {
 		domain.HarnessOpenCode: opencode.New(), domain.HarnessGrok: grok.New(),
 		domain.HarnessCursor: cursor.New(), domain.HarnessGemini: gemini.New(),
 	}
-	for harness, agent := range retiredTerminalRefreshAgents() { agents[harness] = agent }
+	for harness, agent := range retiredTerminalRefreshAgents() {
+		agents[harness] = agent
+	}
 	for harness, agent := range agents {
 		t.Run(string(harness), func(t *testing.T) {
 			mgr, _, _ := newChatManager(&recordingLauncher{})

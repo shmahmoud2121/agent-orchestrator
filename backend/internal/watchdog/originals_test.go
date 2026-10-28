@@ -96,7 +96,7 @@ func TestCheckOriginalWriteShellShapes(t *testing.T) {
 		}
 	}
 	notes := filepath.Join(source, "notes.txt")
-	if err := os.WriteFile(notes, []byte("recieve"), 0o644); err != nil {
+	if err := os.WriteFile(notes, []byte("receive"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	q := quote

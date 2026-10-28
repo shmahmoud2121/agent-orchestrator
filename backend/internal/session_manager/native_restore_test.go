@@ -105,7 +105,9 @@ func interactiveManager(t *testing.T, terminated bool, a *interactiveTestAgent) 
 }
 
 func TestMemcodeNativeLaunchUsesProcessSupervisor(t *testing.T) {
-	if !retiredTestAgentsAvailable { t.Skip("memcode is retired in this build") }
+	if !retiredTestAgentsAvailable {
+		t.Skip("memcode is retired in this build")
+	}
 	m := New(Deps{
 		DataDir:    "/ao-data",
 		Executable: func() (string, error) { return "/opt/ao", nil },

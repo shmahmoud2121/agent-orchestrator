@@ -401,11 +401,16 @@ func seedProject(t *testing.T, d *daemon, name string) string {
 	// here for an environment reason unrelated to the scenarios under test.
 	// Unit tests cover the sandbox settings path; production keeps the default on.
 	d.mustCall("PUT", "/projects/"+out.Project.ID+"/config", http.StatusOK, map[string]any{
-		"config": map[string]any{
-			"workerSandbox": map[string]any{"enabled": false},
-		},
+		"config": map[string]any{"workerSandbox": e2eWorkerSandboxOff()},
 	}, nil)
 	return out.Project.ID
+}
+
+// e2eWorkerSandboxOff is the workerSandbox block every fixture config carries.
+// requireSandbox must go off too, or every worker launch is refused. PUT
+// /config replaces the whole config, so later config writes must repeat it.
+func e2eWorkerSandboxOff() map[string]any {
+	return map[string]any{"enabled": false, "requireSandbox": false}
 }
 
 // setPermissions sets the project's agent permission mode. Approvals are only
@@ -415,7 +420,8 @@ func setPermissions(t *testing.T, d *daemon, projectID, mode string) {
 	t.Helper()
 	d.mustCall("PUT", "/projects/"+projectID+"/config", http.StatusOK, map[string]any{
 		"config": map[string]any{
-			"agentConfig": map[string]any{"permissions": mode},
+			"agentConfig":   map[string]any{"permissions": mode},
+			"workerSandbox": e2eWorkerSandboxOff(),
 		},
 	}, nil)
 }

@@ -466,8 +466,9 @@ async function openCreateProjectDialog(
 	await user.click(screen.getByLabelText("New project"));
 	await user.click(screen.getByRole("button", { name: /^Open a local folder$/i }));
 	await screen.findByRole("dialog", { name: "Set up project" });
-	await chooseOption(screen.getByRole("combobox", { name: "Worker agent" }), "Codex");
-	await chooseOption(screen.getByRole("combobox", { name: "Orchestrator agent" }), "Claude Code");
+	// Sandboxed workers are required by default, so Claude Code is the only selectable worker.
+	await chooseOption(screen.getByRole("combobox", { name: "Worker agent" }), "Claude Code");
+	await chooseOption(screen.getByRole("combobox", { name: "Orchestrator agent" }), "Codex");
 	return user;
 }
 
@@ -1773,15 +1774,15 @@ describe("Sidebar", () => {
 		expect(window.ao!.app.chooseDirectory).toHaveBeenCalledWith("Choose a workspace folder");
 		await screen.findByRole("dialog", { name: "Import workspace" });
 		await user.click(screen.getByRole("button", { name: "Continue" }));
-		await chooseOption(screen.getByRole("combobox", { name: "Worker agent" }), "Codex");
-		await chooseOption(screen.getByRole("combobox", { name: "Orchestrator agent" }), "Claude Code");
+		await chooseOption(screen.getByRole("combobox", { name: "Worker agent" }), "Claude Code");
+		await chooseOption(screen.getByRole("combobox", { name: "Orchestrator agent" }), "Codex");
 		await user.click(screen.getByRole("button", { name: "Create workspace and start" }));
 
 		await waitFor(() =>
 			expect(onCreateProject).toHaveBeenCalledWith({
 				path: "/repo/workspace",
-				workerAgent: "codex",
-				orchestratorAgent: "claude-code",
+				workerAgent: "claude-code",
+				orchestratorAgent: "codex",
 				asWorkspace: true,
 			}),
 		);

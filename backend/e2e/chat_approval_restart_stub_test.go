@@ -205,7 +205,7 @@ func TestFirstTaskStartupRetryAfterDaemonSIGKILL(t *testing.T) {
 	release := filepath.Join(t.TempDir(), "release")
 	postCreate := fmt.Sprintf("printf ready > %q; while [ ! -e %q ]; do sleep 0.05; done", marker, release)
 	d.mustCall("PUT", "/projects/"+project+"/config", http.StatusOK, map[string]any{
-		"config": map[string]any{"postCreate": []string{postCreate}},
+		"config": map[string]any{"postCreate": []string{postCreate}, "workerSandbox": e2eWorkerSandboxOff()},
 	}, nil)
 	req := map[string]any{
 		"projectId": project, "kind": "worker", "harness": "opencode", "mode": "chat",

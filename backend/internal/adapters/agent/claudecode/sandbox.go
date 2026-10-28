@@ -263,6 +263,9 @@ func buildWorkerSandboxSettings(
 	domains := append([]string(nil), sandbox.AllowedDomains...)
 	denyRead, readRules := readDenySettings(workerReadDenyPaths(sandbox), runtime.GOOS)
 
+	// Shell commands may not read the protected files. The excluded ao CLI
+	// runs outside the sandbox, so it still reads the API token.
+	filesystem := map[string]any{"denyRead": denyRead}
 	sandboxBlock := map[string]any{
 		"enabled":                  true,
 		"failIfUnavailable":        true,
@@ -284,13 +287,8 @@ func buildWorkerSandboxSettings(
 			// hosts outside the allowlist without a prompt.
 			"strictAllowlist": true,
 		},
-		// Shell commands may not read the protected files. The excluded ao CLI
-		// runs outside the sandbox, so it still reads the API token.
-		"filesystem": map[string]any{
-			"denyRead": denyRead,
-		},
+		"filesystem": filesystem,
 	}
-	filesystem := sandboxBlock["filesystem"].(map[string]any)
 	if len(sandbox.Launch.WriteAllow) > 0 {
 		filesystem["allowWrite"] = append([]string(nil), sandbox.Launch.WriteAllow...)
 	}

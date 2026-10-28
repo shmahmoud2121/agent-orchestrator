@@ -8,6 +8,7 @@ import (
 )
 
 const retiredActivityAdaptersAvailable = false
-func retiredMuseAgent() ports.Agent { return fake.New() }
-func retiredCrushAgent() ports.Agent { return fake.New() }
+
+func retiredMuseAgent() ports.Agent    { return fake.New() }
+func retiredCrushAgent() ports.Agent   { return fake.New() }
 func retiredMemcodeAgent() ports.Agent { return fake.New() }

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -32,7 +33,7 @@ func newProjectTrustCommand(ctx *commandContext) *cobra.Command {
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if strings.TrimSpace(os.Getenv("AO_SESSION_ID")) != "" {
-				return fmt.Errorf("REPO_TRUST_FORBIDDEN: Only the person can change repository trust. Ask them in your report.")
+				return errors.New("REPO_TRUST_FORBIDDEN: Only the person can change repository trust. Ask them in your report.") //nolint:revive,staticcheck // shown verbatim to the agent
 			}
 			path := "projects/" + url.PathEscape(args[0]) + "/repo-trust"
 			var scan repoTrustScan

@@ -10,6 +10,7 @@ import (
 )
 
 const retiredActivityAdaptersAvailable = true
-func retiredMuseAgent() ports.Agent { return muse.New() }
-func retiredCrushAgent() ports.Agent { return crush.New() }
+
+func retiredMuseAgent() ports.Agent    { return muse.New() }
+func retiredCrushAgent() ports.Agent   { return crush.New() }
 func retiredMemcodeAgent() ports.Agent { return memcode.New() }

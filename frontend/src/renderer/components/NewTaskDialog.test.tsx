@@ -361,6 +361,15 @@ describe("NewTaskDialog", () => {
 	});
 
 	it("sends the chosen agent when the user overrides the default", async () => {
+		// Only sandboxed workers (Claude Code) are offered unless the project
+		// turns off "Only allow sandboxed workers", so turn it off to pick Cursor.
+		const defaultGet = getMock.getMockImplementation()!;
+		getMock.mockImplementation(async (path: string, options?: unknown) => {
+			const result = await defaultGet(path, options);
+			if (path !== "/api/v1/projects/{id}") return result;
+			const project = result.data.project;
+			return { ...result, data: { ...result.data, project: { ...project, config: { ...project.config, workerSandbox: { requireSandbox: false } } } } };
+		});
 		renderDialog();
 		const user = userEvent.setup();
 		await waitForAgentCatalog();
@@ -368,7 +377,7 @@ describe("NewTaskDialog", () => {
 		await user.type(screen.getByLabelText("Task"), "B");
 
 		await user.click(screen.getByRole("button", { name: "Agent" }));
-		await user.click(await screen.findByRole("menuitem", { name: "Cursor" }));
+		await user.click(await screen.findByRole("menuitem", { name: /^Cursor/ }));
 
 		await user.click(screen.getByRole("button", { name: "Create task" }));
 

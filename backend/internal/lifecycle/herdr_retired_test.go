@@ -14,8 +14,12 @@ const testHerdrAvailable = true
 
 func startTestHerdr(ctx context.Context, dir string, m *Manager, logger *slog.Logger) (interface{ Stop() }, error) {
 	server, err := herdr.Start(ctx, dir, m, logger)
-	if server == nil { return nil, err }
+	if server == nil {
+		return nil, err
+	}
 	return server, err
 }
-func testHerdrPaneID(session domain.SessionID, launch string) string { return herdr.PaneID(session, launch) }
+func testHerdrPaneID(session domain.SessionID, launch string) string {
+	return herdr.PaneID(session, launch)
+}
 func testHerdrSocketPath(dir string) string { return herdr.SocketPath(dir) }

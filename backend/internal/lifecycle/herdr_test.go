@@ -40,7 +40,9 @@ func TestActivitySignalExpectedHarnessFencesStateAndMetadata(t *testing.T) {
 }
 
 func TestHerdrSocketPersistsNativeMetadataAndFencesRuntimeGenerations(t *testing.T) {
-	if !testHerdrAvailable { t.Skip("fx is retired in this build") }
+	if !testHerdrAvailable {
+		t.Skip("fx is retired in this build")
+	}
 	if runtime.GOOS == "windows" {
 		t.Skip("fx has no native Windows support")
 	}

@@ -83,16 +83,16 @@ type turnAutoResumeService interface {
 	SetTurnAutoResume(context.Context, domain.SessionID, string, bool) error
 }
 
-// ConversationsController owns the Chat routes for a session.
-//
-// Every route dispatches from the session's persisted mode inside the service, so
-// a client cannot reach the Chat path for a session that was created in TUI mode
-// even by calling these URLs directly. UI visibility is not the boundary.
 // SessionCallerLookup resolves the session named by X-AO-Session-ID.
 type SessionCallerLookup interface {
 	GetSession(ctx context.Context, id domain.SessionID) (domain.SessionRecord, bool, error)
 }
 
+// ConversationsController owns the Chat routes for a session.
+//
+// Every route dispatches from the session's persisted mode inside the service, so
+// a client cannot reach the Chat path for a session that was created in TUI mode
+// even by calling these URLs directly. UI visibility is not the boundary.
 type ConversationsController struct {
 	Svc ConversationService
 	// Renders serves agent HTML renders. Nil answers the render route 501.

@@ -173,12 +173,13 @@ describe("Settings recovery modal integration", () => {
 
 	it("allows pointer interaction above create-project and restores its selections and intake draft on close", async () => {
 		const client = renderDialogs("create-project");
-		await userEvent.click(screen.getByRole("combobox", { name: "Worker agent" }));
+		// Workers are limited to sandboxed Claude Code, so Codex is picked as the orchestrator.
+		await userEvent.click(screen.getByRole("combobox", { name: "Orchestrator agent" }));
 		await userEvent.click(await screen.findByRole("option", { name: /Codex/i }));
 		await userEvent.click(screen.getByLabelText("Automatically work on assigned issues"));
 		await userEvent.type(screen.getByLabelText("Assignee"), "octocat");
 		requireCodexLogin(client);
-		await openAgentManagement("Worker agent");
+		await openAgentManagement("Orchestrator agent");
 
 		await userEvent.click(await screen.findByRole("button", { name: "All harnesses" }));
 		const search = await screen.findByRole("textbox", { name: "Search harnesses" });
@@ -186,7 +187,7 @@ describe("Settings recovery modal integration", () => {
 		expect(search).toHaveValue("Claude");
 		await userEvent.click(screen.getByRole("button", { name: "Back" }));
 
-		expect(await screen.findByRole("combobox", { name: "Worker agent" })).toHaveTextContent("Codex");
+		expect(await screen.findByRole("combobox", { name: "Orchestrator agent" })).toHaveTextContent("Codex");
 		expect(screen.getByLabelText("Assignee")).toHaveValue("octocat");
 		expect(useUiStore.getState().settingsModal).toBeNull();
 		await userEvent.keyboard("{Escape}");

@@ -895,7 +895,7 @@ describe("TaskComposer", () => {
 
 		await act(async () => finishReadiness({ agents: [completed] }));
 		expect(await screen.findByText("Codex is not ready")).toBeInTheDocument();
-		expect(queryClient.getQueryData(agentReadinessQueryKey)).toEqual({ agents: [completed] });
+		expect(queryClient.getQueryData(agentReadinessQueryKey)).toEqual({ agents: [completed], workerSandboxAvailable: true });
 	});
 
 	it("starts a promptless worker when the task is empty", async () => {

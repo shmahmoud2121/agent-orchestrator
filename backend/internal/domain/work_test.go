@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -178,8 +179,8 @@ func workCode(t *testing.T, err error) string {
 	if err == nil {
 		return ""
 	}
-	workErr, ok := err.(*WorkConfigError)
-	if !ok {
+	var workErr *WorkConfigError
+	if !errors.As(err, &workErr) {
 		t.Fatalf("error type %T: %v", err, err)
 	}
 	return workErr.Code

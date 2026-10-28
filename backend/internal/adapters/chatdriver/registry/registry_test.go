@@ -26,18 +26,20 @@ func TestShippedChatDrivers(t *testing.T) {
 		domain.HarnessOpenCode,
 		domain.HarnessCursor,
 	}
-	if retiredBuildEnabled { shipped = append(shipped,
-		domain.HarnessOpenCodeV2,
-		domain.HarnessDroid,
-		domain.HarnessKimi,
-		domain.HarnessKimchi,
-		domain.HarnessPi,
-		domain.HarnessOMP,
-		domain.HarnessQwen,
-		domain.HarnessUnreal,
-		domain.HarnessCopilot,
-		domain.HarnessAgy,
-	) }
+	if retiredBuildEnabled {
+		shipped = append(shipped,
+			domain.HarnessOpenCodeV2,
+			domain.HarnessDroid,
+			domain.HarnessKimi,
+			domain.HarnessKimchi,
+			domain.HarnessPi,
+			domain.HarnessOMP,
+			domain.HarnessQwen,
+			domain.HarnessUnreal,
+			domain.HarnessCopilot,
+			domain.HarnessAgy,
+		)
+	}
 	for _, harness := range shipped {
 		if !r.SupportsChat(harness) {
 			t.Errorf("%s has no chat driver", harness)

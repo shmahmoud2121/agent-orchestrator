@@ -28,7 +28,9 @@ func TestGeminiAdapterIsSelectable(t *testing.T) {
 }
 
 func TestDeepSeekHarnessAdapterIsSelectable(t *testing.T) {
-	if !retiredBuildEnabled { t.Skip("DeepSeek is retired in this build") }
+	if !retiredBuildEnabled {
+		t.Skip("DeepSeek is retired in this build")
+	}
 	reg, err := Build()
 	if err != nil {
 		t.Fatal(err)
@@ -47,7 +49,9 @@ func TestOpenCodeMajorsAreIndependentlySelectable(t *testing.T) {
 		t.Fatal(err)
 	}
 	ids := []string{"opencode"}
-	if retiredBuildEnabled { ids = append(ids, "opencode-v2") }
+	if retiredBuildEnabled {
+		ids = append(ids, "opencode-v2")
+	}
 	for _, id := range ids {
 		adapter, ok := reg.Get(id)
 		if !ok {
@@ -124,7 +128,9 @@ func TestEveryHarnessReportsAuthStatus(t *testing.T) {
 }
 
 func TestRegistryIncludesFX(t *testing.T) {
-	if !retiredBuildEnabled { t.Skip("fx is retired in this build") }
+	if !retiredBuildEnabled {
+		t.Skip("fx is retired in this build")
+	}
 	reg, err := Build()
 	if err != nil {
 		t.Fatal(err)
@@ -146,7 +152,9 @@ func TestRegistryIncludesFX(t *testing.T) {
 }
 
 func TestRegistryIncludesPrimeAgent(t *testing.T) {
-	if !retiredBuildEnabled { t.Skip("Prime Agent is retired in this build") }
+	if !retiredBuildEnabled {
+		t.Skip("Prime Agent is retired in this build")
+	}
 	reg, err := Build()
 	if err != nil {
 		t.Fatal(err)
@@ -169,7 +177,9 @@ func TestRegistryIncludesPrimeAgent(t *testing.T) {
 }
 
 func TestRegistryIncludesOMP(t *testing.T) {
-	if !retiredBuildEnabled { t.Skip("OMP is retired in this build") }
+	if !retiredBuildEnabled {
+		t.Skip("OMP is retired in this build")
+	}
 	reg, err := Build()
 	if err != nil {
 		t.Fatal(err)
@@ -192,7 +202,9 @@ func TestRegistryIncludesOMP(t *testing.T) {
 }
 
 func TestRegistryIncludesCommandCode(t *testing.T) {
-	if !retiredBuildEnabled { t.Skip("Command Code is retired in this build") }
+	if !retiredBuildEnabled {
+		t.Skip("Command Code is retired in this build")
+	}
 	reg, err := Build()
 	if err != nil {
 		t.Fatal(err)
@@ -215,7 +227,9 @@ func TestRegistryIncludesCommandCode(t *testing.T) {
 }
 
 func TestRegistryIncludesCodewhale(t *testing.T) {
-	if !retiredBuildEnabled { t.Skip("Codewhale is retired in this build") }
+	if !retiredBuildEnabled {
+		t.Skip("Codewhale is retired in this build")
+	}
 	reg, err := Build()
 	if err != nil {
 		t.Fatal(err)
@@ -227,7 +241,9 @@ func TestRegistryIncludesCodewhale(t *testing.T) {
 }
 
 func TestRegistryIncludesMiMoCode(t *testing.T) {
-	if !retiredBuildEnabled { t.Skip("MiMo Code is retired in this build") }
+	if !retiredBuildEnabled {
+		t.Skip("MiMo Code is retired in this build")
+	}
 	reg, err := Build()
 	if err != nil {
 		t.Fatal(err)
@@ -242,7 +258,9 @@ func TestRegistryIncludesMiMoCode(t *testing.T) {
 }
 
 func TestRegistryIncludesOpenHands(t *testing.T) {
-	if !retiredBuildEnabled { t.Skip("OpenHands is retired in this build") }
+	if !retiredBuildEnabled {
+		t.Skip("OpenHands is retired in this build")
+	}
 	reg, err := Build()
 	if err != nil {
 		t.Fatal(err)
@@ -340,7 +358,9 @@ func hasLine(content, line string) bool {
 }
 
 func TestMemcodeAdapterIsSelectable(t *testing.T) {
-	if !retiredBuildEnabled { t.Skip("memcode is retired in this build") }
+	if !retiredBuildEnabled {
+		t.Skip("memcode is retired in this build")
+	}
 	reg, err := Build()
 	if err != nil {
 		t.Fatal(err)

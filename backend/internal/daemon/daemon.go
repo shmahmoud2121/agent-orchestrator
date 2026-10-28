@@ -721,7 +721,7 @@ func Run() error {
 			}
 			snap, err := chatSvc.Snapshot(ctx, id)
 			if err != nil {
-				return reportsvc.LastExchange{}, false, nil
+				return reportsvc.LastExchange{}, false, err
 			}
 			return reportsvc.ExchangeFromMessages(snap.Messages), true, nil
 		},

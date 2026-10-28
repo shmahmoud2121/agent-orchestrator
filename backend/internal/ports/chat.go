@@ -78,7 +78,7 @@ var (
 	)
 	// ErrWorkerBypassForbidden refuses an explicit request to put a worker in
 	// bypass-permissions. Error() is the message clients and agents see.
-	ErrWorkerBypassForbidden = errors.New("Workers can't bypass permissions.")
+	ErrWorkerBypassForbidden = errors.New("Workers can't bypass permissions.") //nolint:revive,staticcheck // shown verbatim to clients and agents
 	// ErrChatHistoryUnsettled means the native conversation history is not safe
 	// to project as complete. Only a ChatHistoryRefresher promises that another
 	// provider observation may make progress; rereading a snapshot need not.

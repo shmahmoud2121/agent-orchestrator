@@ -193,6 +193,7 @@ func newStack(t *testing.T) *stack {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
+	sandboxOff := false
 	if err := store.UpsertProject(ctx, domain.ProjectRecord{
 		ID:           "mer",
 		Path:         "/repo/mer",
@@ -200,6 +201,8 @@ func newStack(t *testing.T) *stack {
 		Config: domain.ProjectConfig{
 			Worker:       domain.RoleOverride{Harness: domain.HarnessClaudeCode},
 			Orchestrator: domain.RoleOverride{Harness: domain.HarnessClaudeCode},
+			// CI runners have no bubblewrap/socat, so requireSandbox would refuse every spawn.
+			WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &sandboxOff, RequireSandbox: &sandboxOff},
 		},
 	}); err != nil {
 		t.Fatal(err)
@@ -226,7 +229,10 @@ func TestDelegateEndpointDoesNotDependOnCodexDeviceReconciliation(t *testing.T) 
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
-	if err := store.UpsertProject(ctx, domain.ProjectRecord{ID: "mer", Path: "/repo/mer", RegisteredAt: time.Now()}); err != nil {
+	sandboxOff := false
+	if err := store.UpsertProject(ctx, domain.ProjectRecord{ID: "mer", Path: "/repo/mer", RegisteredAt: time.Now(), Config: domain.ProjectConfig{
+		WorkerSandbox: domain.WorkerSandboxConfig{Enabled: &sandboxOff, RequireSandbox: &sandboxOff},
+	}}); err != nil {
 		t.Fatal(err)
 	}
 

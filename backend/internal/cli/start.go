@@ -212,8 +212,9 @@ func knownAppLocations() []string {
 	case "darwin":
 		paths := []string{"/Applications/" + appBundleName}
 		if home, err := os.UserHomeDir(); err == nil {
-			paths = append(paths, filepath.Join(home, "Applications", appBundleName))
-			paths = append(paths, filepath.Join(home, "Applications", legacyAppBundleName))
+			paths = append(paths,
+				filepath.Join(home, "Applications", appBundleName),
+				filepath.Join(home, "Applications", legacyAppBundleName))
 		}
 		paths = append(paths, "/Applications/"+legacyAppBundleName)
 		return paths

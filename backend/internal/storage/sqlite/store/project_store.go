@@ -255,8 +255,8 @@ func (s *Store) ListPendingProjectApprovals(ctx context.Context, projectID strin
 	out := make([]domain.PendingProjectApproval, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, domain.PendingProjectApproval{
-			SessionID:     domain.SessionID(row.SessionID),
-			SessionKind:   domain.SessionKind(row.SessionKind),
+			SessionID:     row.SessionID,
+			SessionKind:   row.SessionKind,
 			DisplayName:   row.DisplayName,
 			WorkspacePath: row.WorkspacePath,
 			RequestID:     row.RequestID,
