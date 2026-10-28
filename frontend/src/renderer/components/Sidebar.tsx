@@ -133,6 +133,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { SessionArchiveDialog, type SessionArchiveChoice } from "./SessionArchiveDialog";
 import { CreateProjectFlow, type CloneProjectInput, type CreateProjectInput } from "./CreateProjectFlow";
 import { ResizeHandle } from "./ResizeHandle";
+import { AltairWordmark } from "./AltairWordmark";
 import { NAV_ROW_HIGHLIGHT_HOST_CLASS, NavRowHighlight } from "./NavRowHighlight";
 import { isLinuxPlatform, isMacPlatform } from "../lib/platform";
 import type { RemoteHost } from "../hooks/useRemoteHosts";
@@ -588,7 +589,7 @@ function SessionStatusDot({ session }: { session: WorkspaceSession }) {
 		>
 			<span
 				className={cn(
-					"size-2 rounded-full",
+					"size-1.5 rotate-45 rounded-[1px]",
 					dot.className,
 					dot.breathe && "animate-status-pulse",
 				)}
@@ -1003,9 +1004,9 @@ export function Sidebar({
 					type="button"
 				>
 					<span
-						className="sidebar-expanded-chrome min-w-0 flex-1 truncate text-base font-semibold leading-tight tracking-tight-lg text-foreground group-data-[collapsible=icon]:hidden"
+						className="sidebar-expanded-chrome min-w-0 flex-1 truncate text-base font-semibold leading-tight text-foreground group-data-[collapsible=icon]:hidden"
 					>
-						<BuildInfoTooltip>Altair</BuildInfoTooltip>
+						<BuildInfoTooltip><AltairWordmark /></BuildInfoTooltip>
 					</span>
 				</button>
 				<Tooltip>
@@ -1098,6 +1099,7 @@ export function Sidebar({
 				<div className="sidebar-expanded-chrome flex shrink-0 pb-0.5 group-data-[collapsible=icon]:hidden">
 					<SectionDisclosure
 						label={t("shell.code")}
+						count={codeWorkspaces.length}
 						open={projectsOpen}
 						onToggle={() => setProjectsOpen((open) => {
 							const next = !open;
@@ -1227,6 +1229,7 @@ export function Sidebar({
 							<div className="sidebar-expanded-chrome flex flex-col group-data-[collapsible=icon]:hidden">
 								<SectionDisclosure
 									label={t("shell.work")}
+									count={workWorkspaces.length}
 									open={workOpen}
 									onToggle={() => setWorkOpen((open) => {
 										const next = !open;
@@ -1805,7 +1808,7 @@ const ProjectItem = memo(function ProjectItem({
 										{workspace.kind === "work" ? <FileText className="size-5" strokeWidth={1.75} /> : expanded ? <FolderOpen className="size-5" strokeWidth={1.75} /> : <Folder className="size-5" strokeWidth={1.75} />}
 									</span>
 									<span
-										className="sidebar-expanded-chrome relative z-[1] min-w-0 flex-1 translate-y-px truncate group-data-[collapsible=icon]:hidden"
+										className="sidebar-expanded-chrome sidebar-name relative z-[1] min-w-0 flex-1 translate-y-px truncate group-data-[collapsible=icon]:hidden"
 										data-project-label=""
 									>
 										{workspace.name}
@@ -2568,7 +2571,7 @@ const SessionRow = memo(function SessionRow({
 							<span className="flex min-w-0 flex-1 items-center gap-1.5">
 								<span
 									className={cn(
-										"min-w-0 flex-1 truncate",
+										"sidebar-name min-w-0 flex-1 truncate",
 										active ? "text-foreground" : "text-muted-foreground group-hover/session-row:text-foreground",
 									)}
 									data-session-name=""
@@ -3116,6 +3119,7 @@ function SectionDisclosure({
 	onToggle,
 	className,
 	trailing,
+	count,
 	collapsible = true,
 }: {
 	icon?: ReactNode;
@@ -3125,19 +3129,26 @@ function SectionDisclosure({
 	className?: string;
 	/** Optional trailing control (e.g. Projects "+") — its own button, not the row. */
 	trailing?: ReactNode;
+	/** Optional passive item count, shown right-aligned before `trailing`. */
+	count?: number;
 	/** When false, render a static label row with no chevron, toggle, or hover fill. */
 	collapsible?: boolean;
 }) {
+	const labelIsSection = count !== undefined;
 	const labelRow = (
 		<>
 			{icon}
-			<span className="truncate">{label}</span>
+			{labelIsSection ? <span aria-hidden="true" className="sidebar-section-label__prefix">{"// "}</span> : null}
+			<span className={cn("truncate", labelIsSection && "sidebar-section-label")}>{label}</span>
 			{collapsible ? (
 				<ChevronRight
 					aria-hidden="true"
 					className={cn("size-3.5! shrink-0 transition-transform duration-150", open && "rotate-90")}
 					strokeWidth={2}
 				/>
+			) : null}
+			{count !== undefined ? (
+				<span aria-hidden="true" className="sidebar-section-count ml-auto">{count}</span>
 			) : null}
 		</>
 	);

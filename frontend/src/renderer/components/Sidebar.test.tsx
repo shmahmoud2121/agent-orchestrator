@@ -2819,8 +2819,8 @@ describe("Sidebar", () => {
 
 		const idleActivityDot = screen
 			.getByLabelText("Open idle activity task")
-			.querySelector<HTMLElement>("span.rounded-full");
-		const idleDraftDot = screen.getByLabelText("Open idle draft task").querySelector<HTMLElement>("span.rounded-full");
+			.querySelector<HTMLElement>("span[data-session-status]");
+		const idleDraftDot = screen.getByLabelText("Open idle draft task").querySelector<HTMLElement>("span[data-session-status]");
 
 		// An idle session with no pull request stays gray; a parked draft keeps
 		// the in-review tone the board gives it, without any motion.
