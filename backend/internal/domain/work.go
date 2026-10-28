@@ -50,10 +50,12 @@ func workErr(code, message string) error {
 }
 
 // WorkHarnessWatched reports whether the watchdog covers this harness. Work
-// sessions may use only these harnesses.
+// sessions may use only these harnesses. Each one's before-tool hook has been
+// checked to refuse a call. Cursor's hooks are wired too, but its read deny is
+// not yet proven, so it stays out.
 func WorkHarnessWatched(h AgentHarness) bool {
 	switch h {
-	case HarnessClaudeCode, HarnessCodex:
+	case HarnessClaudeCode, HarnessCodex, HarnessGrok, HarnessGemini:
 		return true
 	default:
 		return false

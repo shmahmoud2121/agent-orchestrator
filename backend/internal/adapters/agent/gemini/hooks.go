@@ -19,6 +19,8 @@ var hooks = hooksjson.Manager{
 		{Event: "AfterAgent", Command: "ao hooks gemini stop"},
 		{Event: "Notification", Command: "ao hooks gemini notification"},
 		{Event: "AfterTool", Command: "ao hooks gemini after-tool"},
+		// BeforeTool lets the watchdog refuse a protected-file read.
+		{Event: "BeforeTool", Command: "ao hooks gemini pre-tool-use"},
 	},
 }
 
@@ -26,6 +28,12 @@ var hooks = hooksjson.Manager{
 // additionalContext response from ao hooks, preserving Gemini's system prompt.
 func (p *Plugin) GetAgentHooks(ctx context.Context, cfg ports.WorkspaceHookConfig) error {
 	return hooks.Install(ctx, cfg.WorkspacePath)
+}
+
+// WorkHooksReady reports whether the BeforeTool hook the watchdog answers is
+// installed for every tool. A Work session will not start without it.
+func (p *Plugin) WorkHooksReady(ctx context.Context, ws string) (bool, error) {
+	return hooks.HasHook(ctx, ws, "BeforeTool", "ao hooks gemini pre-tool-use")
 }
 
 // UninstallHooks removes only AO-managed hook entries.

@@ -331,6 +331,37 @@ func (m Manager) AreInstalled(ctx context.Context, workspacePath string) (bool, 
 	return false, nil
 }
 
+// HasHook reports whether event runs command for every tool: the command sits
+// in a matcher group with no matcher, an empty one, or "*". A Work session uses
+// it to confirm the watchdog's before-tool hook is in place.
+func (m Manager) HasHook(ctx context.Context, workspacePath, event, command string) (bool, error) {
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+	if strings.TrimSpace(workspacePath) == "" {
+		return false, fmt.Errorf("%s.HasHook: workspacePath is required", m.Label)
+	}
+	_, rawHooks, err := readHooksFile(m.Path(workspacePath))
+	if err != nil {
+		return false, fmt.Errorf("%s.HasHook: %w", m.Label, err)
+	}
+	var groups []MatcherGroup
+	if err := m.parseEvent(rawHooks, event, &groups); err != nil {
+		return false, fmt.Errorf("%s.HasHook: %w", m.Label, err)
+	}
+	for _, group := range groups {
+		if group.Matcher != nil && strings.TrimSpace(*group.Matcher) != "" && strings.TrimSpace(*group.Matcher) != "*" {
+			continue
+		}
+		for _, hook := range group.Hooks {
+			if strings.TrimSpace(hook.Command) == command {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
 // groupByEvent groups the managed specs by event so each event array is
 // rewritten once.
 func (m Manager) groupByEvent() map[string][]HookSpec {

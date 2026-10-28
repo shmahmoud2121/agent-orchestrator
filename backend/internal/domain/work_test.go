@@ -160,11 +160,16 @@ func TestUniqueTaskFolderSuffix(t *testing.T) {
 }
 
 func TestWorkHarnessWatched(t *testing.T) {
-	if !WorkHarnessWatched(HarnessClaudeCode) || !WorkHarnessWatched(HarnessCodex) {
-		t.Fatal("claude and codex are watched")
+	for _, h := range []AgentHarness{HarnessClaudeCode, HarnessCodex, HarnessGrok, HarnessGemini} {
+		if !WorkHarnessWatched(h) {
+			t.Fatalf("%s is watched", h)
+		}
 	}
-	if WorkHarnessWatched(HarnessGemini) || WorkHarnessWatched("") {
-		t.Fatal("other harnesses are not watched")
+	// Cursor's hooks are wired but its read deny is not yet proven.
+	for _, h := range []AgentHarness{HarnessCursor, HarnessOpenCode, ""} {
+		if WorkHarnessWatched(h) {
+			t.Fatalf("%q is not watched", h)
+		}
 	}
 }
 
