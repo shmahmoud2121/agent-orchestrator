@@ -14,11 +14,13 @@ import (
 
 // CheckOriginalWrite reports whether a tool call would create, change, move,
 // or delete a file under one of the Work project's original paths. Reads and
-// copies out of those paths are allowed. sources are absolute. workDir is the
-// session's working folder; relative paths resolve against it.
-func CheckOriginalWrite(sources []string, workDir, toolName string, input json.RawMessage) Result {
-	canon := canonicalSources(sources)
-	if len(canon) == 0 {
+// copies out of those paths are allowed. sources are absolute. Paths under
+// results never count as originals, even when results sits inside an original
+// folder. workDir is the session's working folder; relative paths resolve
+// against it.
+func CheckOriginalWrite(sources []string, results, workDir, toolName string, input json.RawMessage) Result {
+	canon := originalSet{sources: canonicalSources(sources), results: canonicalResults(results)}
+	if len(canon.sources) == 0 {
 		return Result{}
 	}
 	workDir = cleanOrEmpty(workDir)
@@ -49,10 +51,10 @@ func CheckOriginalWrite(sources []string, workDir, toolName string, input json.R
 	return Result{}
 }
 
-func canonicalSources(sources []string) []string {
+func canonicalSources(raw []string) []string {
 	var out []string
 	seen := map[string]struct{}{}
-	for _, raw := range sources {
+	for _, raw := range raw {
 		raw = strings.TrimSpace(raw)
 		if raw == "" {
 			continue
@@ -74,11 +76,40 @@ func canonicalSources(sources []string) []string {
 	return out
 }
 
-func originalHit(sources []string, resolved string) bool {
-	if resolved == "" {
+// originalSet is the originals plus the results folder. A results folder may
+// sit inside an original folder; everything under it belongs to the session.
+type originalSet struct {
+	sources []string
+	results string
+}
+
+func canonicalResults(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	canon := filepath.Clean(raw)
+	if resolved, err := filepath.EvalSymlinks(canon); err == nil {
+		canon = filepath.Clean(resolved)
+	}
+	return canon
+}
+
+func (o originalSet) inResults(resolved string) bool {
+	if o.results == "" {
 		return false
 	}
-	for _, source := range sources {
+	if domain.PathCovers(o.results, resolved) {
+		return true
+	}
+	return runtime.GOOS == "windows" && domain.PathCovers(strings.ToLower(o.results), strings.ToLower(resolved))
+}
+
+func originalHit(sources originalSet, resolved string) bool {
+	if resolved == "" || sources.inResults(resolved) {
+		return false
+	}
+	for _, source := range sources.sources {
 		if domain.PathCovers(source, resolved) {
 			return true
 		}
@@ -94,13 +125,13 @@ func originalHit(sources []string, resolved string) bool {
 // is blocked.
 const originalShellDepth = 3
 
-func checkOriginalShell(sources []string, workDir, command string) Result {
+func checkOriginalShell(sources originalSet, workDir, command string) Result {
 	return checkOriginalShellAt(sources, workDir, command, 0)
 }
 
 // checkOriginalShellAt walks the segments in order. A cd moves the folder that
 // later relative paths resolve against.
-func checkOriginalShellAt(sources []string, workDir, command string, depth int) Result {
+func checkOriginalShellAt(sources originalSet, workDir, command string, depth int) Result {
 	if depth > originalShellDepth {
 		return mentionsOriginal(sources, workDir, command)
 	}
@@ -138,7 +169,7 @@ func checkOriginalShellAt(sources []string, workDir, command string, depth int) 
 
 // mentionsOriginal blocks when any word names an original or a folder that
 // holds one. It is the fallback when the command cannot be read word by word.
-func mentionsOriginal(sources []string, workDir, command string) Result {
+func mentionsOriginal(sources originalSet, workDir, command string) Result {
 	for _, word := range shellWords(command) {
 		if isShellPunctuation(word) {
 			continue
@@ -309,7 +340,7 @@ var gitReadOnly = map[string]bool{
 	"cat-file": true, "rev-list": true,
 }
 
-func checkOriginalSegment(sources []string, workDir string, words []string) Result {
+func checkOriginalSegment(sources originalSet, workDir string, words []string) Result {
 	if blocked, shown := redirectTargetsSource(sources, workDir, words); blocked {
 		return Result{Blocked: true, Path: shown}
 	}
@@ -368,7 +399,7 @@ func checkOriginalSegment(sources []string, workDir string, words []string) Resu
 
 // firstOriginalArg blocks on the first argument under an original. With
 // holders, a folder that holds an original also counts.
-func firstOriginalArg(sources []string, workDir string, args []string, holders bool) Result {
+func firstOriginalArg(sources originalSet, workDir string, args []string, holders bool) Result {
 	for _, raw := range args {
 		resolved := resolveArg(workDir, raw)
 		if originalHit(sources, resolved) || (holders && holdsOriginal(sources, resolved)) {
@@ -397,7 +428,7 @@ func scriptInPlace(words []string) bool {
 
 // checkOriginalFind blocks find -delete, or find -exec running a writer, when
 // a search root is an original or holds one.
-func checkOriginalFind(sources []string, workDir string, words []string) Result {
+func checkOriginalFind(sources originalSet, workDir string, words []string) Result {
 	_, at := commandBase(words)
 	writes := false
 	for i, word := range words[at+1:] {
@@ -430,7 +461,7 @@ func checkOriginalFind(sources []string, workDir string, words []string) Result 
 
 // checkOriginalGit allows read-only git anywhere. Any other subcommand is
 // blocked when git runs in an original or in a folder that holds one.
-func checkOriginalGit(sources []string, workDir string, words []string) Result {
+func checkOriginalGit(sources originalSet, workDir string, words []string) Result {
 	_, at := commandBase(words)
 	dir := workDir
 	shown := ""
@@ -516,11 +547,11 @@ func resolveArg(workDir, raw string) string {
 
 // holdsOriginal reports a folder that contains an original, so removing or
 // moving the folder would take the original with it.
-func holdsOriginal(sources []string, resolved string) bool {
+func holdsOriginal(sources originalSet, resolved string) bool {
 	if resolved == "" {
 		return false
 	}
-	for _, source := range sources {
+	for _, source := range sources.sources {
 		if domain.PathCovers(resolved, source) {
 			return true
 		}
@@ -635,7 +666,7 @@ func sedInPlace(words []string) bool {
 	return false
 }
 
-func redirectTargetsSource(sources []string, workDir string, words []string) (bool, string) {
+func redirectTargetsSource(sources originalSet, workDir string, words []string) (bool, string) {
 	for i, word := range words {
 		target := ""
 		switch {
@@ -658,7 +689,7 @@ func redirectTargetsSource(sources []string, workDir string, words []string) (bo
 	return false, ""
 }
 
-func ddOfTargetsSource(sources []string, workDir string, words []string) (bool, string) {
+func ddOfTargetsSource(sources originalSet, workDir string, words []string) (bool, string) {
 	for _, word := range words {
 		low := strings.ToLower(word)
 		if !strings.HasPrefix(low, "of=") {

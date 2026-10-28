@@ -62,4 +62,25 @@ describe("CreateWorkProjectSheet", () => {
 			workerAgent: "codex",
 		}));
 	});
+
+	it("puts results beside an original folder, and in Documents when there are only files", async () => {
+		const user = userEvent.setup();
+		window.ao!.app.documentsPath = vi.fn().mockResolvedValue("C:\\Users\\me\\Documents");
+		window.ao!.app.chooseFiles = vi.fn().mockResolvedValue(["C:\\Cases\\brief.pdf"]);
+		window.ao!.app.chooseDirectory = vi.fn().mockResolvedValue("C:\\Cases\\06_Archive");
+		renderSheet();
+		await user.type(screen.getByLabelText("Name"), "test");
+		const results = screen.getByLabelText("Results folder");
+
+		await user.click(screen.getByRole("button", { name: "Add files" }));
+		expect(await screen.findByText("brief.pdf")).toBeInTheDocument();
+		expect(results).toHaveValue("C:\\Users\\me\\Documents\\Altair\\test");
+
+		await user.click(screen.getByRole("button", { name: "Add folder" }));
+		expect(await screen.findByText("06_Archive")).toBeInTheDocument();
+		expect(results).toHaveValue("C:\\Cases\\06_Archive\\Output");
+
+		await user.click(screen.getByRole("button", { name: "Remove 06_Archive" }));
+		expect(results).toHaveValue("C:\\Users\\me\\Documents\\Altair\\test");
+	});
 });

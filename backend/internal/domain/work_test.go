@@ -53,9 +53,9 @@ func TestValidateWorkLayout(t *testing.T) {
 		t.Fatalf("results dir was not created: %v", err)
 	}
 
-	overlapDown := &WorkConfig{Sources: []string{source}, ResultsDir: nested}
-	if code := workCode(t, ValidateWorkLayout(overlapDown, ao)); code != "WORK_PATH_OVERLAP" {
-		t.Fatalf("results inside source code = %s", code)
+	inside := &WorkConfig{Sources: []string{source}, ResultsDir: nested}
+	if err := ValidateWorkLayout(inside, ao); err != nil {
+		t.Fatalf("results inside a source folder: %v", err)
 	}
 	overlapUp := &WorkConfig{Sources: []string{filepath.Join(results, "later")}, ResultsDir: results}
 	if err := os.MkdirAll(filepath.Join(results, "later"), 0o755); err != nil {
@@ -183,4 +183,23 @@ func workCode(t *testing.T, err error) string {
 		t.Fatalf("error type %T: %v", err, err)
 	}
 	return workErr.Code
+}
+
+func TestWorkWriteDenyKeepsResultsInsideOriginal(t *testing.T) {
+	source := filepath.Join(t.TempDir(), "06_Archive")
+	results := filepath.Join(source, "Output")
+	for _, dir := range []string{filepath.Join(source, "letters"), results} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(source, "contract.pdf"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	other := filepath.Join(t.TempDir(), "other")
+	got := WorkWriteDeny(&WorkConfig{Sources: []string{source, other}, ResultsDir: results})
+	want := []string{filepath.Join(source, "contract.pdf"), filepath.Join(source, "letters"), other}
+	if strings.Join(got, "|") != strings.Join(want, "|") {
+		t.Fatalf("deny = %v, want %v", got, want)
+	}
 }
