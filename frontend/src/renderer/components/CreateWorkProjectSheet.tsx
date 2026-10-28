@@ -1,5 +1,5 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import { FileText, X } from "lucide-react";
+import { FileText, Folder, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAgentReadinessQuery, useEnsureAgentReadiness } from "../hooks/useAgentReadinessQuery";
@@ -30,6 +30,18 @@ function joinResults(documents: string, name: string): string {
 	const safe = name.trim().replace(/[<>:"/\\|?*\u0000-\u001f]/g, " ").replace(/[. ]+$/g, "").trim() || "project";
 	const sep = documents.includes("\\") ? "\\" : "/";
 	return `${documents.replace(/[\\/]+$/, "")}${sep}Altair${sep}${safe}`;
+}
+
+// besideFolder names the default results folder next to an original folder:
+// C:\Cases\06_Archive gives C:\Cases\06_Archive Output. Results may not sit
+// inside an original, so the folder goes beside it. A drive or filesystem root
+// has no parent to hold it.
+function besideFolder(folder: string): string {
+	const trimmed = folder.replace(/[\\/]+$/, "");
+	const cut = Math.max(trimmed.lastIndexOf("\\"), trimmed.lastIndexOf("/"));
+	const name = trimmed.slice(cut + 1);
+	if (cut < 0 || name === "" || /^[A-Za-z]:$/.test(trimmed)) return "";
+	return `${trimmed} Output`;
 }
 
 function fieldErrors(error: unknown): FieldErrors {
@@ -67,6 +79,7 @@ export function CreateWorkProjectSheet({
 	const { t } = useTranslation();
 	const [name, setName] = useState("");
 	const [sources, setSources] = useState<string[]>([]);
+	const [folders, setFolders] = useState<string[]>([]);
 	const [documents, setDocuments] = useState("");
 	const [customResults, setCustomResults] = useState<string | null>(null);
 	const [manager, setManager] = useState("");
@@ -75,13 +88,17 @@ export function CreateWorkProjectSheet({
 	const agentsQuery = useAgentReadinessQuery(open);
 	const agents = useMemo(() => agentsQuery.data?.agents ?? [], [agentsQuery.data?.agents]);
 	useEnsureAgentReadiness({ agentIds: [manager, worker].filter(Boolean), enabled: open && (manager !== "" || worker !== "") });
-	const resultsDir = customResults ?? (documents ? joinResults(documents, name) : "");
+	// An original folder puts results beside it; files alone use Documents\Altair.
+	const firstFolder = sources.find((source) => folders.includes(source));
+	const defaultResults = (firstFolder ? besideFolder(firstFolder) : "") || (documents ? joinResults(documents, name) : "");
+	const resultsDir = customResults ?? defaultResults;
 	const canCreate = name.trim() !== "" && sources.length > 0 && manager !== "" && worker !== "" && resultsDir !== "" && !isCreating;
 
 	useEffect(() => {
 		if (!open) return;
 		setName("");
 		setSources([]);
+		setFolders([]);
 		setCustomResults(null);
 		setManager("");
 		setWorker("");
@@ -146,7 +163,7 @@ export function CreateWorkProjectSheet({
 							<span className="text-xs font-medium text-muted-foreground">{t("createProject.originals")}</span>
 							<div className="flex flex-wrap gap-2">
 								<Button type="button" variant="outline" size="sm" onClick={() => {
-									void aoBridge.app.chooseDirectory(t("createProject.addFolder")).then((path) => { if (path) addPaths([path]); });
+									void aoBridge.app.chooseDirectory(t("createProject.addFolder")).then((path) => { if (path) { setFolders((current) => (current.includes(path) ? current : [...current, path])); addPaths([path]); } });
 								}}>{t("createProject.addFolder")}</Button>
 								<Button type="button" variant="outline" size="sm" onClick={() => {
 									void aoBridge.app.chooseFiles(t("createProject.addFiles")).then((paths) => addPaths(paths));
@@ -156,7 +173,9 @@ export function CreateWorkProjectSheet({
 								<ul className="flex flex-col gap-1">
 									{sources.map((source) => (
 										<li key={source} className="flex min-w-0 items-center gap-2 text-sm">
-											<FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+											{folders.includes(source)
+												? <Folder className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+												: <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />}
 											<span className="min-w-0 flex-1 truncate" title={source}>{baseName(source)}</span>
 											<button type="button" className="text-xs text-muted-foreground hover:text-foreground" aria-label={t("createProject.removeOriginal", { name: baseName(source) })} onClick={() => setSources((current) => current.filter((item) => item !== source))}>
 												{t("shell.remove")}
