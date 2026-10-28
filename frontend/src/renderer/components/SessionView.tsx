@@ -1996,6 +1996,7 @@ export function SessionView({ sessionId, cloudOrgId, projectId, hostId }: Sessio
 							) : showChatSurface ? (
 								<>
 								<SessionChatSurface
+									workProject={workspaces.some((workspace) => workspace.id === session.workspaceId && workspace.kind === "work")}
 									sideChatContainer={sideChatContainer}
 									key={uiSessionId}
 									assetBaseUrl={remoteBase}

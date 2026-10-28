@@ -183,6 +183,17 @@ const EMPTY_CHAT_PLACEHOLDERS = [
 	"Find and fix a bug in this project",
 ] as const;
 
+const WORK_EMPTY_CHAT_PLACEHOLDERS = [
+	"Summarize the documents in this project",
+	"Pull the key figures into a table",
+	"Draft a memo from these files",
+	"Check these files for missing or inconsistent details",
+] as const;
+
+function randomPlaceholder(list: readonly string[]): string {
+	return list[Math.floor(Math.random() * list.length)]!;
+}
+
 /**
  * The newest pending approval or question the live turn is waiting on.
  *
@@ -357,6 +368,8 @@ export interface ChatWorkspaceProps {
 	sessionTitle?: string;
 	/** The AO role using this shared conversation surface. */
 	sessionRole?: SessionKind;
+	/** The session belongs to a Work (documents) project. */
+	workProject?: boolean;
 	/** Host-specific proxy origin for images and staged attachments. */
 	assetBaseUrl?: string;
 	/** Selected remote host, even while its connection has no proxy origin. */
@@ -641,6 +654,7 @@ function ChatWorkspaceContent({
 	promptSuggestion,
 	sessionTitle,
 	sessionRole = "worker",
+	workProject = false,
 	assetBaseUrl,
 	remoteHostId,
 	headerActions,
@@ -1529,7 +1543,7 @@ function ChatWorkspaceContent({
 	const [emptyChatPlaceholder] = useState(
 		() => sessionRole === "orchestrator"
 			? t("chat.composer.describeTask")
-			: EMPTY_CHAT_PLACEHOLDERS[Math.floor(Math.random() * EMPTY_CHAT_PLACEHOLDERS.length)],
+			: randomPlaceholder(workProject ? WORK_EMPTY_CHAT_PLACEHOLDERS : EMPTY_CHAT_PLACEHOLDERS),
 	);
 	const composerDockRef = useRef<HTMLDivElement>(null);
 	// The composer itself, not the dock: the dock also holds the welcome heading, which
@@ -1829,6 +1843,7 @@ function ChatWorkspaceContent({
 								<WelcomePromptSuggestions
 									open={conversationEmpty && !newWorkDisabled && composerEmpty}
 									artifact={artifactSession}
+									work={workProject}
 									onPick={(text) => composerFocusRef.current?.setDraft(text)}
 								/>
 								<div ref={composerBoxRef} className="relative">
@@ -5112,15 +5127,21 @@ const CHAT_PROMPT_KEYS = [
 	"chat.welcome.prompt.trace",
 ] as const;
 
+const WORK_PROMPT_KEYS = [
+	"chat.welcome.workPrompt.summary",
+	"chat.welcome.workPrompt.figures",
+	"chat.welcome.workPrompt.draft",
+] as const;
+
 /**
  * Sample requests above an empty chat's composer; picking one fills the composer.
  * The list collapses its height, and the gap below it, on the way in and out so the
  * centered composer glides instead of jumping.
  */
-function WelcomePromptSuggestions({ open, artifact, onPick }: { open: boolean; artifact: boolean; onPick: (text: string) => void }) {
+function WelcomePromptSuggestions({ open, artifact, work = false, onPick }: { open: boolean; artifact: boolean; work?: boolean; onPick: (text: string) => void }) {
 	const { t } = useTranslation();
 	const reducedMotion = useReducedMotion();
-	const keys = artifact ? ARTIFACT_PROMPT_KEYS : CHAT_PROMPT_KEYS;
+	const keys = artifact ? ARTIFACT_PROMPT_KEYS : work ? WORK_PROMPT_KEYS : CHAT_PROMPT_KEYS;
 	return (
 		<AnimatePresence initial={false}>
 			{open ? (

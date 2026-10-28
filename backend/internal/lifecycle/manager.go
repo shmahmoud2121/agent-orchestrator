@@ -255,6 +255,9 @@ type Manager struct {
 	projects         projectConfigLoader
 	operationGateMu  sync.RWMutex
 	operationGate    sessionOperationGate
+	// turnStopped hears each time a session stops to wait: its turn ended
+	// (idle) or it is waiting at its prompt for an answer.
+	turnStopped func(domain.SessionRecord)
 	// dataDir backs ReconcileSessionOutputType's artifact-dir fallback for
 	// sessions rows created before session_output_type/artifact_dir existed.
 	dataDir string
@@ -352,6 +355,14 @@ func (m *Manager) SetSessionInputLease(lease sessionguard.InputLease) {
 func (m *Manager) SetSessionOperationGate(gate sessionOperationGate) {
 	m.operationGateMu.Lock()
 	m.operationGate = gate
+	m.operationGateMu.Unlock()
+}
+
+// SetTurnStoppedObserver installs a callback for sessions that stop to wait.
+// It runs on its own goroutine and must not assume ordering.
+func (m *Manager) SetTurnStoppedObserver(fn func(domain.SessionRecord)) {
+	m.operationGateMu.Lock()
+	m.turnStopped = fn
 	m.operationGateMu.Unlock()
 }
 
@@ -1101,6 +1112,15 @@ retryProjection:
 	resolutions := needsInputResolutions(rec, next, now)
 	waitingEvents := m.waitingInputEvents(next, prevState, prevAt, now)
 	m.mu.Unlock()
+	if stopped := next.Activity.State; prevState != stopped && !next.IsTerminated &&
+		(stopped == domain.ActivityIdle || stopped == domain.ActivityWaitingInput) {
+		m.operationGateMu.RLock()
+		observe := m.turnStopped
+		m.operationGateMu.RUnlock()
+		if observe != nil {
+			go observe(next)
+		}
+	}
 	if prevState != domain.ActivityIdle && next.Activity.State == domain.ActivityIdle {
 		m.operationGateMu.RLock()
 		gate := m.operationGate

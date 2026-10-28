@@ -5723,6 +5723,7 @@ func promptProjectContext(projectID domain.ProjectID, project domain.ProjectReco
 		WorkersRequestReview: cfg.WorkersRequestReview,
 		TeamMode:             cfg.TeamMode,
 		WorkerSandbox:        cfg.WorkerSandbox,
+		Work:                 project.Kind.WithDefault() == domain.ProjectKindWork,
 	}
 }
 

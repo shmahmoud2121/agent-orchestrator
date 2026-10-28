@@ -498,7 +498,9 @@ func TestOrchestratorSystemPromptTeamMode(t *testing.T) {
 		t.Fatalf("team mode off prompt missing %q:\n%s", sentence, got)
 	}
 	const heading = "## Operating Rules\n\n"
-	if want := strings.Replace(unset, heading, heading+sentence+"\n\n", 1); got != want {
+	// Team mode off also drops the /delegate rule: there are no workers to hand to.
+	base := strings.Replace(unset, delegateCommandPrompt+"\n", "", 1)
+	if want := strings.Replace(base, heading, heading+sentence+"\n\n", 1); got != want {
 		t.Fatalf("team mode off prompt differs from the current prompt plus the sentence")
 	}
 }

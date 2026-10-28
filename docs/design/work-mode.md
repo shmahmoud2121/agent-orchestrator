@@ -11,6 +11,11 @@ Altair has two kinds of projects that live side by side.
 
 Both kinds share the same AI accounts, history, approval bar, watchdog and secret protection. Skills are optional add-ons. They never limit what Work mode can do.
 
+**Manager and workers:**
+- In a Work project the manager hands any request that produces or changes documents to workers, each with a full brief, and answers quick questions itself. `/delegate` in the manager chat always hands the request to workers.
+- Every worker that finishes, or stops to wait for an answer, reports to the manager. When a worker stops without running `ao report`, AO files a report for it with its last reply. A "done" report reaches the manager after 30 seconds.
+- The manager tracks every report but tells the person only about finished results, decisions they must make, and failures.
+
 ## 2. Layout: side by side, not a switch
 
 - **Sidebar sections:**
