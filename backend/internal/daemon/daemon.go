@@ -712,6 +712,25 @@ func Run() error {
 		Delivery: reportSemanticDelivery{chat: chatSvc, sessions: reportSessions, store: store},
 	})
 	chatSvc.SetReportCoordinator(reportCoordinator)
+	turnBackstop := reportsvc.NewTurnBackstop(reportsvc.BackstopDeps{
+		Reports: reportSvc, Coordinator: reportCoordinator, Store: store,
+		Exchange: func(ctx context.Context, id domain.SessionID) (reportsvc.LastExchange, bool, error) {
+			rec, ok, err := store.GetSession(ctx, id)
+			if err != nil || !ok || domain.NormalizeSessionMode(rec.Mode) != domain.SessionModeChat {
+				return reportsvc.LastExchange{}, false, err
+			}
+			snap, err := chatSvc.Snapshot(ctx, id)
+			if err != nil {
+				return reportsvc.LastExchange{}, false, nil
+			}
+			return reportsvc.ExchangeFromMessages(snap.Messages), true, nil
+		},
+	})
+	lcStack.LCM.SetTurnStoppedObserver(func(rec domain.SessionRecord) {
+		if err := turnBackstop.SessionStopped(ctx, rec); err != nil {
+			log.Warn("report backstop", "sessionID", rec.ID, "error", err)
+		}
+	})
 	reportDeliveryDone := reportCoordinator.Start(ctx)
 	defer func() {
 		stop()

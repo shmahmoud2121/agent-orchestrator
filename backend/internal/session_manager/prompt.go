@@ -30,6 +30,8 @@ type promptProject struct {
 	TeamMode *bool
 	// WorkerSandbox is copied from the project config.
 	WorkerSandbox domain.WorkerSandboxConfig
+	// Work marks a Work (documents) project.
+	Work bool
 }
 
 type taskPromptConfig struct {
@@ -372,12 +374,45 @@ Workers commit on their own branch in their own worktree and never push, open PR
 		}
 		prompt = strings.Replace(prompt, heading, heading+sentence+"\n\n", 1)
 	}
+	const reviewHeading = "## Review and CI Workflow"
+	prompt = strings.Replace(prompt, reviewHeading, orchestratorReportsPrompt+"\n\n"+reviewHeading, 1)
 	if (domain.ProjectConfig{TeamMode: project.TeamMode}).TeamModeEnabled() {
+		const anchor = "- Treat the orchestrator session as coordination-only by default.\n"
+		prompt = strings.Replace(prompt, anchor, anchor+delegateCommandPrompt+"\n", 1)
+		if project.Work {
+			prompt = strings.Replace(prompt, reviewHeading, workDelegationPrompt+"\n\n"+reviewHeading, 1)
+		}
 		return prompt
 	}
 	const heading = "## Operating Rules\n\n"
 	return strings.Replace(prompt, heading, heading+teamModeOffPrompt+"\n\n", 1)
 }
+
+// delegateCommandPrompt matches the text the desktop's /delegate command sends.
+const delegateCommandPrompt = `- A message that starts with "Hand this to workers" comes from the person's /delegate command: hand the request to workers with ` + "`ao spawn`" + `, even if it looks quick, and never do it yourself.`
+
+// orchestratorReportsPrompt makes the orchestrator the person's single point of
+// contact: it hears every worker report and passes on only what matters.
+const orchestratorReportsPrompt = `## Worker Reports
+
+AO sends you every worker's reports as a message that starts with "Reports since your previous turn". A worker that stops without filing a report gets one filed for it, with its last reply. Use them to keep track of every task you handed out.
+
+- Tell the person, without being asked, when a task they gave you is finished: what was produced, where it is (link files and sessions), and anything they should check. Never leave a request you handed to workers without a final answer.
+- Tell the person when a worker needs a decision only they can make, or when a task failed or is stuck and you cannot fix it.
+- If you can answer a worker's question from the conversation, answer it yourself with ` + "`ao send`" + ` instead of asking the person.
+- Keep checkpoints, routine progress and internal back-and-forth to yourself. When several workers belong to one request, wait until they are all done and give one combined answer.
+- If a report says a worker stopped without filing one, treat the last reply it carries as the worker's result.`
+
+// workDelegationPrompt is the Work-project version of "delegate implementation":
+// in a documents project almost every request is work for a worker.
+const workDelegationPrompt = `## Work Project Delegation
+
+This is a Work project: the work is documents, analysis, tables and charts, not code. The rules above about implementation apply here to any request that reads the originals to produce, change or analyse something.
+
+- Hand such requests to workers with ` + "`ao spawn`" + `. Split a request with separate parts into one worker per part.
+- Answer quick questions about the project, the team or progress yourself.
+- Workers cannot see this chat. Write each worker a complete brief: which originals to use (full paths), what to produce, its format and language, where to save it (the results folder), and anything the person said earlier that matters.
+- When the person names an AI ("give this to Codex"), pass ` + "`--agent`" + ` with it.`
 
 func workerSystemPrompt(project promptProject, hasOrchestrator bool) string {
 	taskSourceRules := `## Task Source and PR/MR Behavior
@@ -425,7 +460,7 @@ Use `+"`ao report`"+` to persist meaningful progress for the active project orch
 - After a meaningful milestone, run `+"`ao report --checkpoint --note <text>`"+`.
 - When a decision or missing input blocks progress, run `+"`ao report --needs-input --note <text>`"+`.
 - When work cannot proceed for another reason, run `+"`ao report --stuck --note <text>`"+`.
-- When the assigned work is complete, run `+"`ao report --done --note <text>`"+` and include any outputs with `+"`--artifact`"+`, or `+"`--pr-reviewed`"+` for a requested review.
+- When the assigned work is complete, run `+"`ao report --done --note <text>`"+` and include any outputs with `+"`--artifact`"+`, or `+"`--pr-reviewed`"+` for a requested review. Make it your last step every time, including after a follow-up message: the orchestrator relies on it to tell the person. Say in the note what you produced and where it is, with full paths.
 - Whenever you produce a reviewable deliverable the orchestrator or the human should be able to open directly — a requested document, a rendered dashboard, or similar durable output — attach it with `+"`--artifact <reference>`"+` on the report for that milestone. Report it as soon as it exists; do not wait for `+"`--done`"+` and do not let it go unreported.
 - Keep routine test logs, command output, scratch notes, and intermediate diagnostics out of report attachments unless requested or needed to explain an actionable failure. Summarize validation in the report note; when a separate deliverable is useful, prefer one consolidated report over individual logs.
 - Saving a local artifact or attaching its reference to an AO report is not external publishing authorization. Publish externally only within the user-authorized scope.

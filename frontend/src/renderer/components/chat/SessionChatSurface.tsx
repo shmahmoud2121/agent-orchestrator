@@ -57,6 +57,7 @@ import { useUiStore } from "../../stores/ui-store";
 import { CONTINUE_STOPPED_TURN_PROMPT, ChatWorkspace, continuableTurnId } from "./ChatWorkspace";
 import { startingConversationSnapshot } from "./OrchestratorStartingChat";
 import { hasProviderPermissionMode } from "./TurnSettingsBar";
+import { expandDelegateCommand, withDelegateCommand } from "./delegate-command";
 
 export interface ConversationWorkState {
 	controllerBusy: boolean;
@@ -101,6 +102,7 @@ export const SessionChatSurface = memo(function SessionChatSurface({
 	hostId,
 	assetBaseUrl,
 	reviewerTerminal,
+	workProject = false,
 	onOpenReviewerTerminal,
 	reviewerChat,
 	onOpenReviewerChat,
@@ -146,6 +148,8 @@ export const SessionChatSurface = memo(function SessionChatSurface({
 	hostId?: string;
 	assetBaseUrl?: string;
 	reviewerTerminal?: { handleId: string; harness: string };
+	/** The session belongs to a Work (documents) project. */
+	workProject?: boolean;
 	onOpenReviewerTerminal?: (target: { handleId: string; harness: string }) => void;
 	reviewerChat?: { reviewId: string; harness: string };
 	onOpenReviewerChat?: (target: { reviewId: string; harness: string }) => void;
@@ -605,6 +609,7 @@ export const SessionChatSurface = memo(function SessionChatSurface({
 				onSessionLinkOpen={openSessionLink}
 				sessionTitle={session.title}
 				sessionRole={session.kind}
+				workProject={workProject}
 				session={session}
 				onSessionRenamed={onSessionRenamed}
 				reviewerTerminal={reviewerTerminal}
@@ -643,6 +648,7 @@ export const SessionChatSurface = memo(function SessionChatSurface({
 					// Only claim /btw and /side where side chats can open. Elsewhere the
 					// text goes to the agent as typed (it may be the harness's own skill),
 					// so a failed side launch can never strand the main draft.
+					if (session.kind === "orchestrator") text = expandDelegateCommand(text);
 					const btw = sideCreationEnabled ? /^\/(?:btw|side)(?:\s+|$)/i.exec(text) : null;
 					if (btw) {
 						openSideInspector();
@@ -715,7 +721,7 @@ export const SessionChatSurface = memo(function SessionChatSurface({
 				onActivateBranch={commands.activateBranch}
 				activateBranchPending={commands.activateBranchPending}
 				activateBranchError={commands.activateBranchError}
-				skills={sideCreationEnabled ? [...(["btw", "side"].map((name) => ({ name, displayName: name, description: "Open a new side chat", source: "AO" }))), ...skills.filter((skill) => skill.name !== "btw" && skill.name !== "side")] : skills}
+				skills={withDelegateCommand(session.kind === "orchestrator", sideCreationEnabled ? [...(["btw", "side"].map((name) => ({ name, displayName: name, description: "Open a new side chat", source: "AO" }))), ...skills.filter((skill) => skill.name !== "btw" && skill.name !== "side")] : skills)}
 				filePaths={paths}
 				filePathsTruncated={truncated}
 				localEchos={localEchos}
