@@ -93,7 +93,9 @@ test("typing dismisses the whole-message suggestion without accepting it @T0", a
 	await expect(suggestion).toHaveText(prompt);
 	await composer.fill("My own next message");
 	await expect(suggestion).toBeHidden();
-	await composer.fill("");
+	// Select-all + Delete clears the Lexical editor reliably; fill("") can race it.
+	await composer.press("ControlOrMeta+a");
+	await composer.press("Delete");
 	await expect(suggestion).toBeHidden();
 	await expect(composer).toHaveText("");
 	expect(sent).toEqual([]);
