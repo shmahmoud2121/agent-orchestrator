@@ -33,9 +33,13 @@
 }
 
 /* Starlight gold (--ring) is the text selection. Named themes override --ring
-   with their own accent, so this does not leak the default gold into them. */
-::selection {
-	background-color: color-mix(in oklch, var(--ring) 42%, transparent);
+   with their own accent, so this does not leak the default gold into them.
+   Base layer, so a component's own selection: utilities (the chat composer's
+   inverted highlight) still win over it. */
+@layer base {
+	::selection {
+		background-color: color-mix(in oklch, var(--ring) 42%, transparent);
+	}
 }
 
 /* While data-theme flips, kill per-element color tweens (composer, search,
