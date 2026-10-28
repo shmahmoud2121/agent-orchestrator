@@ -31,6 +31,7 @@ import type { RemoteHealth } from "./main/remote-request";
 import type {
 	EditorHandoffState,
 	EditorHandoffStateOptions,
+	OpenSessionFileInput,
 	OpenSessionArtifactsInput,
 	OpenSessionTargetInput,
 	OpenSessionTargetResult,
@@ -390,6 +391,8 @@ const api = {
 			ipcRenderer.invoke("editorHandoff:open", input) as Promise<OpenSessionTargetResult>,
 		openArtifacts: (input: OpenSessionArtifactsInput) =>
 			ipcRenderer.invoke("editorHandoff:openArtifacts", input) as Promise<OpenSessionTargetResult>,
+		openFile: (input: OpenSessionFileInput) =>
+			ipcRenderer.invoke("editorHandoff:openFile", input) as Promise<void>,
 		copyWorkspacePath: (sessionId: string) =>
 			ipcRenderer.invoke("editorHandoff:copyWorkspacePath", sessionId) as Promise<void>,
 	},

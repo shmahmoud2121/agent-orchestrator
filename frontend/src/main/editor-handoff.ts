@@ -4,10 +4,12 @@ import path from "node:path";
 import {
 	isEditorId,
 	isTerminalId,
+	OPENABLE_DOCUMENT_EXTENSIONS,
 	type EditorHandoffState,
 	type EditorHandoffStateOptions,
 	type EditorId,
 	type OpenSessionArtifactsInput,
+	type OpenSessionFileInput,
 	type OpenSessionTargetInput,
 	type OpenSessionTargetResult,
 	type OpenTarget,
@@ -90,6 +92,8 @@ export type EditorHandoffDeps = {
 	openDirectory: (workspacePath: string) => Promise<void>;
 	/** Shows one file selected in the system file manager. */
 	revealPath: (filePath: string) => Promise<void>;
+	/** Opens one document in the operating system's default app. */
+	openFile?: (filePath: string) => Promise<void>;
 	/** Resolves symlinks in an existing path. */
 	realPath: (candidatePath: string) => Promise<string>;
 	/** Puts text on the system clipboard. The workspace path never reaches the renderer. */
@@ -107,6 +111,7 @@ export type EditorHandoff = {
 	getState(sessionId: string, options?: EditorHandoffStateOptions): Promise<EditorHandoffState>;
 	open(input: OpenSessionTargetInput): Promise<OpenSessionTargetResult>;
 	openArtifacts(input: OpenSessionArtifactsInput): Promise<OpenSessionTargetResult>;
+	openFile(input: OpenSessionFileInput): Promise<void>;
 	copyWorkspacePath(sessionId: string): Promise<void>;
 };
 
@@ -571,6 +576,24 @@ export function createEditorHandoff(deps: EditorHandoffDeps): EditorHandoff {
 			const filePath = input.path === undefined ? undefined : await artifactFilePath(pathAPI(deps.platform), deps.realPath, artifactDir, input.path);
 			await openTarget(target, terminal?.command, filePath ? pathAPI(deps.platform).dirname(filePath) : artifactDir, filePath);
 			return target;
+		},
+
+		async openFile(input) {
+			const sessionId = typeof input?.sessionId === "string" ? input.sessionId.trim() : "";
+			if (!sessionId) throw new Error("Session is required.");
+			if (!deps.openFile) throw new Error("Opening files is not available.");
+			const api = pathAPI(deps.platform);
+			const relative = typeof input.path === "string" ? input.path : "";
+			if (!OPENABLE_DOCUMENT_EXTENSIONS.has(api.extname(relative).toLowerCase())) {
+				throw new Error("Only documents can be opened this way.");
+			}
+			const root = input.source === "artifact" ? await deps.resolveArtifactDir(sessionId) : await deps.resolveWorkspace(sessionId);
+			const filePath = await artifactFilePath(api, deps.realPath, root, relative);
+			// Check the resolved file too: a symlink must not turn a document name into a program.
+			if (!OPENABLE_DOCUMENT_EXTENSIONS.has(api.extname(filePath).toLowerCase())) {
+				throw new Error("Only documents can be opened this way.");
+			}
+			await deps.openFile(filePath);
 		},
 
 		async copyWorkspacePath(sessionId) {

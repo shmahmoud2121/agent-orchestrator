@@ -1271,6 +1271,10 @@ const editorHandoff = createEditorHandoff({
 		if (!(await stat(filePath).catch(() => undefined))) throw new Error(`${filePath} does not exist`);
 		shell.showItemInFolder(filePath);
 	},
+	openFile: async (filePath) => {
+		const error = await shell.openPath(filePath);
+		if (error) throw new Error(error);
+	},
 	realPath: (candidatePath) => realpath(candidatePath),
 	copyText: (text) => clipboard.writeText(text),
 	discoverTerminalApps: discoverMacTerminalApps,
@@ -2499,6 +2503,10 @@ ipcMain.handle("editorHandoff:open", (event, input) => {
 ipcMain.handle("editorHandoff:openArtifacts", (event, input) => {
 	if (event.sender !== getShellWebContents()) throw new Error("Untrusted editor handoff request.");
 	return editorHandoff.openArtifacts(input && typeof input === "object" ? input : { sessionId: "", targetId: "file-manager" });
+});
+ipcMain.handle("editorHandoff:openFile", (event, input) => {
+	if (event.sender !== getShellWebContents()) throw new Error("Untrusted editor handoff request.");
+	return editorHandoff.openFile(input && typeof input === "object" ? input : { sessionId: "", source: "workspace", path: "" });
 });
 ipcMain.handle("editorHandoff:copyWorkspacePath", (event, sessionId: string) => {
 	if (event.sender !== getShellWebContents()) throw new Error("Untrusted editor handoff request.");

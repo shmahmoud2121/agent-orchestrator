@@ -445,6 +445,22 @@ describe("editor handoff", () => {
 		expect(input.launch).toHaveBeenCalledWith("/usr/bin/open", ["-a", "Terminal", "/ao/data/artifacts/ao-1/plans"], "/ao/data/artifacts/ao-1/plans");
 	});
 
+	it("opens a workspace or artifact document in its default app", async () => {
+		const openFile = vi.fn(async () => undefined);
+		const handoff = createEditorHandoff({ ...deps(), openFile });
+		await handoff.openFile({ sessionId: "ao-1", source: "workspace", path: "reports/ratios.pdf" });
+		await handoff.openFile({ sessionId: "ao-1", source: "artifact", path: "plans/memo.docx" });
+		expect(openFile).toHaveBeenNthCalledWith(1, "/worktrees/ao-1/reports/ratios.pdf");
+		expect(openFile).toHaveBeenNthCalledWith(2, "/ao/data/artifacts/ao-1/plans/memo.docx");
+	});
+
+	it.each(["tools/run.exe", "setup.bat", "x.sh", "notes", "../ao-2/a.pdf", "/etc/a.pdf"])("never opens a program or a path outside the session: %j", async (filePath) => {
+		const openFile = vi.fn(async () => undefined);
+		const handoff = createEditorHandoff({ ...deps(), openFile });
+		await expect(handoff.openFile({ sessionId: "ao-1", source: "workspace", path: filePath })).rejects.toThrow();
+		expect(openFile).not.toHaveBeenCalled();
+	});
+
 	it.each(["../ao-2/secret.md", "/etc/passwd", "plans/../../x.md", ""])("refuses an artifact path outside the artifact directory: %j", async (artifactPath) => {
 		const input = deps();
 		const handoff = createEditorHandoff(input);
