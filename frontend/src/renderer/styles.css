@@ -1,8 +1,13 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "../styles/tokens.css";
-@import "@fontsource-variable/geist";
-@import "@fontsource-variable/geist-mono";
+@import "@fontsource/space-grotesk/500.css";
+@import "@fontsource/space-grotesk/600.css";
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
 @source "../../../packages/product-ui/src";
 
 @custom-variant dark (&:is(.dark *, :root:not([data-theme="light"]) *));
@@ -6259,4 +6264,78 @@ html[data-window-translucent="true"][data-browser-hole="true"]:has(.browser-pane
 @keyframes build-info-twinkle {
 	0%, 100% { opacity: 0.15; }
 	50% { opacity: 1; }
+}
+
+/* Observatory: sidebar section labels, names, selected rows, primary button. */
+.sidebar-section-label,
+.sidebar-section-label__prefix,
+.sidebar-section-count {
+	font-family: var(--font-family-mono);
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 1.2px;
+}
+
+.sidebar-section-label__prefix {
+	white-space: pre;
+	margin-right: -0.25rem;
+}
+
+.sidebar-section-count {
+	color: var(--color-text-passive);
+	font-variant-numeric: tabular-nums;
+}
+
+.sidebar-name {
+	font-family: var(--font-family-mono);
+	font-size: 13px;
+}
+
+[data-session-row]:has(button[aria-current="page"]),
+[data-slot="sidebar-container"] [data-sidebar="menu-button"][data-active="true"] {
+	background-color: var(--color-bg-tertiary);
+	box-shadow: inset 0 0 0 1px #3a3222;
+}
+
+:root[data-theme="light"] [data-session-row]:has(button[aria-current="page"]),
+:root[data-theme="light"] [data-slot="sidebar-container"] [data-sidebar="menu-button"][data-active="true"] {
+	box-shadow: inset 0 0 0 1px var(--accent-star);
+}
+
+:root[data-theme="light"] .btn-primary-star {
+	background: var(--accent-star);
+	color: #1e1505;
+	box-shadow: none;
+}
+
+:root[data-theme="light"] .btn-primary-star:hover {
+	background: color-mix(in oklch, var(--accent-star) 88%, black);
+}
+
+/* Observatory: chat transcript and composer. */
+.obs-meta {
+	font-family: var(--font-family-mono);
+	font-size: 11px;
+	line-height: 1.4;
+	letter-spacing: 1px;
+	text-transform: uppercase;
+	margin-bottom: 4px;
+}
+.obs-meta-human {
+	color: var(--color-text-passive);
+}
+.obs-meta-assistant {
+	color: var(--accent-star-ink);
+}
+.obs-assistant-message {
+	border-left: 1px solid var(--accent-star-ink);
+	padding-left: 12px;
+}
+.obs-composer-caret {
+	font-family: var(--font-family-mono);
+	color: var(--accent-star-ink);
+	line-height: 1.5;
+	padding-top: 2px;
+	user-select: none;
+	pointer-events: none;
 }

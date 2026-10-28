@@ -195,10 +195,10 @@ describe("startup harness update notice", () => {
 		mockUpdatableStack();
 		mountNotice();
 		const updateAll = await screen.findByRole("button", { name: "Update all" });
-		// tailwind-merge drops text-primary-foreground when given a bare custom size such as text-caption.
-		expect(updateAll.className).toContain("text-primary-foreground");
+		// tailwind-merge drops the primary text colour when given a bare custom size such as text-caption.
+		expect(updateAll.className).toContain("text-[var(--accent-star-ink)]");
 		await userEvent.click(screen.getByRole("button", { name: "Show all (3)" }));
-		expect(screen.getByRole("button", { name: "Update all" }).className).toContain("text-primary-foreground");
+		expect(screen.getByRole("button", { name: "Update all" }).className).toContain("text-[var(--accent-star-ink)]");
 	});
 
 	it("excludes busy, login-required and unsupported harnesses from notification Update all", async () => {

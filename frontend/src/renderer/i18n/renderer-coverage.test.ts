@@ -24,6 +24,7 @@ const approvedLiterals: Record<string, readonly string[]> = {
 		"my-workspace/", "my-project", "web-app", "main", "github_pat_…", "ghp_...",
 		"https://github.com/owner/repo", "GitHub PAT",
 	],
+	"components/AltairWordmark.tsx": ["ALTAIR"],
 	"components/DaemonStartupLoader.tsx": ["Altair"],
 	// Technical branch/prefix examples moved with the common settings fields.
 	"components/ProjectSettingsEditor.tsx": ["auto", "ao", "go test ./...", "registry.npmjs.org *.githubusercontent.com"],

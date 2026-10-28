@@ -1,7 +1,10 @@
 import { ipcRenderer } from "electron";
 import { animate } from "motion";
-import geistLatinWoff2 from "@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?inline";
-import geistMonoLatinWoff2 from "@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2?inline";
+import plexSans400Woff2 from "@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff2?inline";
+import plexSans500Woff2 from "@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-500-normal.woff2?inline";
+import plexSans600Woff2 from "@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-600-normal.woff2?inline";
+import plexMono400Woff2 from "@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-400-normal.woff2?inline";
+import plexMono500Woff2 from "@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2?inline";
 import {
 	annotationElementKind,
 	createBrowserAnnotationContext,
@@ -1423,9 +1426,14 @@ function decodeBase64Font(dataUri: string): ArrayBuffer {
 function registerFonts(root: ShadowRoot): void {
 	if (typeof FontFace === "undefined") return;
 	const set = (root as ShadowRoot & { fonts?: FontFaceSet }).fonts ?? document.fonts;
-	const sans = new FontFace("Geist Variable", decodeBase64Font(geistLatinWoff2), { weight: "100 900" });
-	const mono = new FontFace("Geist Mono Variable", decodeBase64Font(geistMonoLatinWoff2), { weight: "100 900" });
-	set.add(sans); set.add(mono); void sans.load(); void mono.load();
+	const faces = [
+		new FontFace("IBM Plex Sans", decodeBase64Font(plexSans400Woff2), { weight: "400" }),
+		new FontFace("IBM Plex Sans", decodeBase64Font(plexSans500Woff2), { weight: "500" }),
+		new FontFace("IBM Plex Sans", decodeBase64Font(plexSans600Woff2), { weight: "600" }),
+		new FontFace("IBM Plex Mono", decodeBase64Font(plexMono400Woff2), { weight: "400" }),
+		new FontFace("IBM Plex Mono", decodeBase64Font(plexMono500Woff2), { weight: "500" }),
+	];
+	for (const face of faces) { set.add(face); void face.load(); }
 }
 
 function ensureOverlay(): ShadowRoot {
@@ -1452,7 +1460,7 @@ function overlayStyles(): string {
 		destructive: theme.destructive ?? "oklch(0.704 0.191 22.216)",
 	};
 	// Mirror renderer Button/Input chrome: 8px radius, 28px controls, equal 8px padding,
-	// Geist sans everywhere except code-like CSS values (px / hex).
+	// IBM Plex Sans everywhere except code-like CSS values (px / hex).
 	return `
 		:host{
 			all:initial;
@@ -1471,7 +1479,7 @@ function overlayStyles(): string {
 		/* The adjustment panel and its rules are offset from their box by the
 		   divider gap plus its hairline; sizing maths has to subtract both. */
 		--panel-chrome:calc(var(--gap) + 1px);
-		font-family:"Geist Variable",system-ui,sans-serif;
+		font-family:"IBM Plex Sans",system-ui,sans-serif;
 		color:var(--fg);
 	}
 		.hover{
@@ -1483,13 +1491,13 @@ function overlayStyles(): string {
 		.marker{
 			position:fixed;width:20px;height:20px;border:2px solid var(--bg);border-radius:50%;
 			background:#74b98a;color:#101512;padding:0;
-			font:600 10px/1 "Geist Variable",system-ui,sans-serif;font-variant-numeric:tabular-nums;
+			font:600 10px/1 "IBM Plex Sans",system-ui,sans-serif;font-variant-numeric:tabular-nums;
 			pointer-events:auto;box-shadow:0 2px 8px rgba(0,0,0,.28);cursor:pointer;
 		}
 		button{
 			display:inline-flex;height:var(--control);align-items:center;justify-content:center;
 			border:1px solid transparent;border-radius:var(--radius);background:var(--muted);color:var(--fg);
-			padding:0 10px;font:400 12px/1 "Geist Variable",system-ui,sans-serif;cursor:pointer;
+			padding:0 10px;font:400 12px/1 "IBM Plex Sans",system-ui,sans-serif;cursor:pointer;
 			transition:background-color 120ms ease,border-color 120ms ease,color 120ms ease,opacity 120ms ease;
 		}
 		button:hover{background:color-mix(in oklch,var(--muted) 88%,var(--fg))}
@@ -1536,7 +1544,7 @@ function overlayStyles(): string {
 		.composer-note{
 			display:block;box-sizing:border-box;min-width:0;flex:1;resize:none;
 			border:0;background:transparent;color:var(--fg);caret-color:var(--fg);
-			padding:0;margin:0;font:400 13px/20px "Geist Variable",system-ui,sans-serif;outline:none;
+			padding:0;margin:0;font:400 13px/20px "IBM Plex Sans",system-ui,sans-serif;outline:none;
 			overflow-y:hidden;scrollbar-width:none;
 		}
 		/* Labels are chrome, not content: dragging across the panel must not start
@@ -1610,20 +1618,20 @@ function overlayStyles(): string {
 		.field-leading{position:relative;display:flex;align-items:center;min-width:0;gap:6px}
 		.field-label{
 			min-width:0;overflow:hidden;color:var(--muted-fg);
-			font:500 10px/1 "Geist Variable",system-ui,sans-serif;
+			font:500 10px/1 "IBM Plex Sans",system-ui,sans-serif;
 			text-overflow:ellipsis;white-space:nowrap;user-select:none;
 			transition:opacity 120ms ease;
 		}
 		.field input,.field select,.property-textarea{
 			box-sizing:border-box;min-width:0;width:100%;height:var(--control);
 			border:0;border-radius:0;background:transparent;color:var(--fg);
-			padding:0;font:400 12px/17px "Geist Variable",system-ui,sans-serif;
+			padding:0;font:400 12px/17px "IBM Plex Sans",system-ui,sans-serif;
 		}
-		.field input[data-unit]{font:400 12px/17px "Geist Mono Variable",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+		.field input[data-unit]{font:400 12px/17px "IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
 		.field select{padding-right:2px;font-size:12px}
 		.unit{
 			color:var(--muted-fg);user-select:none;
-			font:400 10px/1 "Geist Mono Variable",ui-monospace,monospace;font-variant-numeric:tabular-nums;
+			font:400 10px/1 "IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums;
 		}
 		.field--content{align-items:start;height:auto;padding-block:6px}
 		.field--content .field-leading{padding-top:4px}
@@ -1638,7 +1646,7 @@ function overlayStyles(): string {
 		.color-picker::-webkit-color-swatch{border:1px solid var(--border);border-radius:4px}
 		.color-value{
 			min-width:0;overflow:hidden;color:var(--fg);
-			font:400 10px/1 "Geist Mono Variable",ui-monospace,monospace;font-variant-numeric:tabular-nums;
+			font:400 10px/1 "IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums;
 			text-overflow:ellipsis;white-space:nowrap;
 		}
 		/* A changed field swaps its label for its reset, in place. */
@@ -1712,7 +1720,7 @@ function overlayStyles(): string {
 			position:fixed;left:50%;top:55px;transform:translateX(-50%);
 			border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--fg);
 			padding:var(--pad) 12px;box-shadow:0 8px 22px rgba(0,0,0,.28);
-			font:400 12px/1 "Geist Variable",system-ui,sans-serif;pointer-events:none;
+			font:400 12px/1 "IBM Plex Sans",system-ui,sans-serif;pointer-events:none;
 		}
 		:host([data-original]) .hover,:host([data-original]) .marker,:host([data-original]) .composer{visibility:hidden}
 		@media(prefers-reduced-motion:reduce){*{transition:none!important}}

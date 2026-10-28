@@ -1893,6 +1893,9 @@ export const ChatComposer = memo(function ChatComposer({
 					</div>
 				) : null}
 
+				<div className="flex items-start gap-1.5">
+				<span aria-hidden="true" className="obs-composer-caret">›</span>
+				<div className="min-w-0 flex-1">
 				<ComposerEditor
 					ref={editor}
 					images={composerImages}
@@ -1917,6 +1920,8 @@ export const ChatComposer = memo(function ChatComposer({
 					onKeyDown={onKeyDown}
 					onPaste={onPaste}
 				/>
+				</div>
+				</div>
 
 				{attachmentError ? (
 					<p role="alert" className="px-1.5 text-xs leading-snug text-destructive">
@@ -2009,7 +2014,9 @@ export const ChatComposer = memo(function ChatComposer({
 										aria-label={canStopTurn ? "Stop turn" : canContinueTurn ? "Continue turn" : sendActionLabel}
 										className={cn(
 											"size-7 rounded-full border-transparent focus-visible:ring-ring/40",
-											canStopTurn || canContinueTurn || sendActionEnabled
+											!canStopTurn && !canContinueTurn
+												? "obs-send-button bg-[var(--accent-star)] text-[#1E1505] hover:bg-[var(--accent-star)] hover:text-[#1E1505] dark:hover:bg-[var(--accent-star)] dark:hover:text-[#1E1505]"
+												: canStopTurn || canContinueTurn || sendActionEnabled
 												? "bg-foreground text-background hover:bg-foreground/90 hover:text-background dark:hover:bg-foreground/90 dark:hover:text-background"
 												: "bg-primary text-primary-foreground",
 										)}

@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { SHELL_PANEL_SPRING } from "@/lib/motion-spring";
 import { isLinuxPlatform, isMacPlatform } from "../lib/platform";
 import { sidebarIsVisible, useUiStore } from "../stores/ui-store";
-import { AOMascot } from "./AOMascot";
+import { AltairWordmark } from "./AltairWordmark";
 import { BuildInfoTooltip } from "./BuildInfoTooltip";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
@@ -147,16 +147,13 @@ export function TitlebarNav({
           {/* Not a button on purpose. Only the label opts out of window drag (for
               the build-info tooltip); the rest of the row stays draggable. */}
           <span
-            className="inline-flex select-none items-center gap-1.5 translate-y-0.5 whitespace-nowrap text-base font-semibold leading-tight tracking-tight-lg text-foreground"
+            className="inline-flex select-none items-center gap-1.5 translate-y-0.5 whitespace-nowrap text-base font-semibold leading-tight text-foreground"
             data-sidebar-brand=""
             ref={brandRef}
             style={{ maxWidth: brandMaxWidth }}
           >
             <BuildInfoTooltip>
-              <span className="inline-flex min-w-0 items-center gap-1.5">
-                <AOMascot className="h-5.5 w-5.5 shrink-0" />
-                <span className="min-w-0 truncate" data-brand-label="">Altair</span>
-              </span>
+              <AltairWordmark />
             </BuildInfoTooltip>
           </span>
         </motion.div>
