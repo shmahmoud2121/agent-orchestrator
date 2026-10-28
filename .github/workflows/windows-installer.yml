@@ -1,0 +1,75 @@
+# .github/workflows/windows-installer.yml
+name: Windows installer
+
+# Press "Run workflow" on the Actions tab to build the Altair Setup .exe from a
+# branch. The installer is attached to the run as a downloadable artifact.
+# Unsigned (Windows SmartScreen will warn), no release, no secrets, no publish.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch, tag or commit to build"
+        type: string
+        required: true
+        default: main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-installer-${{ inputs.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            packages/product-ui/package-lock.json
+      # build-daemon.mjs compiles the Go daemon during premake.
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - run: npm ci
+      - name: Install product UI dependencies
+        run: npm ci
+        working-directory: packages/product-ui
+      - name: Build installer (unsigned, no publish)
+        shell: bash
+        env:
+          AO_RELEASE_REPO: ${{ github.repository }}
+        run: npm run make
+      - name: Collect installer
+        shell: bash
+        env:
+          BUILD_REF: ${{ inputs.ref }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist-installer
+          # NSIS output: out/make/<productName> Setup <version>.exe
+          src="$(find out/make -maxdepth 1 -name '*Setup*.exe' | head -n1)"
+          if [ -z "$src" ]; then echo "no .exe output found" >&2; exit 1; fi
+          cp "$src" "dist-installer/Altair-Setup.exe"
+          hash="$(sha256sum dist-installer/Altair-Setup.exe | awk '{print $1}')"
+          echo "$hash  Altair-Setup.exe" > dist-installer/Altair-Setup.exe.sha256
+          echo "Built \`$BUILD_REF\` at $(git rev-parse --short HEAD). sha256: $hash" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Altair-Setup-${{ github.run_number }}
+          path: frontend/dist-installer/
+          retention-days: 14
+          if-no-files-found: error
