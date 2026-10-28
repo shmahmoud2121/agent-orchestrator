@@ -107,12 +107,12 @@ func ownEntry(path, event string, entry map[string]any) bool {
 	case ".gemini/settings.json":
 		prefix = "ao hooks gemini "
 		timeout = 30000
-		actions = map[string]string{"SessionStart": "session-start", "BeforeAgent": "user-prompt-submit", "AfterAgent": "stop", "Notification": "notification", "AfterTool": "after-tool"}
+		actions = map[string]string{"SessionStart": "session-start", "BeforeAgent": "user-prompt-submit", "AfterAgent": "stop", "Notification": "notification", "AfterTool": "after-tool", "BeforeTool": "pre-tool-use"}
 	case ".cursor/hooks.json":
-		actions = map[string]string{"sessionStart": "session-start", "beforeSubmitPrompt": "user-prompt-submit", "stop": "stop", "beforeShellExecution": "before-shell-execution", "beforeMCPExecution": "before-mcp-execution", "afterShellExecution": "after-shell-execution", "afterMCPExecution": "after-mcp-execution", "postToolUse": "post-tool-use", "postToolUseFailure": "post-tool-use-failure"}
+		actions = map[string]string{"sessionStart": "session-start", "beforeSubmitPrompt": "user-prompt-submit", "stop": "stop", "beforeShellExecution": "before-shell-execution", "beforeMCPExecution": "before-mcp-execution", "afterShellExecution": "after-shell-execution", "afterMCPExecution": "after-mcp-execution", "postToolUse": "post-tool-use", "postToolUseFailure": "post-tool-use-failure", "beforeReadFile": "before-read-file", "preToolUse": "pre-tool-use"}
 		if action := actions[event]; action != "" {
 			expected := map[string]any{"command": "ao hooks cursor " + action}
-			if event == "beforeShellExecution" || event == "beforeMCPExecution" {
+			if event == "beforeShellExecution" || event == "beforeMCPExecution" || event == "beforeReadFile" || event == "preToolUse" {
 				expected["failClosed"] = true
 			}
 			return reflect.DeepEqual(entry, expected)
