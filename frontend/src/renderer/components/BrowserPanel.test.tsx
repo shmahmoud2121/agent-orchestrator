@@ -1599,8 +1599,8 @@ describe("BrowserPanel", () => {
 		expect(screen.getByRole("button", { name: "Send annotations" })).toHaveTextContent("2");
 		expect(screen.getByRole("button", { name: "Send annotations" })).toHaveClass(
 			"browser-panel__annotation-send",
-			"bg-primary",
-			"text-primary-foreground",
+			"btn-primary-star",
+			"text-[var(--accent-star-ink)]",
 		);
 
 		await userEvent.click(screen.getByRole("button", { name: "Take a screenshot" }));
