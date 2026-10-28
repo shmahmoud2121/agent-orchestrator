@@ -182,7 +182,7 @@ Do not introduce one-off hex values, arbitrary radius, or unreviewed spacing. Us
 
 ### Accent rules
 
-- Starlight gold is the brand colour. `--accent-star` (dark #E5B451, light fill #D9A441, aliased to `--ring`) is the gold *fill*: the wordmark star, solid buttons in light, the send button, focus rings, text selection, and the active edge. Never use `--accent-star` for text in light.
+- Starlight gold is the brand colour. `--accent-star` (dark #E5B451, light fill #D9A441) is the gold *fill*: the wordmark star, solid buttons in light, the send button, text selection, and the active edge. `--ring` is `--accent-star` in dark and `--accent-star-ink` in light, because the light fill is only 2:1 on paper and focus rings need 3:1. Never use `--accent-star` for text in light.
 - `--accent-star-ink` (dark #E5B451, light #8A5E0E) is gold used as text or thin rules and outlines, so it passes 4.5:1 on paper. Use it for the agent reply rule and label, the composer caret, and gold-ink text.
 - Gold marks brand, primary action, and active state only. It never decorates neutral UI or stands in for a status colour.
 - Success, warning, and destructive colors never decorate neutral UI.

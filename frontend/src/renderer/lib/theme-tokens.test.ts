@@ -133,18 +133,19 @@ describe("default theme contrast", () => {
 	const dark = cssBlock(normalized, ":root,\n:root.dark,\n.dark {");
 	const light = cssBlock(normalized, '\n:root[data-theme="light"] {');
 
-	it("keeps the night-lamp token values", () => {
-		expect(resolveToken(dark, "--background")).toBe("oklch(0 0 0)");
-		expect(resolveToken(dark, "--foreground")).toBe("oklch(0.93 0.012 85)");
-		expect(resolveToken(dark, "--accent-star")).toBe("oklch(0.80 0.12 80)");
-		expect(resolveToken(dark, "--ring")).toBe("oklch(0.80 0.12 80)");
-		expect(resolveToken(dark, "--sidebar-ring")).toBe("oklch(0.80 0.12 80)");
-		expect(resolveToken(light, "--background")).toBe("oklch(0.955 0.018 80)");
-		expect(resolveToken(light, "--card")).toBe("oklch(0.975 0.013 80)");
-		expect(resolveToken(light, "--accent-star")).toBe("oklch(0.60 0.13 70)");
-		expect(resolveToken(light, "--ring")).toBe("oklch(0.60 0.13 70)");
-		expect(cssToken(dark, "--border")).toBe("oklch(1 0.02 85 / 9%)");
-		expect(cssToken(light, "--border")).toBe("oklch(0.30 0.040 60 / 10%)");
+	it("keeps the Observatory token values", () => {
+		expect(resolveToken(dark, "--background")).toBe("#050506");
+		expect(resolveToken(dark, "--foreground")).toBe("#ECE7DC");
+		expect(resolveToken(dark, "--accent-star")).toBe("#E5B451");
+		expect(resolveToken(dark, "--ring")).toBe("#E5B451");
+		expect(resolveToken(dark, "--sidebar-ring")).toBe("#E5B451");
+		expect(resolveToken(light, "--background")).toBe("#F4F0E6");
+		expect(resolveToken(light, "--card")).toBe("#FBF8F1");
+		expect(resolveToken(light, "--accent-star")).toBe("#D9A441");
+		expect(resolveToken(light, "--accent-star-ink")).toBe("#8A5E0E");
+		expect(resolveToken(light, "--ring")).toBe("#8A5E0E");
+		expect(cssToken(dark, "--border")).toBe("#1E1C18");
+		expect(cssToken(light, "--border")).toBe("#D8D0BE");
 	});
 
 	it("clears the text and gold floors on both themes", () => {
@@ -154,7 +155,8 @@ describe("default theme contrast", () => {
 		] as const) {
 			const foreground = resolveToken(block, "--foreground");
 			const muted = resolveToken(block, "--muted-foreground");
-			const gold = resolveToken(block, "--accent-star");
+			const goldInk = resolveToken(block, "--accent-star-ink");
+			const ring = resolveToken(block, "--ring");
 			const surfaces = ["--background", "--card", "--popover", "--sidebar"] as const;
 			for (const surface of surfaces) {
 				const ratio = contrast(foreground, resolveToken(block, surface));
@@ -164,9 +166,12 @@ describe("default theme contrast", () => {
 				const ratio = contrast(muted, resolveToken(block, surface));
 				expect(ratio, `${label} muted on ${surface} = ${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(4.5);
 			}
+			// Gold used as text or a rule must read as text; the focus ring needs 3:1.
 			for (const surface of ["--background", "--card"] as const) {
-				const ratio = contrast(gold, resolveToken(block, surface));
-				expect(ratio, `${label} gold on ${surface} = ${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(3);
+				const inkRatio = contrast(goldInk, resolveToken(block, surface));
+				expect(inkRatio, `${label} gold ink on ${surface} = ${inkRatio.toFixed(2)}`).toBeGreaterThanOrEqual(4.5);
+				const ringRatio = contrast(ring, resolveToken(block, surface));
+				expect(ringRatio, `${label} ring on ${surface} = ${ringRatio.toFixed(2)}`).toBeGreaterThanOrEqual(3);
 			}
 		}
 	});

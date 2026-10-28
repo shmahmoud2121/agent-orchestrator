@@ -669,7 +669,7 @@
 	/* Warm opaque hairlines, matching dark. */
 	--border: #D8D0BE;
 	--input: #CFC6B2;
-	--ring: var(--accent-star);
+	--ring: var(--accent-star-ink); /* the fill is 2:1 on paper; rings need 3:1 */
 	--chart-1: oklch(0.72 0 0);
 	--chart-2: oklch(0.52 0 0);
 	--chart-3: oklch(0.4 0 0);
@@ -682,7 +682,7 @@
 	--sidebar-accent: #E6DFCF;
 	--sidebar-accent-foreground: oklch(0.22 0.020 60);
 	--sidebar-border: var(--border);
-	--sidebar-ring: var(--accent-star);
+	--sidebar-ring: var(--accent-star-ink);
 
 	--color-bg-primary: var(--background);
 	--color-bg-secondary: var(--card);
