@@ -11,6 +11,8 @@ import (
 
 const testHerdrAvailable = false
 
-func startTestHerdr(context.Context, string, *Manager, *slog.Logger) (interface{ Stop() }, error) { return nil, nil }
+func startTestHerdr(context.Context, string, *Manager, *slog.Logger) (interface{ Stop() }, error) {
+	return nil, nil
+}
 func testHerdrPaneID(domain.SessionID, string) string { return "" }
-func testHerdrSocketPath(string) string { return "" }
+func testHerdrSocketPath(string) string               { return "" }

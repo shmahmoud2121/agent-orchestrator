@@ -2433,7 +2433,9 @@ func TestSwitchAgentAfterStartAcknowledgementCompletesWithoutRecoveryRead(t *tes
 }
 
 func TestSwitchAgentWithRealFXAdapterInBothDirections(t *testing.T) {
-	if !retiredTestAgentsAvailable { t.Skip("fx is retired in this build") }
+	if !retiredTestAgentsAvailable {
+		t.Skip("fx is retired in this build")
+	}
 	if runtime.GOOS == "windows" {
 		t.Skip("fx does not support native Windows")
 	}

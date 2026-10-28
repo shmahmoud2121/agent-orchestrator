@@ -56,9 +56,9 @@ func registerRetiredDerivers(d map[string]DeriveFunc) {
 
 func retiredSignalCoverageOverrides() map[domain.AgentHarness]SignalCoverage {
 	return map[domain.AgentHarness]SignalCoverage{
-		domain.HarnessAider: SignalCoveragePartial,
+		domain.HarnessAider:       SignalCoveragePartial,
 		domain.HarnessCommandCode: SignalCoveragePartial,
-		domain.HarnessContinue: SignalCoveragePartial,
-		domain.HarnessMemcode: SignalCoveragePartial,
+		domain.HarnessContinue:    SignalCoveragePartial,
+		domain.HarnessMemcode:     SignalCoveragePartial,
 	}
 }

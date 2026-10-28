@@ -119,7 +119,9 @@ func TestPollKeepsGenuineLongCodexTurnActive(t *testing.T) {
 }
 
 func TestPollContinuouslyReconcilesMuse(t *testing.T) {
-	if !retiredActivityAdaptersAvailable { t.Skip("Muse is retired in this build") }
+	if !retiredActivityAdaptersAvailable {
+		t.Skip("Muse is retired in this build")
+	}
 	now := time.Unix(500, 0).UTC()
 	tests := []struct {
 		name    string
@@ -157,7 +159,9 @@ func TestPollContinuouslyReconcilesMuse(t *testing.T) {
 }
 
 func TestPollReconcilesWaitingCrushAfterUserResponds(t *testing.T) {
-	if !retiredActivityAdaptersAvailable { t.Skip("Crush is retired in this build") }
+	if !retiredActivityAdaptersAvailable {
+		t.Skip("Crush is retired in this build")
+	}
 	for _, tt := range []struct {
 		name   string
 		output string
@@ -345,7 +349,9 @@ func (r *renderedMemcodeRuntime) GetStyledOutput(context.Context, ports.RuntimeH
 }
 
 func TestMemcodeDecisionObservationBlocksAndResolvesOnlyOnCurrentChrome(t *testing.T) {
-	if !retiredActivityAdaptersAvailable { t.Skip("memcode is retired in this build") }
+	if !retiredActivityAdaptersAvailable {
+		t.Skip("memcode is retired in this build")
+	}
 	now := time.Unix(500, 0).UTC()
 	card := "Do you want to proceed?\n❯ 1. Yes\n→  Ask memcode…   ·   $ = shell\nmemcode · model · ask"
 	idle := "○ idle\n→  Ask memcode…   ·   $ = shell\nmemcode · model · ask"
@@ -378,7 +384,9 @@ func TestMemcodeDecisionObservationBlocksAndResolvesOnlyOnCurrentChrome(t *testi
 }
 
 func TestMemcodeObservationUsesCurrentRenderedScreen(t *testing.T) {
-	if !retiredActivityAdaptersAvailable { t.Skip("memcode is retired in this build") }
+	if !retiredActivityAdaptersAvailable {
+		t.Skip("memcode is retired in this build")
+	}
 	now := time.Unix(500, 0).UTC()
 	session := activeSession(now, domain.HarnessMemcode)
 	sink := &fakeSink{}

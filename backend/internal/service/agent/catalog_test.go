@@ -1107,7 +1107,9 @@ func TestRefreshUsesNormalResolutionInsteadOfStartupPresenceShortcut(t *testing.
 }
 
 func TestDefaultCatalogDisplaysPrimeAgent(t *testing.T) {
-	if !retiredCatalogExpected { t.Skip("Prime Agent is retired in this build") }
+	if !retiredCatalogExpected {
+		t.Skip("Prime Agent is retired in this build")
+	}
 	got, err := New().List(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -1124,7 +1126,9 @@ func TestDefaultCatalogDisplaysPrimeAgent(t *testing.T) {
 }
 
 func TestDefaultCatalogDisplaysFX(t *testing.T) {
-	if !retiredCatalogExpected { t.Skip("fx is retired in this build") }
+	if !retiredCatalogExpected {
+		t.Skip("fx is retired in this build")
+	}
 	got, err := New().List(context.Background())
 	if err != nil {
 		t.Fatal(err)

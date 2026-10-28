@@ -16,7 +16,6 @@ import (
 
 	_ "modernc.org/sqlite"
 
-
 	codexagent "github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/codex"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/lifecycle"
@@ -3335,7 +3334,9 @@ func (c *transitionChat) DrainChatQueue(_ context.Context, _ domain.SessionID) e
 }
 
 func TestAgyAdapterEnablesInterfaceTransitionStatusInBothDirections(t *testing.T) {
-	if !retiredTestAgentsAvailable { t.Skip("Agy is retired in this build") }
+	if !retiredTestAgentsAvailable {
+		t.Skip("Agy is retired in this build")
+	}
 	for _, mode := range []domain.SessionMode{domain.SessionModeChat, domain.SessionModeTUI} {
 		t.Run(string(mode), func(t *testing.T) {
 			manager, store, _, _, _ := newTransitionManager(t, mode)
@@ -3379,7 +3380,9 @@ func TestAgyAdapterEnablesInterfaceTransitionStatusInBothDirections(t *testing.T
 }
 
 func TestInterfaceTransitionAgyFailsWhenSourceDatabaseMissing(t *testing.T) {
-	if !retiredTestAgentsAvailable { t.Skip("Agy is retired in this build") }
+	if !retiredTestAgentsAvailable {
+		t.Skip("Agy is retired in this build")
+	}
 	// A TUI session with an older ACP DB but missing CLI DB must fail interface transition.
 	manager, store, _, _, _ := newTransitionManager(t, domain.SessionModeTUI)
 	geminiHome := t.TempDir()

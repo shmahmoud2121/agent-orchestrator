@@ -6,5 +6,5 @@ import "context"
 
 const retiredAuthPlansEnabled = false
 
-func prepareRetiredKimiWorkspace(context.Context, string) error { return nil }
+func prepareRetiredKimiWorkspace(context.Context, string) error    { return nil }
 func prepareRetiredCopilotWorkspace(context.Context, string) error { return nil }

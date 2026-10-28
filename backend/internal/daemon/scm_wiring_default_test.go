@@ -15,17 +15,23 @@ import (
 
 func TestSCMWiring_GitHubProviderSatisfiesScopedIdentityResolver(t *testing.T) {
 	gh, err := newGitHubSCMProvider(slog.Default())
-	if err != nil { t.Skipf("github provider unavailable: %v", err) }
+	if err != nil {
+		t.Skipf("github provider unavailable: %v", err)
+	}
 	multi := scmmulti.New(scmmulti.NamedProvider{Key: "github", Provider: gh})
 	var _ ports.ScopedIdentityResolver = multi
 	_ = multi.SCMCredentialsAvailable
 	cfg := scmobserve.Config{ScopedIdentityResolver: multi}
-	if cfg.ScopedIdentityResolver == nil { t.Fatal("ScopedIdentityResolver is nil") }
+	if cfg.ScopedIdentityResolver == nil {
+		t.Fatal("ScopedIdentityResolver is nil")
+	}
 	_, _ = cfg.ScopedIdentityResolver.AuthenticatedIdentityForProvider(context.Background(), "github", "")
 }
 
 func TestSCMWiring_NewMultiSCMProviderReturnsScopedResolver(t *testing.T) {
 	multi := newMultiSCMProvider(config.GitLabConfig{}, slog.Default())
-	if multi == nil { t.Skip("no SCM provider available") }
+	if multi == nil {
+		t.Skip("no SCM provider available")
+	}
 	var _ ports.ScopedIdentityResolver = multi
 }

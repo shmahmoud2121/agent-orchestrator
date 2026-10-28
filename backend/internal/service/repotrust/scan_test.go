@@ -75,7 +75,9 @@ func TestDetectRepositoryConfigTypes(t *testing.T) {
 }
 func TestOwnHooksIgnoredExactly(t *testing.T) {
 	agents := map[string]ports.Agent{"claude": claudecode.New(), "cursor": cursor.New(), "gemini": gemini.New()}
-	for name, agent := range retiredRepoTrustAgents() { agents[name] = agent }
+	for name, agent := range retiredRepoTrustAgents() {
+		agents[name] = agent
+	}
 	for name, agent := range agents {
 		t.Run(name, func(t *testing.T) {
 			root := repo(t)

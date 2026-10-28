@@ -1,4 +1,4 @@
-//go:build retired && (windows)
+//go:build retired && windows
 
 package omp
 

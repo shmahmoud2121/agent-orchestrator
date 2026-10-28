@@ -10,5 +10,9 @@ import (
 
 const retiredAuthPlansEnabled = true
 
-func prepareRetiredKimiWorkspace(ctx context.Context, path string) error { return kimi.EnsureWorkspaceTrusted(ctx, path) }
-func prepareRetiredCopilotWorkspace(ctx context.Context, path string) error { return copilot.EnsureWorkspaceTrusted(ctx, path) }
+func prepareRetiredKimiWorkspace(ctx context.Context, path string) error {
+	return kimi.EnsureWorkspaceTrusted(ctx, path)
+}
+func prepareRetiredCopilotWorkspace(ctx context.Context, path string) error {
+	return copilot.EnsureWorkspaceTrusted(ctx, path)
+}
