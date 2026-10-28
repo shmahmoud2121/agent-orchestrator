@@ -122,7 +122,7 @@ func (s *Service) Decide(ctx context.Context, id domain.SessionID, toolName stri
 		return decision, nil
 	}
 	if project.Kind.WithDefault() == domain.ProjectKindWork && project.Config.Work != nil && len(project.Config.Work.Sources) > 0 {
-		original := watchdog.CheckOriginalWrite(project.Config.Work.Sources, workDir, toolName, toolInput)
+		original := watchdog.CheckOriginalWrite(project.Config.Work.Sources, project.Config.Work.ResultsDir, workDir, toolName, toolInput)
 		if original.Blocked {
 			decision := Decision{
 				Action:   "deny",

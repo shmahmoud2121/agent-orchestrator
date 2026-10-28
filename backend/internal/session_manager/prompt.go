@@ -162,6 +162,11 @@ func workOriginalsSection(project domain.ProjectRecord, writeDir string) string 
 	b.WriteString("\nWrite everything you produce into ")
 	b.WriteString(writeDir)
 	b.WriteString(".\n\n")
+	if domain.WorkResultsInsideOriginal(project.Config.Work) {
+		b.WriteString("The results folder ")
+		b.WriteString(strings.TrimSpace(project.Config.Work.ResultsDir))
+		b.WriteString(" sits inside an original folder. It is not an original: skip it when you read or list the originals.\n\n")
+	}
 	b.WriteString("Never overwrite an existing file in the results folder. Save a new version with ` (2)`, ` (3)`.\n\n")
 	b.WriteString("Use `$AO_WORK_SCRATCH` for temporary files and copies.\n\n")
 	b.WriteString("If you believe a task needs an original changed, stop and ask the person.")

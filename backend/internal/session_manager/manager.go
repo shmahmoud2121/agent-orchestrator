@@ -7218,7 +7218,7 @@ func (m *Manager) workerSandboxLaunchFields(kind domain.SessionKind, project dom
 	}
 	if kind == domain.KindWorker {
 		sandbox = disableWorkSandboxWhenUnavailable(project, sandbox)
-		sandbox.Launch.WriteDeny = append([]string(nil), project.Config.Work.Sources...)
+		sandbox.Launch.WriteDeny = domain.WorkWriteDeny(project.Config.Work)
 		if strings.TrimSpace(workspacePath) != "" {
 			sandbox.Launch.WriteAllow = append(sandbox.Launch.WriteAllow, workspacePath)
 		}

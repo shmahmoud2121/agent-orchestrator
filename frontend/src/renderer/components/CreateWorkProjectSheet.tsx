@@ -32,16 +32,14 @@ function joinResults(documents: string, name: string): string {
 	return `${documents.replace(/[\\/]+$/, "")}${sep}Altair${sep}${safe}`;
 }
 
-// besideFolder names the default results folder next to an original folder:
-// C:\Cases\06_Archive gives C:\Cases\06_Archive Output. Results may not sit
-// inside an original, so the folder goes beside it. A drive or filesystem root
-// has no parent to hold it.
-function besideFolder(folder: string): string {
+// outputFolder names the default results folder inside an original folder:
+// C:\Cases\06_Archive gives C:\Cases\06_Archive\Output. Altair keeps the files
+// already there untouched and only writes inside Output.
+function outputFolder(folder: string): string {
+	const sep = folder.includes("\\") ? "\\" : "/";
 	const trimmed = folder.replace(/[\\/]+$/, "");
-	const cut = Math.max(trimmed.lastIndexOf("\\"), trimmed.lastIndexOf("/"));
-	const name = trimmed.slice(cut + 1);
-	if (cut < 0 || name === "" || /^[A-Za-z]:$/.test(trimmed)) return "";
-	return `${trimmed} Output`;
+	if (trimmed === "") return "";
+	return `${trimmed}${sep}Output`;
 }
 
 function fieldErrors(error: unknown): FieldErrors {
@@ -90,7 +88,7 @@ export function CreateWorkProjectSheet({
 	useEnsureAgentReadiness({ agentIds: [manager, worker].filter(Boolean), enabled: open && (manager !== "" || worker !== "") });
 	// An original folder puts results beside it; files alone use Documents\Altair.
 	const firstFolder = sources.find((source) => folders.includes(source));
-	const defaultResults = (firstFolder ? besideFolder(firstFolder) : "") || (documents ? joinResults(documents, name) : "");
+	const defaultResults = (firstFolder ? outputFolder(firstFolder) : "") || (documents ? joinResults(documents, name) : "");
 	const resultsDir = customResults ?? defaultResults;
 	const canCreate = name.trim() !== "" && sources.length > 0 && manager !== "" && worker !== "" && resultsDir !== "" && !isCreating;
 

@@ -78,7 +78,7 @@ describe("CreateWorkProjectSheet", () => {
 
 		await user.click(screen.getByRole("button", { name: "Add folder" }));
 		expect(await screen.findByText("06_Archive")).toBeInTheDocument();
-		expect(results).toHaveValue("C:\\Cases\\06_Archive Output");
+		expect(results).toHaveValue("C:\\Cases\\06_Archive\\Output");
 
 		await user.click(screen.getByRole("button", { name: "Remove 06_Archive" }));
 		expect(results).toHaveValue("C:\\Users\\me\\Documents\\Altair\\test");

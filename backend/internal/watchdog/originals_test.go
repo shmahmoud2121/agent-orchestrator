@@ -71,7 +71,7 @@ func TestCheckOriginalWrite(t *testing.T) {
 			if tc.windows && runtime.GOOS != "windows" {
 				t.Skip("windows command")
 			}
-			got := CheckOriginalWrite(sources, tc.workDir, tc.tool, tc.input)
+			got := CheckOriginalWrite(sources, "", tc.workDir, tc.tool, tc.input)
 			if got.Blocked != tc.blocked {
 				t.Fatalf("blocked = %v, want %v (path %q)", got.Blocked, tc.blocked, got.Path)
 			}
@@ -161,9 +161,53 @@ func TestCheckOriginalWriteShellShapes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			got := CheckOriginalWrite([]string{source}, task, "Bash", raw)
+			got := CheckOriginalWrite([]string{source}, "", task, "Bash", raw)
 			if got.Blocked != tc.blocked {
 				t.Fatalf("blocked = %v, want %v (path %q) for %s", got.Blocked, tc.blocked, got.Path, tc.command)
+			}
+		})
+	}
+}
+
+func TestCheckOriginalWriteResultsInsideOriginal(t *testing.T) {
+	source := filepath.Join(t.TempDir(), "06_Archive")
+	results := filepath.Join(source, "Output")
+	task := filepath.Join(results, "task")
+	if err := os.MkdirAll(task, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	sourceFile := filepath.Join(source, "contract.pdf")
+	if err := os.WriteFile(sourceFile, []byte("original"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	shell := func(command string) json.RawMessage {
+		raw, _ := json.Marshal(map[string]string{"command": command})
+		return raw
+	}
+	write := func(path string) json.RawMessage {
+		raw, _ := json.Marshal(map[string]string{"file_path": path})
+		return raw
+	}
+	for _, tc := range []struct {
+		name    string
+		tool    string
+		input   json.RawMessage
+		blocked bool
+	}{
+		{"write in task", "Write", write(filepath.Join(task, "summary.md")), false},
+		{"write in results root", "Write", write(filepath.Join(results, "index.md")), false},
+		{"relative write", "Write", write("summary.md"), false},
+		{"rm in results", "Bash", shell("rm " + quote(filepath.Join(task, "old.md"))), false},
+		{"edit original beside results", "Edit", write(sourceFile), true},
+		{"new file in original folder", "Write", write(filepath.Join(source, "new.md")), true},
+		{"relative escape to original", "Write", write("../../contract.pdf"), true},
+		{"rm original folder", "Bash", shell("rm -rf " + quote(source)), true},
+		{"mv result over original", "Bash", shell("mv summary.md " + quote(sourceFile)), true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := CheckOriginalWrite([]string{source}, results, task, tc.tool, tc.input)
+			if got.Blocked != tc.blocked {
+				t.Fatalf("blocked = %v, want %v (path %q)", got.Blocked, tc.blocked, got.Path)
 			}
 		})
 	}

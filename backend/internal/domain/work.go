@@ -114,9 +114,11 @@ func ValidateWorkLayout(cfg *WorkConfig, aoHome string) error {
 	if pathCoversFold(home, results) {
 		return workErr("WORK_PATH_UNDER_AO", "The results folder cannot live inside the Altair home folder.")
 	}
+	// The results folder may sit inside an original folder (an "Output"
+	// subfolder); it may not be the original itself or hold one.
 	for _, source := range sources {
-		if pathCoversFold(source, results) || pathCoversFold(results, source) {
-			return workErr("WORK_PATH_OVERLAP", "The results folder cannot be inside an original, and an original cannot be inside the results folder.")
+		if pathCoversFold(results, source) {
+			return workErr("WORK_PATH_OVERLAP", "The results folder cannot be an original, and an original cannot be inside the results folder.")
 		}
 	}
 	if err := os.MkdirAll(results, 0o755); err != nil {
@@ -305,6 +307,76 @@ func UniqueTaskFolder(resultsDir, title string, when time.Time, exists func(stri
 		name = fmt.Sprintf("%s (%d)", base, n)
 	}
 	return "", fmt.Errorf("could not find a free task folder name")
+}
+
+// WorkWriteDeny lists the paths a Work worker's sandbox must not write. An
+// original folder that holds the results folder is replaced by its entries,
+// minus the branch that leads to results, because the sandbox lets a denied
+// folder win over an allowed folder inside it.
+func WorkWriteDeny(cfg *WorkConfig) []string {
+	if cfg == nil {
+		return nil
+	}
+	results := strings.TrimSpace(cfg.ResultsDir)
+	var out []string
+	for _, source := range cfg.Sources {
+		source = strings.TrimSpace(source)
+		if source == "" {
+			continue
+		}
+		if !WorkResultsInsideOriginal(&WorkConfig{Sources: []string{source}, ResultsDir: results}) {
+			out = append(out, source)
+			continue
+		}
+		out = append(out, denyAround(source, results)...)
+	}
+	return out
+}
+
+// WorkResultsInsideOriginal reports a results folder kept inside one of the
+// original folders.
+func WorkResultsInsideOriginal(cfg *WorkConfig) bool {
+	if cfg == nil || strings.TrimSpace(cfg.ResultsDir) == "" {
+		return false
+	}
+	results := strings.TrimSpace(cfg.ResultsDir)
+	for _, source := range cfg.Sources {
+		source = strings.TrimSpace(source)
+		if source != "" && foldPathKey(source) != foldPathKey(results) && pathCoversFold(source, results) {
+			return true
+		}
+	}
+	return false
+}
+
+// denyAround returns every entry under dir except the chain of folders that
+// leads down to keep.
+func denyAround(dir, keep string) []string {
+	rel, err := filepath.Rel(dir, keep)
+	if err != nil {
+		return []string{dir}
+	}
+	var out []string
+	for _, part := range strings.Split(rel, string(filepath.Separator)) {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			return append(out, dir)
+		}
+		for _, entry := range entries {
+			if !samePathPart(entry.Name(), part) {
+				out = append(out, filepath.Join(dir, entry.Name()))
+			}
+		}
+		dir = filepath.Join(dir, part)
+	}
+	return out
+}
+
+func samePathPart(a, b string) bool {
+	if runtime.GOOS == "windows" {
+		return strings.EqualFold(a, b)
+	}
+	return a == b
 }
 
 // WorkReadableDirs is the set of directories Claude Code may be given with

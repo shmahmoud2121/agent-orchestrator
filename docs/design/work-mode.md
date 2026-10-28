@@ -48,8 +48,8 @@ Agents never edit, move, rename or delete the person's original files. Everythin
 
 - **Originals:** the folders or files the person added to the Work project. Agents can read them and never write to them.
 - **Results folder:**
-  - The default is `Documents/Altair/<project name>/`, and each task gets its own subfolder `<date> <task title>/`.
-  - The person can choose a different location when creating the project. It must not be inside an original folder.
+  - When an original folder was added, the default is an `Output` folder inside the first one (`<folder>/Output/`). With only files, it is `Documents/Altair/<project name>/`. Each task gets its own subfolder `<date> <task title>/`.
+  - The person can choose a different location when creating the project. It may sit inside an original folder, but it may not be an original or hold one. Everything under it belongs to the agents; every other file in that original folder stays protected (watchdog and OS sandbox).
   - It holds documents, not app state, so the `~/.ao` rule doesn't apply.
 - **Scratch:** each worker gets a private scratch folder under `~/.ao/work/<project>/<session>/` for temporary files. Copies of originals go there if an agent needs to transform them.
 
