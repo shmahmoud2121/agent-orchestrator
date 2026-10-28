@@ -2963,6 +2963,9 @@ ipcMain.handle("featureBuilds:getActive", () => getActiveFeatureBuild());
 // Updates settings keep working.
 if (LOCAL_ONLY_BUILD) {
 	installLocalOnlyUpdateIpc(ipcMain);
+	// No cloud sign-in in this build: answer "signed out" so the renderer's
+	// polling settles instead of logging a missing-handler error each time.
+	ipcMain.handle("cloud:getSession", () => null);
 } else {
 	ipcMain.handle("featureBuilds:list", () => listFeatureBuilds());
 

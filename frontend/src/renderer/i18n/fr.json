@@ -600,6 +600,8 @@
 	"createProject.footerResolve_many": "Résolvez {{count}} dépôts en échec pour continuer",
 	"createProject.footerResolve_other": "Résolvez {{count}} dépôts en échec pour continuer",
 	"createProject.footerReview": "Examinez l'erreur ci-dessus ou choisissez un autre dossier",
+	"createProject.allowUnsandboxedWorkers": "Let workers run without a sandbox",
+	"createProject.allowUnsandboxedWorkersHint": "Windows can't sandbox workers. Workers can then read any file and use the internet; the protected-file guard still blocks secrets and stops a worker that keeps trying. Only Claude Code and Codex workers are allowed.",
 	"createProject.gitSetupNotice": "Si ce dossier nécessite une configuration Git, Altair l'initialisera et créera le premier commit avant de démarrer.",
 	"createProject.githubOwner": "Owner",
 	"createProject.otherGitHubOwner": "Autre",

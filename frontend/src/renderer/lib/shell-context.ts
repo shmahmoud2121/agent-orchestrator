@@ -13,6 +13,7 @@ export type ShellContextValue = {
 		workerAgent: string;
 		orchestratorAgent: string;
 		trackerIntake?: components["schemas"]["TrackerIntakeConfig"];
+		allowUnsandboxedWorkers?: boolean;
 		asWorkspace?: boolean;
 	}) => Promise<void>;
 	cloneProject: (input: {
@@ -21,6 +22,7 @@ export type ShellContextValue = {
 		workerAgent: string;
 		orchestratorAgent: string;
 		trackerIntake?: components["schemas"]["TrackerIntakeConfig"];
+		allowUnsandboxedWorkers?: boolean;
 	}) => Promise<void>;
 	initializeProjectRepository: (path: string) => Promise<void>;
 	openRemoteProjectSettings: (hostId: string, projectId: string) => void;
