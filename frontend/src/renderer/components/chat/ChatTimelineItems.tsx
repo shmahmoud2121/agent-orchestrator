@@ -917,13 +917,16 @@ export function AssistantMessage({
 			data-chat-message-revision={!live && !renderingStreaming ? message.revision : undefined}
 			data-chat-message-role={!live && !renderingStreaming ? message.role : undefined}
 		>
-			<div aria-hidden="true" className="obs-meta obs-meta-assistant">
-				{(() => {
-					const name = (message.senderDisplayName || message.senderLabel || "AGENT").toUpperCase();
-					const clock = formatTime(message.createdAt);
-					return clock ? `${name} · ${clock}` : name;
-				})()}
-			</div>
+			{/* One label per turn: earlier prose fragments between tool rows keep only the rule. */}
+			{showCopy ? (
+				<div aria-hidden="true" className="obs-meta obs-meta-assistant">
+					{(() => {
+						const name = (message.senderDisplayName || message.senderLabel || "AGENT").toUpperCase();
+						const clock = formatTime(message.createdAt);
+						return clock ? `${name} · ${clock}` : name;
+					})()}
+				</div>
+			) : null}
 			<div data-chat-message-body=""><ChatMarkdown text={visibleText} streaming={renderingStreaming} /></div>
 			{showActions ? (
 				// One action row for the completed answer, not one after every prose
