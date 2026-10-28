@@ -695,7 +695,7 @@
 
 	--color-text-primary: var(--foreground);
 	--color-text-muted: var(--muted-foreground);
-	--color-text-passive: #6B6455;
+	--color-text-passive: #665F51; /* 4.5:1 on tertiary too */
 	--color-brand-logo: #304c83;
 	--color-brand-logo-bright: #466daa;
 	--color-brand-logo-foreground: #ffffff;
