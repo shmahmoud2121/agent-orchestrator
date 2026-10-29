@@ -149,7 +149,11 @@ type Result struct {
 	// UpdatedCheckout is the worktree that had the base branch checked out and
 	// was fast-forwarded to the merge, if any.
 	UpdatedCheckout string
-	Overlaps        []Overlap
+	// MatchedCheckoutFiles lists uncommitted files in that checkout whose
+	// content already equalled the merge, so they did not block it and now
+	// show as committed.
+	MatchedCheckoutFiles []string
+	Overlaps             []Overlap
 	// Notified lists live workers told that the base branch moved.
 	Notified []domain.SessionID
 	// Warnings collects best-effort failures (overlap scan, notifications)
@@ -311,9 +315,11 @@ func (s *Service) attempt(ctx context.Context, t target, base string, dryRun boo
 		return Result{}, internal("list worktrees", err)
 	}
 	if checkout != "" {
-		if err := checkCheckoutClean(ctx, checkout, base); err != nil {
+		matched, err := checkCheckoutClean(ctx, checkout, base, oldTip, mergeSHA)
+		if err != nil {
 			return Result{}, err
 		}
+		res.MatchedCheckoutFiles = capList(matched)
 	}
 	if err := checkWorkerClean(ctx, t); err != nil {
 		return Result{}, err
@@ -331,9 +337,11 @@ func (s *Service) attempt(ctx context.Context, t target, base string, dryRun boo
 			return Result{}, internal("advance "+base, fmt.Errorf("%w: %s", err, out))
 		}
 	} else {
-		if err := s.fastForwardCheckout(ctx, t, base, checkout, baseRef, oldTip, mergeSHA); err != nil {
+		matched, err := s.fastForwardCheckout(ctx, t, base, checkout, baseRef, oldTip, mergeSHA)
+		if err != nil {
 			return Result{}, err
 		}
+		res.MatchedCheckoutFiles = capList(matched)
 		res.UpdatedCheckout = checkout
 	}
 	res.MergeCommit = mergeSHA
@@ -388,44 +396,215 @@ func (s *Service) push(ctx context.Context, repo string, res *Result) {
 
 // fastForwardCheckout advances a base branch that is checked out somewhere
 // (usually the user's main checkout) so its working tree follows the ref. It
-// refuses any tracked or untracked changes. Git itself also refuses to
-// fast-forward over local changes introduced after our status check.
-func (s *Service) fastForwardCheckout(ctx context.Context, t target, base, checkout, baseRef, oldTip, mergeSHA string) error {
-	if err := checkCheckoutClean(ctx, checkout, base); err != nil {
-		return err
+// refuses tracked or untracked changes, except files whose content already
+// equals the merge: those are reset to the old tip just before the
+// fast-forward brings the same content back, so nothing is lost. Git itself
+// also refuses to fast-forward over local changes introduced after our check.
+func (s *Service) fastForwardCheckout(ctx context.Context, t target, base, checkout, baseRef, oldTip, mergeSHA string) ([]string, error) {
+	matched, err := checkCheckoutClean(ctx, checkout, base, oldTip, mergeSHA)
+	if err != nil {
+		return nil, err
 	}
 	head, err := gitOut(ctx, checkout, "symbolic-ref", "-q", "HEAD")
 	if err != nil || strings.TrimSpace(head) != baseRef {
 		// The checkout switched branches since we listed it; re-plan.
-		return errBaseMoved
+		return nil, errBaseMoved
 	}
 	if moved(ctx, t.repo, baseRef, oldTip) {
-		return errBaseMoved
+		return nil, errBaseMoved
+	}
+	if err := resetMatched(ctx, checkout, oldTip, matched); err != nil {
+		s.putBackMatched(ctx, checkout, mergeSHA, matched)
+		return nil, apierr.Conflict(CodeBaseCheckoutBlocked, fmt.Sprintf(
+			"Could not prepare %s in %s for the merge; nothing landed. Close any program that has these files open and ask for the merge again. %v", base, checkout, err),
+			map[string]any{"baseBranch": base, "checkout": checkout, "paths": capList(matched)})
 	}
 	if out, err := git(ctx, checkout, "merge", "--ff-only", "--no-overwrite-ignore", "--no-edit", mergeSHA); err != nil {
+		s.putBackMatched(ctx, checkout, mergeSHA, matched)
 		if moved(ctx, t.repo, baseRef, oldTip) {
-			return errBaseMoved
+			return nil, errBaseMoved
 		}
-		return apierr.Conflict(CodeBaseCheckoutBlocked, fmt.Sprintf(
+		return nil, apierr.Conflict(CodeBaseCheckoutBlocked, fmt.Sprintf(
 			"Could not fast-forward %s in %s to the merge; nothing landed. git said: %s", base, checkout, tail(out)),
 			map[string]any{"baseBranch": base, "checkout": checkout})
+	}
+	return matched, nil
+}
+
+// checkCheckoutClean refuses a checkout with uncommitted changes, except
+// files whose index and working tree already hold exactly what the merge
+// brings. It returns those matching paths.
+func checkCheckoutClean(ctx context.Context, checkout, base, oldTip, mergeSHA string) ([]string, error) {
+	matched, blocking, err := checkoutChanges(ctx, checkout, oldTip, mergeSHA)
+	if err != nil {
+		return nil, internal("read status of "+checkout, err)
+	}
+	if len(blocking) > 0 {
+		return nil, apierr.Conflict(CodeBaseCheckoutDirty, fmt.Sprintf(
+			"%s is checked out in %s, which has uncommitted changes that differ from the merge; nothing landed. Commit or stash those changes there, then ask for the merge again. Changed paths: %s",
+			base, checkout, listForMessage(blocking)),
+			map[string]any{"baseBranch": base, "checkout": checkout, "paths": capList(blocking)})
+	}
+	return matched, nil
+}
+
+// checkoutChanges splits the checkout's uncommitted paths into those already
+// equal to the merge and those that would block it. Renames, copies and
+// unmerged entries always block.
+func checkoutChanges(ctx context.Context, checkout, oldTip, mergeSHA string) (matched, blocking []string, err error) {
+	out, err := gitOut(ctx, checkout, "status", "--porcelain", "-z", "--untracked-files=all")
+	if err != nil {
+		return nil, nil, err
+	}
+	entries := strings.Split(out, "\x00")
+	for i := 0; i < len(entries); i++ {
+		e := entries[i]
+		if len(e) < 4 {
+			continue
+		}
+		p := e[3:]
+		if e[0] == 'R' || e[0] == 'C' {
+			i++ // rename/copy: the next entry is the source path
+			blocking = append(blocking, p)
+			continue
+		}
+		ok, err := matchesMerge(ctx, checkout, oldTip, mergeSHA, p)
+		if err != nil {
+			return nil, nil, err
+		}
+		if ok {
+			matched = append(matched, p)
+		} else {
+			blocking = append(blocking, p)
+		}
+	}
+	return matched, blocking, nil
+}
+
+// treeEntry is one path's mode and blob in a tree or the index; present is
+// false when the path is absent.
+type treeEntry struct {
+	present bool
+	mode    string
+	blob    string
+}
+
+func lsTree(ctx context.Context, dir, rev, path string) (treeEntry, error) {
+	out, err := gitOut(ctx, dir, "ls-tree", "-z", rev, "--", literal(path))
+	if err != nil {
+		return treeEntry{}, err
+	}
+	// "<mode> <type> <blob>\t<path>"
+	meta, _, found := strings.Cut(strings.TrimSuffix(out, "\x00"), "\t")
+	f := strings.Fields(meta)
+	if !found || len(f) != 3 {
+		return treeEntry{}, nil
+	}
+	return treeEntry{present: true, mode: f[0], blob: f[2]}, nil
+}
+
+// matchesMerge reports whether path's index entry is either untouched or
+// staged as the merge, and its working-tree file has exactly the merge's
+// content (or is absent where the merge deletes it).
+func matchesMerge(ctx context.Context, checkout, oldTip, mergeSHA, path string) (bool, error) {
+	want, err := lsTree(ctx, checkout, mergeSHA, path)
+	if err != nil {
+		return false, err
+	}
+	if want.present && want.mode != "100644" && want.mode != "100755" {
+		return false, nil // symlinks and submodules: keep the plain refusal
+	}
+	had, err := lsTree(ctx, checkout, oldTip, path)
+	if err != nil {
+		return false, err
+	}
+	idxOut, err := gitOut(ctx, checkout, "ls-files", "-s", "-z", "--", literal(path))
+	if err != nil {
+		return false, err
+	}
+	var idx treeEntry
+	if rec := strings.Split(strings.TrimSuffix(idxOut, "\x00"), "\x00"); idxOut != "" {
+		if len(rec) != 1 {
+			return false, nil
+		}
+		meta, _, _ := strings.Cut(rec[0], "\t")
+		f := strings.Fields(meta)
+		if len(f) != 3 || f[2] != "0" {
+			return false, nil // unmerged
+		}
+		idx = treeEntry{present: true, mode: f[0], blob: f[1]}
+	}
+	if idx != had && idx != want {
+		return false, nil // staged content that is neither the old tip nor the merge
+	}
+	info, err := os.Lstat(filepath.Join(checkout, filepath.FromSlash(path)))
+	if os.IsNotExist(err) {
+		return !want.present, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if !want.present || !info.Mode().IsRegular() {
+		return false, nil
+	}
+	// hash-object applies the path's clean filters (line endings, LFS), as
+	// git add would.
+	sum, err := gitOut(ctx, checkout, "hash-object", "--", path)
+	if err != nil {
+		return false, err
+	}
+	return strings.TrimSpace(sum) == want.blob, nil
+}
+
+// resetMatched sets matched paths back to the old tip so the fast-forward can
+// bring the identical merge content in.
+func resetMatched(ctx context.Context, checkout, oldTip string, matched []string) error {
+	for _, p := range matched {
+		had, err := lsTree(ctx, checkout, oldTip, p)
+		if err != nil {
+			return err
+		}
+		if had.present {
+			if out, err := git(ctx, checkout, "checkout", oldTip, "--", literal(p)); err != nil {
+				return fmt.Errorf("reset %s: %s", p, tail(out))
+			}
+			continue
+		}
+		if out, err := git(ctx, checkout, "rm", "-q", "--cached", "--ignore-unmatch", "--", literal(p)); err != nil {
+			return fmt.Errorf("unstage %s: %s", p, tail(out))
+		}
+		if err := os.Remove(filepath.Join(checkout, filepath.FromSlash(p))); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("remove %s: %w", p, err)
+		}
 	}
 	return nil
 }
 
-func checkCheckoutClean(ctx context.Context, checkout, base string) error {
-	dirty, err := porcelain(ctx, checkout, true)
-	if err != nil {
-		return internal("read status of "+checkout, err)
+// putBackMatched restores the merge content of matched paths after a failed
+// fast-forward, so the user's files read as they did before. Best effort.
+func (s *Service) putBackMatched(ctx context.Context, checkout, mergeSHA string, matched []string) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+	defer cancel()
+	for _, p := range matched {
+		want, err := lsTree(ctx, checkout, mergeSHA, p)
+		if err == nil && !want.present {
+			err = os.Remove(filepath.Join(checkout, filepath.FromSlash(p)))
+			if os.IsNotExist(err) {
+				err = nil
+			}
+		} else if err == nil {
+			if out, rerr := git(ctx, checkout, "restore", "--source="+mergeSHA, "--worktree", "--", literal(p)); rerr != nil {
+				err = fmt.Errorf("%w: %s", rerr, out)
+			}
+		}
+		if err != nil {
+			s.logger.Warn("local merge: could not put back a matched checkout file", "checkout", checkout, "path", p, "err", err)
+		}
 	}
-	if len(dirty) > 0 {
-		return apierr.Conflict(CodeBaseCheckoutDirty, fmt.Sprintf(
-			"%s is checked out in %s, which has uncommitted changes; nothing landed. Commit or stash those changes there, then ask for the merge again. Changed paths: %s",
-			base, checkout, listForMessage(dirty)),
-			map[string]any{"baseBranch": base, "checkout": checkout, "paths": capList(dirty)})
-	}
-	return nil
 }
+
+// literal stops git from reading a path as a glob pattern.
+func literal(path string) string { return ":(literal)" + path }
 
 func checkWorkerClean(ctx context.Context, t target) error {
 	if t.worktree == "" {

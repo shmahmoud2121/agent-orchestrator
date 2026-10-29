@@ -30,25 +30,26 @@ type mergeOverlap struct {
 
 // mergeSessionResponse mirrors controllers.MergeSessionResponse.
 type mergeSessionResponse struct {
-	SessionID         string         `json:"sessionId"`
-	Branch            string         `json:"branch"`
-	BaseBranch        string         `json:"baseBranch"`
-	DryRun            bool           `json:"dryRun"`
-	BaseBefore        string         `json:"baseBefore"`
-	MergeCommit       string         `json:"mergeCommit,omitempty"`
-	CommitCount       int            `json:"commitCount"`
-	ChangedFiles      []string       `json:"changedFiles"`
-	ChangedFilesTotal int            `json:"changedFilesTotal"`
-	Verified          bool           `json:"verified"`
-	UpdatedCheckout   string         `json:"updatedCheckout,omitempty"`
-	Overlaps          []mergeOverlap `json:"overlaps"`
-	Notified          []string       `json:"notified"`
-	Warnings          []string       `json:"warnings"`
-	PushAttempted     bool           `json:"pushAttempted"`
-	Pushed            bool           `json:"pushed"`
-	PushedRef         string         `json:"pushedRef,omitempty"`
-	PushedCommit      string         `json:"pushedCommit,omitempty"`
-	PushError         string         `json:"pushError,omitempty"`
+	SessionID            string         `json:"sessionId"`
+	Branch               string         `json:"branch"`
+	BaseBranch           string         `json:"baseBranch"`
+	DryRun               bool           `json:"dryRun"`
+	BaseBefore           string         `json:"baseBefore"`
+	MergeCommit          string         `json:"mergeCommit,omitempty"`
+	CommitCount          int            `json:"commitCount"`
+	ChangedFiles         []string       `json:"changedFiles"`
+	ChangedFilesTotal    int            `json:"changedFilesTotal"`
+	Verified             bool           `json:"verified"`
+	UpdatedCheckout      string         `json:"updatedCheckout,omitempty"`
+	MatchedCheckoutFiles []string       `json:"matchedCheckoutFiles"`
+	Overlaps             []mergeOverlap `json:"overlaps"`
+	Notified             []string       `json:"notified"`
+	Warnings             []string       `json:"warnings"`
+	PushAttempted        bool           `json:"pushAttempted"`
+	Pushed               bool           `json:"pushed"`
+	PushedRef            string         `json:"pushedRef,omitempty"`
+	PushedCommit         string         `json:"pushedCommit,omitempty"`
+	PushError            string         `json:"pushError,omitempty"`
 }
 
 // A base-moved retry can run the full verify command twice; leave time for
@@ -125,6 +126,9 @@ func printMergeResult(out io.Writer, res mergeSessionResponse) error {
 	}
 	if res.UpdatedCheckout != "" {
 		fmt.Fprintf(&b, "fast-forwarded the checkout at %s\n", res.UpdatedCheckout)
+	}
+	if len(res.MatchedCheckoutFiles) > 0 {
+		fmt.Fprintf(&b, "uncommitted changes in the checkout already matched the merge and are now committed: %s\n", strings.Join(res.MatchedCheckoutFiles, ", "))
 	}
 	for _, o := range res.Overlaps {
 		fmt.Fprintf(&b, "warning: %s (%s) also touches: %s\n", o.SessionID, o.Branch, strings.Join(o.Files, ", "))

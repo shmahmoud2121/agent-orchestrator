@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -269,6 +270,94 @@ func TestMergeRefusesDirtyMainCheckout(t *testing.T) {
 		t.Fatalf("user's edit was touched: %q", data)
 	}
 	f.assertNoTempWorktrees()
+}
+
+func TestMergeLandsOverCheckoutChangesThatMatchTheMerge(t *testing.T) {
+	f := newFixture(t)
+	w1 := f.addWorker("w1")
+	commitFile(t, w1, "shared.txt", "updated\n", "data: update shared")
+	commitFile(t, w1, "data/new.bin", "\x00binary\n", "data: add new")
+	// The user produced the same files in their own checkout, one of them staged.
+	writeFile(t, f.repo, "shared.txt", "updated\n")
+	runGit(t, f.repo, "add", "shared.txt")
+	writeFile(t, f.repo, "data/new.bin", "\x00binary\n")
+
+	dry, err := f.svc.Merge(context.Background(), Request{SessionID: "w1", DryRun: true})
+	if err != nil {
+		t.Fatalf("dry run: %v", err)
+	}
+	if !sameFiles(dry.MatchedCheckoutFiles, "data/new.bin", "shared.txt") {
+		t.Fatalf("dry run matched = %v", dry.MatchedCheckoutFiles)
+	}
+	if status := runGit(t, f.repo, "status", "--porcelain", "--untracked-files=all"); !strings.Contains(status, "data/new.bin") {
+		t.Fatalf("dry run touched the checkout:\n%s", status)
+	}
+
+	res, err := f.svc.Merge(context.Background(), Request{SessionID: "w1"})
+	if err != nil {
+		t.Fatalf("Merge: %v", err)
+	}
+	if !sameFiles(res.MatchedCheckoutFiles, "data/new.bin", "shared.txt") {
+		t.Fatalf("matched = %v", res.MatchedCheckoutFiles)
+	}
+	if head := runGit(t, f.repo, "rev-parse", "HEAD"); head != res.MergeCommit || res.UpdatedCheckout != f.repo {
+		t.Fatalf("checkout HEAD = %s, merge = %s, updated = %q", head, res.MergeCommit, res.UpdatedCheckout)
+	}
+	if status := runGit(t, f.repo, "status", "--porcelain"); status != "" {
+		t.Fatalf("checkout not clean after merge:\n%s", status)
+	}
+	if data, _ := os.ReadFile(filepath.Join(f.repo, "data", "new.bin")); string(data) != "\x00binary\n" {
+		t.Fatalf("new.bin = %q", data)
+	}
+	f.assertNoTempWorktrees()
+}
+
+func sameFiles(got []string, want ...string) bool {
+	g := append([]string(nil), got...)
+	sort.Strings(g)
+	sort.Strings(want)
+	return strings.Join(g, ",") == strings.Join(want, ",")
+}
+
+func TestMergeRefusesCheckoutChangesThatDifferFromTheMerge(t *testing.T) {
+	f := newFixture(t)
+	w1 := f.addWorker("w1")
+	commitFile(t, w1, "shared.txt", "updated\n", "data: update shared")
+	commitFile(t, w1, "other.txt", "worker\n", "data: add other")
+	writeFile(t, f.repo, "shared.txt", "updated\n")
+	writeFile(t, f.repo, "other.txt", "user's own version\n")
+	before := f.mainTip()
+
+	_, err := f.svc.Merge(context.Background(), Request{SessionID: "w1"})
+	e := requireCode(t, err, CodeBaseCheckoutDirty)
+	if !strings.Contains(e.Message, "other.txt") || strings.Contains(e.Message, "shared.txt") {
+		t.Fatalf("message should name only the differing path: %s", e.Message)
+	}
+	if f.mainTip() != before {
+		t.Fatal("main moved")
+	}
+	for name, want := range map[string]string{"shared.txt": "updated\n", "other.txt": "user's own version\n"} {
+		if data, _ := os.ReadFile(filepath.Join(f.repo, name)); string(data) != want {
+			t.Fatalf("%s touched: %q", name, data)
+		}
+	}
+}
+
+func TestMergeRefusesStagedContentThatDiffersFromTheMerge(t *testing.T) {
+	f := newFixture(t)
+	w1 := f.addWorker("w1")
+	commitFile(t, w1, "shared.txt", "updated\n", "data: update shared")
+	// Staged a different version, then edited the file to match: the staged
+	// copy would be lost, so the merge must still refuse.
+	writeFile(t, f.repo, "shared.txt", "staged draft\n")
+	runGit(t, f.repo, "add", "shared.txt")
+	writeFile(t, f.repo, "shared.txt", "updated\n")
+
+	_, err := f.svc.Merge(context.Background(), Request{SessionID: "w1"})
+	requireCode(t, err, CodeBaseCheckoutDirty)
+	if staged := runGit(t, f.repo, "show", ":shared.txt"); staged != "staged draft" {
+		t.Fatalf("staged copy touched: %q", staged)
+	}
 }
 
 func TestMergeRefusesDirtyWorkerWorktree(t *testing.T) {

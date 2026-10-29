@@ -16840,6 +16840,12 @@ components:
           type: integer
         dryRun:
           type: boolean
+        matchedCheckoutFiles:
+          description: Uncommitted files in that checkout whose content already equalled
+            the merge, so they did not block it (capped).
+          items:
+            type: string
+          type: array
         mergeCommit:
           description: New base branch tip. Empty for a dry run.
           type: string
@@ -16893,6 +16899,7 @@ components:
       - changedFiles
       - changedFilesTotal
       - verified
+      - matchedCheckoutFiles
       - overlaps
       - notified
       - warnings

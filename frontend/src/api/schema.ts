@@ -5736,6 +5736,8 @@ export interface components {
             /** @description Commits the branch brings into the base branch. */
             commitCount: number;
             dryRun: boolean;
+            /** @description Uncommitted files in that checkout whose content already equalled the merge, so they did not block it (capped). */
+            matchedCheckoutFiles: string[];
             /** @description New base branch tip. Empty for a dry run. */
             mergeCommit?: string;
             /** @description Live workers told that the base branch moved. */
