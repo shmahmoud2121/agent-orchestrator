@@ -1580,7 +1580,7 @@ func TestHooks_RegisteredHarnessSessionStartReportsAgentSessionID(t *testing.T) 
 	}
 	for agent, wantState := range sessionStartState {
 		t.Run(agent, func(t *testing.T) {
-			if agent != "opencode" && agent != "gemini" {
+			if agent != "opencode" {
 				skipRetiredAgent(t)
 			}
 			t.Setenv("AO_SESSION_ID", "ao-7")
@@ -1609,6 +1609,7 @@ func TestHooks_RegisteredHarnessSessionStartReportsAgentSessionID(t *testing.T) 
 }
 
 func TestHooks_GeminiBeforeAgentReturnsStandingInstructions(t *testing.T) {
+	skipRetiredAgent(t)
 	t.Setenv("AO_SESSION_ID", "ao-7")
 	cfg := setConfigEnv(t)
 	dir := filepath.Join(cfg.dataDir, "prompts", "ao-7")

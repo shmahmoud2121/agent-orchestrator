@@ -218,13 +218,13 @@ func TestWiring_AgentResolverResolvesRealAdapters(t *testing.T) {
 		{domain.HarnessOpenCode, "opencode"},
 		{domain.HarnessCursor, "cursor"},
 		{domain.HarnessGrok, "grok"},
-		{domain.HarnessGemini, "gemini"},
 	}
 	if retiredTestAgentsAvailable {
 		cases = append(cases, []struct {
 			harness domain.AgentHarness
 			wantID  string
 		}{
+			{domain.HarnessGemini, "gemini"},
 			{domain.HarnessQwen, "qwen"},
 			{domain.HarnessCopilot, "copilot"},
 			{domain.HarnessKimi, "kimi"},
