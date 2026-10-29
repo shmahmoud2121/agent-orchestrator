@@ -1400,6 +1400,61 @@ func TestHooks_CodexSessionStartReportsAgentSessionID(t *testing.T) {
 	assertActivityRequest(t, req, want)
 }
 
+func TestHooks_CodexMemoryJobInsideCodexHomeIsIgnored(t *testing.T) {
+	t.Setenv("AO_SESSION_ID", "ao-7")
+	codexHome := t.TempDir()
+	t.Setenv("CODEX_HOME", codexHome)
+	cfg := setConfigEnv(t)
+	srv, capture := activityServer(t, http.StatusOK, `{"ok":true}`)
+	writeRunFileFor(t, cfg, srv)
+
+	payload, err := json.Marshal(map[string]string{
+		"session_id": "codex-memory-thread",
+		"cwd":        filepath.Join(codexHome, "memories"),
+		"prompt":     "Perform Phase 2 memory consolidation",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, event := range []string{"session-start", "user-prompt-submit", "stop"} {
+		stdout, _, err := executeCLI(t, Deps{
+			In:           strings.NewReader(string(payload)),
+			ProcessAlive: func(int) bool { return true },
+		}, "hooks", "codex", event)
+		if err != nil {
+			t.Fatalf("%s: unexpected error: %v", event, err)
+		}
+		if strings.TrimSpace(stdout) != "" {
+			t.Fatalf("%s: stdout = %q, want no AO context", event, stdout)
+		}
+	}
+	if capture.hits != 0 {
+		t.Fatalf("daemon calls = %d, want 0", capture.hits)
+	}
+}
+
+func TestHooks_CodexWorkerOutsideCodexHomeStillReports(t *testing.T) {
+	t.Setenv("AO_SESSION_ID", "ao-7")
+	t.Setenv("CODEX_HOME", t.TempDir())
+	cfg := setConfigEnv(t)
+	srv, capture := activityServer(t, http.StatusOK, `{"ok":true}`)
+	writeRunFileFor(t, cfg, srv)
+
+	payload, err := json.Marshal(map[string]string{"session_id": "codex-native-1", "cwd": t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := executeCLI(t, Deps{
+		In:           strings.NewReader(string(payload)),
+		ProcessAlive: func(int) bool { return true },
+	}, "hooks", "codex", "session-start"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if capture.hits != 1 {
+		t.Fatalf("daemon calls = %d, want 1", capture.hits)
+	}
+}
+
 func TestHooks_CodexBlankSessionIDIsIgnored(t *testing.T) {
 	t.Setenv("AO_SESSION_ID", "ao-7")
 	cfg := setConfigEnv(t)
