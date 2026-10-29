@@ -226,6 +226,34 @@ func normalizeHookPayload(payload []byte) []byte {
 	return bytes.TrimPrefix(payload, []byte("\xef\xbb\xbf"))
 }
 
+// codexInternalHookCwd reports whether a Codex hook ran inside CODEX_HOME
+// (default ~/.codex). AO workers run in project worktrees, so only Codex's
+// own background work, such as memory consolidation in
+// CODEX_HOME/memories, has its working directory there.
+func codexInternalHookCwd(payload []byte) bool {
+	var p struct {
+		Cwd string `json:"cwd"`
+	}
+	_ = json.Unmarshal(normalizeHookPayload(payload), &p)
+	cwd := strings.TrimSpace(p.Cwd)
+	if cwd == "" {
+		return false
+	}
+	home := strings.TrimSpace(os.Getenv("CODEX_HOME"))
+	if home == "" {
+		userHome, err := os.UserHomeDir()
+		if err != nil || userHome == "" {
+			return false
+		}
+		home = filepath.Join(userHome, ".codex")
+	}
+	rel, err := filepath.Rel(filepath.Clean(home), filepath.Clean(cwd))
+	if err != nil {
+		return false
+	}
+	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)))
+}
+
 // hookAgentSessionID extracts the native resume handle shared by Agy, Copilot,
 // Codex, Claude Code, Cline, and other hook payloads. It is independent of
 // activity derivation because SessionStart is intentionally metadata-only for
@@ -617,7 +645,11 @@ func (c *commandContext) runHook(ctx context.Context, agent, event string) error
 			c.reportHookFailure(agent, event, sessionID, fmt.Errorf("read stdin: %w", err))
 		}
 	}
-	if shouldEmitSessionStartContext(agent, event) {
+	// Codex's background memory job inherits the worker's hooks and
+	// AO_SESSION_ID on older Codex releases. It is not the worker's
+	// conversation: give it no AO context and report none of its activity.
+	codexInternal := domain.AgentHarness(agent) == domain.HarnessCodex && codexInternalHookCwd(payload)
+	if shouldEmitSessionStartContext(agent, event) && !codexInternal {
 		c.emitSessionStartContext(agent, event, sessionID)
 	}
 	if isWatchdogHook(agent, event) {
@@ -644,6 +676,10 @@ func (c *commandContext) runHook(ctx context.Context, agent, event string) error
 	}
 	if isCursorPermissionHook(agent, event) {
 		return c.runCursorPermissionHook(ctx, agent, event, sessionID, payload)
+	}
+	if codexInternal {
+		// The watchdog above still applies to it; nothing else does.
+		return nil
 	}
 
 	state, hasActivity := activitydispatch.Derive(agent, event, payload)
