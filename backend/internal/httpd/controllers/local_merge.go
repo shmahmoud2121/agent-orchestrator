@@ -37,25 +37,26 @@ type MergeOverlap struct {
 
 // MergeSessionResponse is the 200 body of POST /api/v1/sessions/{sessionId}/merge.
 type MergeSessionResponse struct {
-	SessionID         string         `json:"sessionId"`
-	Branch            string         `json:"branch"`
-	BaseBranch        string         `json:"baseBranch"`
-	DryRun            bool           `json:"dryRun"`
-	BaseBefore        string         `json:"baseBefore" description:"Base branch tip the merge was computed against."`
-	MergeCommit       string         `json:"mergeCommit,omitempty" description:"New base branch tip. Empty for a dry run."`
-	CommitCount       int            `json:"commitCount" description:"Commits the branch brings into the base branch."`
-	ChangedFiles      []string       `json:"changedFiles" description:"Files the branch changes relative to the base branch (capped)."`
-	ChangedFilesTotal int            `json:"changedFilesTotal"`
-	Verified          bool           `json:"verified" description:"True when the project's verify command passed on the merge result."`
-	UpdatedCheckout   string         `json:"updatedCheckout,omitempty" description:"Checkout that had the base branch checked out and was fast-forwarded."`
-	Overlaps          []MergeOverlap `json:"overlaps" description:"Other live workers whose committed or uncommitted changes touch the same files."`
-	Notified          []string       `json:"notified" description:"Live workers told that the base branch moved."`
-	Warnings          []string       `json:"warnings" description:"Best-effort steps that failed without stopping the merge."`
-	PushAttempted     bool           `json:"pushAttempted" description:"True when the project's pushAfterMerge setting asked to push the base branch to origin."`
-	Pushed            bool           `json:"pushed" description:"True when origin accepted the push. A failed push never undoes the local merge."`
-	PushedRef         string         `json:"pushedRef,omitempty"`
-	PushedCommit      string         `json:"pushedCommit,omitempty"`
-	PushError         string         `json:"pushError,omitempty" description:"Why the push after merge failed (tail of git's output)."`
+	SessionID            string         `json:"sessionId"`
+	Branch               string         `json:"branch"`
+	BaseBranch           string         `json:"baseBranch"`
+	DryRun               bool           `json:"dryRun"`
+	BaseBefore           string         `json:"baseBefore" description:"Base branch tip the merge was computed against."`
+	MergeCommit          string         `json:"mergeCommit,omitempty" description:"New base branch tip. Empty for a dry run."`
+	CommitCount          int            `json:"commitCount" description:"Commits the branch brings into the base branch."`
+	ChangedFiles         []string       `json:"changedFiles" description:"Files the branch changes relative to the base branch (capped)."`
+	ChangedFilesTotal    int            `json:"changedFilesTotal"`
+	Verified             bool           `json:"verified" description:"True when the project's verify command passed on the merge result."`
+	UpdatedCheckout      string         `json:"updatedCheckout,omitempty" description:"Checkout that had the base branch checked out and was fast-forwarded."`
+	MatchedCheckoutFiles []string       `json:"matchedCheckoutFiles" description:"Uncommitted files in that checkout whose content already equalled the merge, so they did not block it (capped)."`
+	Overlaps             []MergeOverlap `json:"overlaps" description:"Other live workers whose committed or uncommitted changes touch the same files."`
+	Notified             []string       `json:"notified" description:"Live workers told that the base branch moved."`
+	Warnings             []string       `json:"warnings" description:"Best-effort steps that failed without stopping the merge."`
+	PushAttempted        bool           `json:"pushAttempted" description:"True when the project's pushAfterMerge setting asked to push the base branch to origin."`
+	Pushed               bool           `json:"pushed" description:"True when origin accepted the push. A failed push never undoes the local merge."`
+	PushedRef            string         `json:"pushedRef,omitempty"`
+	PushedCommit         string         `json:"pushedCommit,omitempty"`
+	PushError            string         `json:"pushError,omitempty" description:"Why the push after merge failed (tail of git's output)."`
 }
 
 // LocalMergeController owns POST /sessions/{sessionId}/merge. A nil Svc returns 501.
@@ -94,7 +95,7 @@ func mergeSessionResponse(res localmerge.Result) MergeSessionResponse {
 		SessionID: string(res.SessionID), Branch: res.Branch, BaseBranch: res.BaseBranch, DryRun: res.DryRun,
 		BaseBefore: res.BaseBefore, MergeCommit: res.MergeCommit, CommitCount: res.CommitCount,
 		ChangedFiles: nonNilStrings(res.ChangedFiles), ChangedFilesTotal: res.ChangedFilesTotal,
-		Verified: res.Verified, UpdatedCheckout: res.UpdatedCheckout,
+		Verified: res.Verified, UpdatedCheckout: res.UpdatedCheckout, MatchedCheckoutFiles: nonNilStrings(res.MatchedCheckoutFiles),
 		Overlaps: []MergeOverlap{}, Notified: []string{}, Warnings: nonNilStrings(res.Warnings),
 		PushAttempted: res.PushAttempted, Pushed: res.Pushed, PushedRef: res.PushedRef, PushedCommit: res.PushedCommit, PushError: res.PushError,
 	}
