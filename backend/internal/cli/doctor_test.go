@@ -461,7 +461,6 @@ func TestDoctorTextOutputIsGrouped(t *testing.T) {
 		"WARN opencode:",
 		"WARN cursor:",
 		"WARN grok:",
-		"WARN gemini:",
 		"GitHub:\nWARN github-token:",
 		"GitLab:\nWARN gitlab-token:",
 	}
@@ -471,6 +470,7 @@ func TestDoctorTextOutputIsGrouped(t *testing.T) {
 			"WARN aider:",
 			"WARN goose:",
 			"WARN agy:",
+			"WARN gemini:",
 			"WARN continue:",
 			"WARN prime-agent:",
 		)

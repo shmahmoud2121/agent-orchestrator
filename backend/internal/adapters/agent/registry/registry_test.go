@@ -15,6 +15,9 @@ import (
 )
 
 func TestGeminiAdapterIsSelectable(t *testing.T) {
+	if !retiredBuildEnabled {
+		t.Skip("Gemini is retired in this build")
+	}
 	reg, err := Build()
 	if err != nil {
 		t.Fatal(err)

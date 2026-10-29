@@ -12,7 +12,6 @@ import (
 
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/cursor"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/gemini"
 	"github.com/aoagents/agent-orchestrator/backend/internal/httpd/apierr"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 	"github.com/aoagents/agent-orchestrator/backend/internal/service/repotrust"
@@ -74,7 +73,7 @@ func TestDetectRepositoryConfigTypes(t *testing.T) {
 	}
 }
 func TestOwnHooksIgnoredExactly(t *testing.T) {
-	agents := map[string]ports.Agent{"claude": claudecode.New(), "cursor": cursor.New(), "gemini": gemini.New()}
+	agents := map[string]ports.Agent{"claude": claudecode.New(), "cursor": cursor.New()}
 	for name, agent := range retiredRepoTrustAgents() {
 		agents[name] = agent
 	}

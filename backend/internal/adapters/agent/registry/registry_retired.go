@@ -19,6 +19,7 @@ import (
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/devin"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/droid"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/fx"
+	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/gemini"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/goose"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/kilocode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/kimchi"
@@ -43,7 +44,7 @@ func retiredConstructors() []adapters.Adapter {
 	return []adapters.Adapter{
 		agy.New(), aider.New(), amp.New(), auggie.New(), autohand.New(), cline.New(),
 		codewhale.New(), commandcode.New(), continueagent.New(), copilot.New(), crush.New(),
-		deepseekharness.New(), devin.New(), droid.New(), fx.New(),
+		deepseekharness.New(), devin.New(), droid.New(), fx.New(), gemini.New(),
 		goose.New(), kilocode.New(), kimchi.New(), kimi.New(), kiro.New(),
 		memcode.New(), mimocode.New(), muse.New(), omp.New(), opencodev2.New(), openhands.New(),
 		pi.New(), primeagent.New(), qwen.New(), unrealagent.New(), vibe.New(),

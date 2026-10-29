@@ -9,7 +9,6 @@ import (
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/codex"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/cursor"
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/gemini"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/grok"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/opencode"
 	agentregistry "github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/registry"
@@ -120,7 +119,7 @@ func TestTerminalRefreshCapabilities(t *testing.T) {
 	agents := map[domain.AgentHarness]ports.Agent{
 		domain.HarnessClaudeCode: claudecode.New(), domain.HarnessCodex: codex.New(),
 		domain.HarnessOpenCode: opencode.New(), domain.HarnessGrok: grok.New(),
-		domain.HarnessCursor: cursor.New(), domain.HarnessGemini: gemini.New(),
+		domain.HarnessCursor: cursor.New(),
 	}
 	for harness, agent := range retiredTerminalRefreshAgents() {
 		agents[harness] = agent
@@ -400,7 +399,7 @@ func TestTerminalRefreshSupportMatrix(t *testing.T) {
 	}
 	active := map[string]bool{
 		"claude-code": true, "codex": true, "opencode": true,
-		"cursor": true, "grok": true, "gemini": true,
+		"cursor": true, "grok": true,
 	}
 	registered := map[string]bool{}
 	for _, adapter := range agentregistry.Constructors() {

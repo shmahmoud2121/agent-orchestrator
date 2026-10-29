@@ -12,6 +12,7 @@ import (
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/commandcode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/continueagent"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/droid"
+	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/gemini"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/kimchi"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/kiro"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/memcode"
@@ -32,6 +33,7 @@ func registerRetiredDerivers(d map[string]DeriveFunc) {
 	d["continue"] = continueagent.DeriveActivityState
 	d["droid"] = droid.DeriveActivityState
 	d["agy"] = agy.DeriveActivityState
+	d["gemini"] = gemini.DeriveActivityState
 	d["aider"] = aider.DeriveActivityState
 	d["kimchi"] = kimchi.DeriveActivityState
 	d["opencode-v2"] = opencodev2.DeriveActivityState

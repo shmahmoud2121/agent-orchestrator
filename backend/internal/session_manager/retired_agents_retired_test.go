@@ -9,6 +9,7 @@ import (
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/amp"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/commandcode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/fx"
+	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/gemini"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/memcode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/pi"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
@@ -36,5 +37,5 @@ func testMemcodeReadinessAgent() interface {
 	return memcode.New()
 }
 func retiredTerminalRefreshAgents() map[domain.AgentHarness]ports.Agent {
-	return map[domain.AgentHarness]ports.Agent{domain.HarnessPi: pi.New()}
+	return map[domain.AgentHarness]ports.Agent{domain.HarnessPi: pi.New(), domain.HarnessGemini: gemini.New()}
 }
