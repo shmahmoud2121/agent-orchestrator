@@ -317,6 +317,7 @@ function WorkerSandboxSettings({ agent, enabled, requireSandbox, hostCanSandbox,
 	return <>
 		{requireToggle}
 		<ProjectWorkerSandboxToggle checked={enabled} onCheckedChange={onEnabledChange} unsafe={!enabled} />
+		{enabled && !hostCanSandbox ? <p className="px-(--settings-row-inset) text-xs text-warning" role="status">{t("settings.project.workerSandboxHostUnavailable")}</p> : null}
 		{enabled ? <>
 			<SettingsRow label={t("settings.project.workerSandboxDomains")} description={t("settings.project.workerSandboxDomainsDescription")}>
 				<textarea

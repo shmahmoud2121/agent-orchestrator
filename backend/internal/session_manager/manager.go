@@ -7213,12 +7213,12 @@ func (m *Manager) workerSandboxLaunchFields(kind domain.SessionKind, project dom
 		if m.dataDir != "" {
 			sandbox.Launch.APITokenPath = apitoken.Path(m.dataDir)
 		}
+		sandbox = disableSandboxWhenUnavailable(project, sandbox)
 	}
 	if project.Kind.WithDefault() != domain.ProjectKindWork || project.Config.Work == nil {
 		return sandbox
 	}
 	if kind == domain.KindWorker {
-		sandbox = disableWorkSandboxWhenUnavailable(project, sandbox)
 		sandbox.Launch.WriteDeny = domain.WorkWriteDeny(project.Config.Work)
 		if strings.TrimSpace(workspacePath) != "" {
 			sandbox.Launch.WriteAllow = append(sandbox.Launch.WriteAllow, workspacePath)

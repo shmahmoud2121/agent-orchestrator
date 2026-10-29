@@ -2918,6 +2918,7 @@
 	"settings.project.workerSandboxRequireUnsafe": "Os workers não estão isolados. O watchdog bloqueia a leitura de arquivos protegidos, mas os workers podem acessar a internet.",
 	"settings.project.workerSandboxRequireDisabledReason": "Este projeto só executa workers com sandbox. Use Claude Code, ou peça à pessoa para permitir workers sem sandbox nas configurações do projeto.",
 	"settings.project.workerSandboxRequireHostUnavailable": "Este computador não consegue aplicar sandbox em workers, então nenhum worker inicia enquanto isso estiver ligado.",
+	"settings.project.workerSandboxHostUnavailable": "This computer can't run the OS sandbox. While \"Only allow sandboxed workers\" is off, workers start without it and the watchdog still blocks protected files.",
 	"settings.project.workerSandboxRequireHostUnavailableReason": "Este computador não consegue aplicar sandbox em workers: o sandbox do Claude Code não roda no Windows. Para usar workers neste projeto, a pessoa pode desligar \"Permitir só workers com sandbox\" nas configurações do projeto. Os workers poderão então ler qualquer arquivo e acessar a internet.",
 	"settings.project.protectedFiles": "Arquivos protegidos",
 	"settings.project.protectedFilesDescription": "Os workers não podem ler estes arquivos.",

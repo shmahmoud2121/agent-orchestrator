@@ -2856,6 +2856,7 @@
 	"settings.project.workerSandboxRequireUnsafe": "Worker 不在沙箱中。看门狗会阻止读取受保护的文件，但 worker 可以访问互联网。",
 	"settings.project.workerSandboxRequireDisabledReason": "此项目只运行沙箱 worker。请使用 Claude Code，或请本人在项目设置中允许非沙箱 worker。",
 	"settings.project.workerSandboxRequireHostUnavailable": "这台电脑无法为 worker 提供沙箱，因此开启此项时不会启动任何 worker。",
+	"settings.project.workerSandboxHostUnavailable": "This computer can't run the OS sandbox. While \"Only allow sandboxed workers\" is off, workers start without it and the watchdog still blocks protected files.",
 	"settings.project.workerSandboxRequireHostUnavailableReason": "这台电脑无法为 worker 提供沙箱：Claude Code 的沙箱无法在 Windows 上运行。要在此项目中使用 worker，本人可以在项目设置中关闭“仅允许沙箱 worker”。之后 worker 将能读取任何文件并访问互联网。",
 	"settings.project.protectedFiles": "受保护的文件",
 	"settings.project.protectedFilesDescription": "worker 无法读取这些文件。",

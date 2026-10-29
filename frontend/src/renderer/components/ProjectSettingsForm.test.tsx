@@ -707,6 +707,7 @@ describe("ProjectSettingsForm", () => {
 		);
 		renderSettings("proj-1", undefined, "agents");
 		expect(await screen.findByText("This computer can't sandbox workers, so no worker will start while this is on.")).toBeInTheDocument();
+		expect(screen.getByText(/This computer can't run the OS sandbox\. While "Only allow sandboxed workers" is off, workers start without it/)).toBeInTheDocument();
 		await userEvent.click(await screen.findByRole("button", { name: "Worker agent" }));
 		const claude = await screen.findByRole("menuitem", { name: /Claude Code/ });
 		expect(claude).toHaveAttribute("aria-disabled", "true");

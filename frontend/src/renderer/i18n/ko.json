@@ -2874,6 +2874,7 @@
 	"settings.project.workerSandboxRequireUnsafe": "워커는 샌드박스되지 않습니다. 워치독이 보호된 파일 읽기를 막지만, 워커는 인터넷에 연결할 수 있습니다.",
 	"settings.project.workerSandboxRequireDisabledReason": "이 프로젝트는 샌드박스 워커만 실행합니다. Claude Code를 쓰거나, 프로젝트 설정에서 샌드박스 없는 워커를 허용해 달라고 본인에게 요청하세요.",
 	"settings.project.workerSandboxRequireHostUnavailable": "이 컴퓨터는 워커를 샌드박스할 수 없어, 이 설정이 켜져 있으면 워커가 시작되지 않습니다.",
+	"settings.project.workerSandboxHostUnavailable": "This computer can't run the OS sandbox. While \"Only allow sandboxed workers\" is off, workers start without it and the watchdog still blocks protected files.",
 	"settings.project.workerSandboxRequireHostUnavailableReason": "이 컴퓨터는 워커를 샌드박스할 수 없습니다. Claude Code의 샌드박스는 Windows에서 동작하지 않습니다. 이 프로젝트에서 워커를 쓰려면 본인이 프로젝트 설정에서 \"샌드박스 워커만 허용\"을 끌 수 있습니다. 그러면 워커는 어떤 파일이든 읽고 인터넷에 연결할 수 있습니다.",
 	"settings.project.protectedFiles": "보호된 파일",
 	"settings.project.protectedFilesDescription": "워커는 이 파일을 읽을 수 없습니다.",

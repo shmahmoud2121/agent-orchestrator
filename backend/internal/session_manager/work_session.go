@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/aoagents/agent-orchestrator/backend/internal/adapters/agent/claudecode"
 	"github.com/aoagents/agent-orchestrator/backend/internal/domain"
 	"github.com/aoagents/agent-orchestrator/backend/internal/ports"
 )
@@ -145,19 +144,4 @@ func workChatDirectories(harness domain.AgentHarness, project domain.ProjectReco
 	}
 	out := append([]string(nil), base...)
 	return append(out, extra...)
-}
-
-// disableWorkSandboxWhenUnavailable keeps a Work worker starting on hosts
-// where Claude Code's OS sandbox cannot run. The watchdog and the built-in
-// instructions are the guards there. Where the sandbox can run, it stays on.
-func disableWorkSandboxWhenUnavailable(project domain.ProjectRecord, sandbox domain.WorkerSandboxConfig) domain.WorkerSandboxConfig {
-	if project.Kind.WithDefault() != domain.ProjectKindWork || !sandbox.IsEnabled() {
-		return sandbox
-	}
-	if claudecode.CheckSandboxAvailability() == nil {
-		return sandbox
-	}
-	off := false
-	sandbox.Enabled = &off
-	return sandbox
 }
