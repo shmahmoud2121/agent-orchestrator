@@ -135,3 +135,47 @@ func TestRestoreRequireSandboxOSUnavailable(t *testing.T) {
 		t.Fatalf("restore wording = %v, want %q", err, want)
 	}
 }
+
+func TestWorkerSandboxOffWhenUnavailableAndNotRequired(t *testing.T) {
+	restore := claudecode.OverrideSandboxAvailabilityForTest(func() error {
+		return claudecode.WindowsSandboxUnavailableError()
+	})
+	t.Cleanup(restore)
+
+	off := false
+	m, st, _, _ := newManager()
+	allowed := domain.ProjectRecord{ID: "mer", Config: domain.ProjectConfig{
+		Worker:        domain.RoleOverride{Harness: domain.HarnessClaudeCode},
+		Orchestrator:  domain.RoleOverride{Harness: domain.HarnessClaudeCode},
+		WorkerSandbox: domain.WorkerSandboxConfig{RequireSandbox: &off, ProtectedPaths: []string{"secrets.txt"}},
+	}}
+	st.projects["mer"] = allowed
+
+	got := m.workerSandboxLaunchFields(domain.KindWorker, allowed, "/ws/mer-1", "mer-1")
+	if got.IsEnabled() {
+		t.Fatal("worker sandbox stayed on where the host cannot sandbox and the person allowed unsandboxed workers")
+	}
+	if len(got.ProtectedPaths) != 1 {
+		t.Fatalf("protected paths = %v, want the project's list kept for the watchdog", got.ProtectedPaths)
+	}
+	if _, _, _, err := m.Spawn(context.Background(), ports.SpawnConfig{ProjectID: "mer", Kind: domain.KindWorker, Harness: domain.HarnessClaudeCode, Prompt: "do it"}); err != nil {
+		t.Fatalf("claude worker with sandbox not required: %v", err)
+	}
+
+	required := allowed
+	required.Config.WorkerSandbox = domain.WorkerSandboxConfig{}
+	if !m.workerSandboxLaunchFields(domain.KindWorker, required, "/ws/mer-1", "mer-1").IsEnabled() {
+		t.Fatal("a required sandbox was turned off; the worker must be refused instead")
+	}
+}
+
+func TestWorkerSandboxKeptWhenAvailable(t *testing.T) {
+	off := false
+	m, _, _, _ := newManager()
+	project := domain.ProjectRecord{ID: "mer", Config: domain.ProjectConfig{
+		WorkerSandbox: domain.WorkerSandboxConfig{RequireSandbox: &off},
+	}}
+	if !m.workerSandboxLaunchFields(domain.KindWorker, project, "/ws/mer-1", "mer-1").IsEnabled() {
+		t.Fatal("sandbox turned off on a host that can sandbox")
+	}
+}

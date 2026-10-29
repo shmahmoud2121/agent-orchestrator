@@ -2874,6 +2874,7 @@
 	"settings.project.workerSandboxRequireUnsafe": "ワーカーはサンドボックスされていません。ウォッチドッグが保護されたファイルの読み取りを止めますが、ワーカーはインターネットに出られます。",
 	"settings.project.workerSandboxRequireDisabledReason": "このプロジェクトはサンドボックス済みワーカーだけを実行します。Claude Code を使うか、プロジェクト設定でサンドボックスなしのワーカーを許可するよう本人に頼んでください。",
 	"settings.project.workerSandboxRequireHostUnavailable": "このコンピューターはワーカーをサンドボックスできないため、これがオンの間はワーカーは起動しません。",
+	"settings.project.workerSandboxHostUnavailable": "This computer can't run the OS sandbox. While \"Only allow sandboxed workers\" is off, workers start without it and the watchdog still blocks protected files.",
 	"settings.project.workerSandboxRequireHostUnavailableReason": "このコンピューターはワーカーをサンドボックスできません。Claude Code のサンドボックスは Windows では動きません。このプロジェクトでワーカーを使うには、本人がプロジェクト設定で「サンドボックス済みワーカーのみ許可」をオフにできます。その場合、ワーカーはどのファイルも読め、インターネットにも出られます。",
 	"settings.project.protectedFiles": "保護されたファイル",
 	"settings.project.protectedFilesDescription": "ワーカーはこれらのファイルを読み取れません。",

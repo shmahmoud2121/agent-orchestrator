@@ -28,3 +28,24 @@ func refuseUnsandboxedWorkerForProject(project domain.ProjectRecord, kind domain
 	}
 	return refuseUnsandboxedWorker(kind, harness, project.Config.WorkerSandbox, restore)
 }
+
+// disableSandboxWhenUnavailable keeps a worker starting on hosts where Claude
+// Code's OS sandbox cannot run (native Windows, or Linux without bubblewrap and
+// socat), but only where the person allowed unsandboxed workers: a Work project,
+// or a project with "Only allow sandboxed workers" turned off. The watchdog is
+// the guard there. Where the sandbox can run, or the project requires it, the
+// config is unchanged, so a required sandbox still refuses the worker.
+func disableSandboxWhenUnavailable(project domain.ProjectRecord, sandbox domain.WorkerSandboxConfig) domain.WorkerSandboxConfig {
+	if !sandbox.IsEnabled() {
+		return sandbox
+	}
+	if project.Kind.WithDefault() != domain.ProjectKindWork && sandbox.IsRequired() {
+		return sandbox
+	}
+	if claudecode.CheckSandboxAvailability() == nil {
+		return sandbox
+	}
+	off := false
+	sandbox.Enabled = &off
+	return sandbox
+}
