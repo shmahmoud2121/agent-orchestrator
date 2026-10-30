@@ -2968,7 +2968,8 @@ ipcMain.handle("keybindings:setRecording", (event, active: unknown): void => {
 ipcMain.handle("featureBuilds:getActive", () => getActiveFeatureBuild());
 // Local-only build: no feature-build listing (GitHub API) and no update feed.
 // The stubs settle every update request with an "unsupported" status so the
-// Updates settings keep working.
+// Updates settings keep working. main/manual-updater.ts holds a user-initiated
+// check against this build's own releases, not wired in yet.
 if (LOCAL_ONLY_BUILD) {
 	installLocalOnlyUpdateIpc(ipcMain);
 	// No cloud sign-in in this build: answer "signed out" so the renderer's

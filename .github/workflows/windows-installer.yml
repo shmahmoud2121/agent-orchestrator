@@ -4,6 +4,10 @@ name: Windows installer
 # Press "Run workflow" on the Actions tab to build the Altair Setup .exe from a
 # branch. The installer is attached to the run as a downloadable artifact.
 # Unsigned (Windows SmartScreen will warn), no release, no secrets, no publish.
+#
+# Each build is stamped <major>.<minor>.<run number> (for example 0.13.12), so
+# Settings -> Updates shows which build is installed and a newer build always
+# has a higher number. Install it over the old one: data in ~/.ao is kept.
 
 on:
   workflow_dispatch:
@@ -48,7 +52,18 @@ jobs:
       - name: Install product UI dependencies
         run: npm ci
         working-directory: packages/product-ui
-      - name: Build installer (unsigned, no publish)
+      - name: Stamp version
+        id: version
+        shell: bash
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          version="$(node -e "const p=require('./package.json'); const [a,b]=p.version.split('.'); process.stdout.write(a+'.'+b+'.'+process.env.RUN_NUMBER)")"
+          node -e "const fs=require('fs'); const p=require('./package.json'); p.version=process.argv[1]; fs.writeFileSync('./package.json', JSON.stringify(p,null,'\t')+'\n')" "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Version: $version" >> "$GITHUB_STEP_SUMMARY"
+      - name: Build installer (unsigned)
         shell: bash
         env:
           AO_RELEASE_REPO: ${{ github.repository }}
@@ -57,19 +72,21 @@ jobs:
         shell: bash
         env:
           BUILD_REF: ${{ inputs.ref }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
           mkdir -p dist-installer
           # NSIS output: out/make/<productName> Setup <version>.exe
           src="$(find out/make -maxdepth 1 -name '*Setup*.exe' | head -n1)"
           if [ -z "$src" ]; then echo "no .exe output found" >&2; exit 1; fi
-          cp "$src" "dist-installer/Altair-Setup.exe"
-          hash="$(sha256sum dist-installer/Altair-Setup.exe | awk '{print $1}')"
-          echo "$hash  Altair-Setup.exe" > dist-installer/Altair-Setup.exe.sha256
-          echo "Built \`$BUILD_REF\` at $(git rev-parse --short HEAD). sha256: $hash" >> "$GITHUB_STEP_SUMMARY"
+          name="Altair-Setup-$VERSION.exe"
+          cp "$src" "dist-installer/$name"
+          hash="$(sha256sum "dist-installer/$name" | awk '{print $1}')"
+          echo "$hash  $name" > "dist-installer/$name.sha256"
+          echo "Built \`$BUILD_REF\` at $(git rev-parse --short HEAD) as $VERSION. sha256: $hash" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
-          name: Altair-Setup-${{ github.run_number }}
+          name: Altair-Setup-${{ steps.version.outputs.version }}
           path: frontend/dist-installer/
           retention-days: 14
           if-no-files-found: error

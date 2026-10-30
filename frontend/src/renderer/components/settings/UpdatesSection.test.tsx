@@ -15,7 +15,9 @@ const {
 	featureBuildsList,
 	featureBuildsGetActive,
 	telemetryCapture,
+	localOnly,
 } = vi.hoisted(() => ({
+	localOnly: { value: false },
 	updGetStatus: vi.fn(),
 	updOnStatus: vi.fn(),
 	updDownload: vi.fn(),
@@ -25,6 +27,15 @@ const {
 	featureBuildsList: vi.fn(),
 	featureBuildsGetActive: vi.fn(),
 	telemetryCapture: vi.fn(),
+}));
+
+// Most of this file covers the automatic-update preferences kept for when the
+// build is not local-only; the local-only case is asserted on its own below.
+vi.mock("../../../shared/local-only", async (importOriginal) => ({
+	...(await importOriginal<typeof import("../../../shared/local-only")>()),
+	get LOCAL_ONLY_BUILD() {
+		return localOnly.value;
+	},
 }));
 
 vi.mock("../../lib/bridge", () => ({
@@ -165,6 +176,18 @@ it.each(["downloading", "preparing"] as const)("shows an existing %s update with
 	fireEvent.click(updating);
 	expect(updDownload).not.toHaveBeenCalled();
 	expect(screen.getByTestId("update-status-line")).toHaveAttribute("aria-busy", "true");
+});
+
+it("hides the automatic-update preferences in the local-only build but keeps Check for updates", async () => {
+	localOnly.value = true;
+	try {
+		renderUpdates();
+		expect(await screen.findByRole("button", { name: "Check for updates" })).toBeInTheDocument();
+		expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+		expect(screen.queryByLabelText("Updates channel")).not.toBeInTheDocument();
+	} finally {
+		localOnly.value = false;
+	}
 });
 
 it.each(["downloaded", "error"] as const)("does not steal focus when an update reaches %s", async (state) => {
