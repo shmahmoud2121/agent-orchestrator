@@ -1,5 +1,10 @@
 // Manual "Check for updates" for the local-only build (see shared/local-only.ts).
 //
+// NOT WIRED IN YET: main.ts still installs the local-only stubs, so the build
+// makes no update checks. Turning this on also needs the Windows installer
+// workflow to publish a release with latest.yml (scripts/feed.mjs), which the
+// release-workflows test forbids today; both are a deliberate later decision.
+//
 // Nothing here runs on its own: no timer, no startup check, no telemetry, no
 // download the user did not ask for. The feed is contacted only when the user
 // presses Check for updates (or Update) in Settings, and it is this build's own

@@ -2,11 +2,10 @@
  * This build of Altair is local-only: the app and its daemon never
  * reach the network on their own initiative, and nothing listens beyond
  * loopback. There is no mobile app pairing, no remote control (remote hosts,
- * LAN listener, tunnels), no AO Cloud, no telemetry export, no automatic
- * update check or version-floor check, and no pricing or link-preview fetching.
- * Agent CLIs still talk to their own model providers, and git/GitHub/GitLab
- * work as before. The one update path is user-initiated: Check for updates in
- * Settings asks this build's own GitHub releases (main/manual-updater.ts).
+ * LAN listener, tunnels), no AO Cloud, no telemetry export, no auto-update or
+ * version-floor check, and no pricing or link-preview fetching. Agent CLIs
+ * still talk to their own model providers, and git/GitHub/GitLab work as
+ * before.
  *
  * The subsystems' code is kept so they can come back later; each switch point
  * reads this flag. It is typed `boolean` (not the literal `true`) so the code
