@@ -2,7 +2,7 @@ import { syncMacWindowButtons } from "./main/window-chrome";
 import { MAC_TITLEBAR_HEIGHT, MAC_WINDOW_BUTTON_X, MAC_WINDOW_BUTTON_RADIUS } from "./shared/window-chrome";
 import { finishUpdateQuit } from "./main/update-quit";
 import { acknowledgeMacUpdateRestart } from "./main/mac-update-progress";
-import { consumeUpdateRelaunchFlag } from "./main/update-relaunch-flag";
+import { consumeUpdateRelaunchFlag, markUpdateRelaunch } from "./main/update-relaunch-flag";
 import {
 	app,
 	BaseWindow,
@@ -49,7 +49,8 @@ import { DesktopTelemetryController } from "./main/desktop-telemetry-controller"
 import { AgentSwitchVisibilityController } from "./main/agent-switch-observability";
 import { readUpdateSettings, updateUpdateSettings, type UpdateSettings, type UpdateStatus } from "./main/update-settings";
 import { LOCAL_ONLY_BUILD } from "./shared/local-only";
-import { installLocalOnlyUpdateIpc } from "./main/local-only-ipc";
+import { autoUpdater as electronAutoUpdater } from "electron-updater";
+import { createManualUpdater, installManualUpdateIpc } from "./main/manual-updater";
 import { readKeybindingOverrides, writeKeybindingOverrides } from "./main/keybinding-settings";
 import { readEditorSettings, writeEditorPreference } from "./main/editor-settings";
 import { createEditorHandoff } from "./main/editor-handoff";
@@ -2966,11 +2967,31 @@ ipcMain.handle("keybindings:setRecording", (event, active: unknown): void => {
 
 // Reads the running build's own version; no network.
 ipcMain.handle("featureBuilds:getActive", () => getActiveFeatureBuild());
-// Local-only build: no feature-build listing (GitHub API) and no update feed.
-// The stubs settle every update request with an "unsupported" status so the
-// Updates settings keep working.
+// Local-only build: no feature-build listing (GitHub API) and no automatic
+// update checks. Check for updates in Settings asks this build's own GitHub
+// releases, and only when the user presses it (see main/manual-updater.ts).
 if (LOCAL_ONLY_BUILD) {
-	installLocalOnlyUpdateIpc(ipcMain);
+	installManualUpdateIpc(
+		ipcMain,
+		createManualUpdater({
+			updater: electronAutoUpdater,
+			isPackaged: app.isPackaged,
+			platform: process.platform,
+			currentVersion: app.getVersion(),
+			cacheBaseDir: (() => {
+				const runFile = runFilePath();
+				return runFile ? path.dirname(runFile) : null;
+			})(),
+			send: (status) => {
+				const target = getShellWebContents();
+				if (target && !target.isDestroyed()) target.send("updates:status", status);
+			},
+			markRelaunch: async (version) => {
+				const runFile = runFilePath();
+				if (runFile) await markUpdateRelaunch({ stateDir: path.dirname(runFile), version });
+			},
+		}),
+	);
 	// No cloud sign-in in this build: answer "signed out" so the renderer's
 	// polling settles instead of logging a missing-handler error each time.
 	ipcMain.handle("cloud:getSession", () => null);

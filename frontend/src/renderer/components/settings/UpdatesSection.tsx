@@ -16,6 +16,7 @@ import { DesktopReleaseNotes } from "../DesktopReleaseNotes";
 import { SettingsOptionMenu } from "./SettingsOptionMenu";
 import { SettingsRow } from "./SettingsRow";
 import { SettingsSection } from "./SettingsSection";
+import { LOCAL_ONLY_BUILD } from "../../../shared/local-only";
 import { captureRendererEvent, releaseChannelFrom, setReleaseChannelContext } from "../../lib/telemetry";
 
 export const updateSettingsQueryKey = ["update-settings"] as const;
@@ -279,7 +280,9 @@ export function UpdatesSection({ titleHidden }: { titleHidden?: boolean } = {}) 
 				)}
 			</SettingsSection>
 
-			<SettingsSection title={t("settings.updates.preferencesSection")} grouped>
+			{/* Local-only build: updates are checked only on request, against one
+			    channel, so the automatic toggle and channel picker would do nothing. */}
+			{!LOCAL_ONLY_BUILD && <SettingsSection title={t("settings.updates.preferencesSection")} grouped>
 				<SettingsRow
 					label={t("settings.updates.automatic")}
 					description={t("settings.updates.automaticHelp")}
@@ -331,7 +334,7 @@ export function UpdatesSection({ titleHidden }: { titleHidden?: boolean } = {}) 
 						{save.error instanceof Error ? save.error.message : t("settings.updates.saveFailed")}
 					</p>
 				)}
-			</SettingsSection>
+			</SettingsSection>}
 			<ConfirmDialog
 				open={pendingPin !== null}
 				title={t("settings.updates.switchFeatureTitle")}
