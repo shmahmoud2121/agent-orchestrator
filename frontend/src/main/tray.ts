@@ -30,7 +30,7 @@ function format(template: string, vars: Record<string, string | number>): string
 
 function trayIconFileName(): string {
 	// macOS menu-bar icons are black template images. Windows and Linux need
-	// the gold star, because a template image is invisible on a light taskbar.
+	// the colored Altair mark, because a template image is invisible on a light taskbar.
 	return process.platform === "darwin" ? "trayIconTemplate.png" : "trayIcon.png";
 }
 
