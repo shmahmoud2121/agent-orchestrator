@@ -1,7 +1,8 @@
+import altairMark from "../assets/brand/altair-mark.png";
+
+// The app's brand mark, shown on the startup screen. It is the same "A" image as
+// the app icon (assets/icon.png), so the loader never shows a different logo.
+// The old star mark is kept at assets/retired/star/mascot.svg.
 export function AOMascot({ className }: { className: string }) {
-	return (
-		<svg className={`inline-block ${className}`} viewBox="0 0 1024 1024" aria-hidden="true">
-			<path fill="var(--accent-star)" d="M512 195L607 382L744 512L607 642L512 829L417 642L280 512L417 382Z" />
-		</svg>
-	);
+	return <img className={`inline-block rounded-[22%] ${className}`} src={altairMark} alt="" aria-hidden="true" draggable={false} />;
 }
