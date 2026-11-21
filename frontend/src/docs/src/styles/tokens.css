@@ -1,42 +1,48 @@
+/* Mirrors the app's dark theme in frontend/src/styles/tokens.css: graphite
+   canvas, warm ivory text, vermilion brand accent, bronze for quiet detail.
+   Keep the two in step when the brand palette changes. */
 :root {
-  --background: #050506;
-  --foreground: #ECE7DC;
-  --card: #0B0B0D;
-  --card-foreground: #ECE7DC;
-  --popover: #100F0C;
-  --popover-foreground: #ECE7DC;
-  --primary: #ECE7DC;
-  --primary-foreground: #050506;
-  --secondary: #15130F;
-  --secondary-foreground: #ECE7DC;
-  --muted: #15130F;
-  --muted-foreground: #B3AD9F;
-  --accent: #15130F;
-  --accent-foreground: #ECE7DC;
-  --destructive: oklch(0.704 0.191 22.216);
+  --accent-brand: #D9643F;
+  --accent-brand-ink: #EC8A6C;
+  --accent-bronze: #C0A785;
+  --background: #101212;
+  --foreground: #F0EDE6;
+  --card: #171A19;
+  --card-foreground: #F0EDE6;
+  --popover: #1C201F;
+  --popover-foreground: #F0EDE6;
+  --primary: #F0EDE6;
+  --primary-foreground: #101212;
+  --secondary: #222725;
+  --secondary-foreground: #F0EDE6;
+  --muted: #222725;
+  --muted-foreground: #B2B7AF;
+  --accent: #222725;
+  --accent-foreground: #F0EDE6;
+  --destructive: #F0788A;
   --destructive-foreground: oklch(0.971 0.013 17.38);
-  --border: #1E1C18;
-  --input: #2B2820;
-  --ring: #E5B451;
-  --chart-1: oklch(0.88 0.011 106.6);
-  --chart-2: oklch(0.58 0.031 107.3);
-  --chart-3: #8E887A;
-  --chart-4: oklch(0.394 0.023 107.4);
-  --chart-5: oklch(0.286 0.016 107.4);
-  --sidebar: #08080A;
+  --border: #2A302D;
+  --input: #353C38;
+  --ring: var(--accent-brand);
+  --chart-1: oklch(0.84 0 0);
+  --chart-2: oklch(0.6 0 0);
+  --chart-3: oklch(0.48 0 0);
+  --chart-4: oklch(0.4 0 0);
+  --chart-5: oklch(0.29 0 0);
+  --sidebar: #141716;
   --sidebar-background: var(--sidebar);
-  --sidebar-foreground: #ECE7DC;
-  --sidebar-primary: #E5B451;
-  --sidebar-primary-foreground: #050506;
-  --sidebar-accent: #15130F;
-  --sidebar-accent-foreground: #ECE7DC;
-  --sidebar-border: #1E1C18;
-  --sidebar-ring: #E5B451;
-  --accent-star: #E5B451;
-  --accent-star-ink: #E5B451;
-  --brand: #d25611;
-  --brand-light: #e8804a;
-  --brand-dark: #9e400a;
+  --sidebar-foreground: #F0EDE6;
+  --sidebar-primary: var(--accent-brand);
+  --sidebar-primary-foreground: #101212;
+  --sidebar-accent: #222725;
+  --sidebar-accent-foreground: #F0EDE6;
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--accent-brand);
+  --accent-star: var(--accent-brand);
+  --accent-star-ink: var(--accent-brand-ink);
+  --brand: var(--accent-brand);
+  --brand-light: var(--accent-brand-ink);
+  --brand-dark: #9E3E22;
 }
 
 @theme {
