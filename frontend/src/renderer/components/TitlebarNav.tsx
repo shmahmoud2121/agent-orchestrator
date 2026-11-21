@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { SHELL_PANEL_SPRING } from "@/lib/motion-spring";
 import { isLinuxPlatform, isMacPlatform } from "../lib/platform";
 import { sidebarIsVisible, useUiStore } from "../stores/ui-store";
-import { AltairWordmark } from "./AltairWordmark";
+import { BrandWordmark } from "../brand";
 import { BuildInfoTooltip } from "./BuildInfoTooltip";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
@@ -153,7 +153,7 @@ export function TitlebarNav({
             style={{ maxWidth: brandMaxWidth }}
           >
             <BuildInfoTooltip>
-              <AltairWordmark />
+              <BrandWordmark />
             </BuildInfoTooltip>
           </span>
         </motion.div>

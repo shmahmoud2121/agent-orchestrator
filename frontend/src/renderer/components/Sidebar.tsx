@@ -133,7 +133,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { SessionArchiveDialog, type SessionArchiveChoice } from "./SessionArchiveDialog";
 import { CreateProjectFlow, type CloneProjectInput, type CreateProjectInput } from "./CreateProjectFlow";
 import { ResizeHandle } from "./ResizeHandle";
-import { AltairWordmark } from "./AltairWordmark";
+import { BrandWordmark } from "../brand";
 import { NAV_ROW_HIGHLIGHT_HOST_CLASS, NavRowHighlight } from "./NavRowHighlight";
 import { isLinuxPlatform, isMacPlatform } from "../lib/platform";
 import type { RemoteHost } from "../hooks/useRemoteHosts";
@@ -1006,7 +1006,7 @@ export function Sidebar({
 					<span
 						className="sidebar-expanded-chrome min-w-0 flex-1 truncate text-base font-semibold leading-tight text-foreground group-data-[collapsible=icon]:hidden"
 					>
-						<BuildInfoTooltip><AltairWordmark /></BuildInfoTooltip>
+						<BuildInfoTooltip><BrandWordmark /></BuildInfoTooltip>
 					</span>
 				</button>
 				<Tooltip>
