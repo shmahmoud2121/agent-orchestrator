@@ -16,13 +16,15 @@ export function bundledDaemonBinaryName(platform: NodeJS.Platform): string {
 
 /** Name linked by Developer Mode. The app still launches the daemon as `ao`. */
 export function bundledCliBinaryName(platform: NodeJS.Platform): string {
-	return platform === "win32" ? "altair.exe" : "altair";
+	return platform === "win32" ? "meiyo.exe" : "meiyo";
 }
 
 const PRODUCT_INSTALL_DIR_NAMES = new Set([
 	"agent orchestrator.app",
 	"agent orchestrator",
 	"orchestrator.inc",
+	"meiyo.app",
+	"meiyo",
 	"altair.app",
 	"altair",
 ]);
@@ -32,14 +34,14 @@ function pathParts(filePath: string): string[] {
 }
 
 /**
- * True when the path is ao/altair inside a daemon directory of this product,
- * including an install that still uses a previous folder name.
+ * True when the path is ao, meiyo, or altair inside a daemon directory of this
+ * product, including an install that still uses a previous folder or executable name.
  */
 export function isProductDaemonExecutable(filePath: string): boolean {
 	const parts = pathParts(filePath);
 	const base = (parts.at(-1) ?? "").toLowerCase();
 	const name = base.endsWith(".exe") ? base.slice(0, -4) : base;
-	if (name !== "ao" && name !== "altair") return false;
+	if (name !== "ao" && name !== "meiyo" && name !== "altair") return false;
 	if ((parts.at(-2) ?? "").toLowerCase() !== "daemon") return false;
 	return parts.some((part) => PRODUCT_INSTALL_DIR_NAMES.has(part.toLowerCase()));
 }
@@ -108,15 +110,15 @@ export function bundledDaemonIdentityError(
 ): string | null {
 	if (appImagePath) {
 		if (!probe.appImagePath) {
-			return "An older Altair daemon is already running, but it does not report its install identity. Stop it and restart this app.";
+			return "An older Meiyo daemon is already running, but it does not report its install identity. Stop it and restart this app.";
 		}
 		if (!samePath(probe.appImagePath, appImagePath)) {
-			return `Another Altair daemon is already running from ${probe.appImagePath}; expected ${appImagePath}. Stop the other daemon before using this app.`;
+			return `Another Meiyo daemon is already running from ${probe.appImagePath}; expected ${appImagePath}. Stop the other daemon before using this app.`;
 		}
 		return null;
 	}
 	if (!probe.executablePath) {
-		return "An older Altair daemon is already running, but it does not report its binary path. Stop it and restart this app.";
+		return "An older Meiyo daemon is already running, but it does not report its binary path. Stop it and restart this app.";
 	}
 	if (samePath(probe.executablePath, expectedCommand)) return null;
 	// A previous install (Agent Orchestrator, Orchestrator.inc) is this product.
@@ -124,5 +126,5 @@ export function bundledDaemonIdentityError(
 	if (isProductDaemonExecutable(probe.executablePath) && isProductDaemonExecutable(expectedCommand)) {
 		return null;
 	}
-	return `Another Altair daemon is already running from ${probe.executablePath}; expected ${expectedCommand}. Stop the other daemon before using this app.`;
+	return `Another Meiyo daemon is already running from ${probe.executablePath}; expected ${expectedCommand}. Stop the other daemon before using this app.`;
 }

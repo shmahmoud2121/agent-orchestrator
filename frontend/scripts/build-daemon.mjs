@@ -45,6 +45,7 @@ if (isWindowsDev) {
 	mkdirSync(outDir, { recursive: true });
 	rmSync(outPath, { force: true });
 	rmSync(join(outDir, "altair.exe"), { force: true });
+	rmSync(join(outDir, "meiyo.exe"), { force: true });
 	rmSync(windowsDevManifestPath, { force: true });
 	cleanupOldWindowsDevDaemons(undefined);
 } else {
@@ -67,7 +68,7 @@ if (result.status !== 0) {
 	process.exit(result.status ?? 1);
 }
 
-// The app launches daemon/ao. altair is the name Developer Mode links, and the
+// The app launches daemon/ao. meiyo is the name Developer Mode links, and the
 // name a person types. Mac and Linux share one inode; Windows gets a copy.
 aliasCliBinary(buildOutPath);
 
@@ -77,7 +78,7 @@ if (isWindowsDev) {
 }
 
 function aliasCliBinary(binaryPath) {
-	const aliasPath = join(dirname(binaryPath), process.platform === "win32" ? "altair.exe" : "altair");
+	const aliasPath = join(dirname(binaryPath), process.platform === "win32" ? "meiyo.exe" : "meiyo");
 	rmSync(aliasPath, { force: true });
 	if (process.platform === "win32") {
 		copyFileSync(binaryPath, aliasPath);

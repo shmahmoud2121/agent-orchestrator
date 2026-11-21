@@ -29,11 +29,11 @@ type FieldErrors = {
 function joinResults(documents: string, name: string): string {
 	const safe = name.trim().replace(/[<>:"/\\|?*\u0000-\u001f]/g, " ").replace(/[. ]+$/g, "").trim() || "project";
 	const sep = documents.includes("\\") ? "\\" : "/";
-	return `${documents.replace(/[\\/]+$/, "")}${sep}Altair${sep}${safe}`;
+	return `${documents.replace(/[\\/]+$/, "")}${sep}Meiyo${sep}${safe}`;
 }
 
 // outputFolder names the default results folder inside an original folder:
-// C:\Cases\06_Archive gives C:\Cases\06_Archive\Output. Altair keeps the files
+// C:\Cases\06_Archive gives C:\Cases\06_Archive\Output. Meiyo keeps the files
 // already there untouched and only writes inside Output.
 function outputFolder(folder: string): string {
 	const sep = folder.includes("\\") ? "\\" : "/";
@@ -86,7 +86,7 @@ export function CreateWorkProjectSheet({
 	const agentsQuery = useAgentReadinessQuery(open);
 	const agents = useMemo(() => agentsQuery.data?.agents ?? [], [agentsQuery.data?.agents]);
 	useEnsureAgentReadiness({ agentIds: [manager, worker].filter(Boolean), enabled: open && (manager !== "" || worker !== "") });
-	// An original folder puts results beside it; files alone use Documents\Altair.
+	// An original folder puts results beside it; files alone use Documents\Meiyo.
 	const firstFolder = sources.find((source) => folders.includes(source));
 	const defaultResults = (firstFolder ? outputFolder(firstFolder) : "") || (documents ? joinResults(documents, name) : "");
 	const resultsDir = customResults ?? defaultResults;

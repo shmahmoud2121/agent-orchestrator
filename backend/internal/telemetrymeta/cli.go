@@ -6,13 +6,16 @@ import "strings"
 // and best-effort legacy loopback callers before cost-control classification.
 func NormalizeCommandPath(commandPath string) string {
 	normalized := strings.ToLower(strings.Join(strings.Fields(commandPath), " "))
-	// Help text says altair. Cost-control maps and older callers still say ao.
-	// The two names are one binary, so classification treats them as one path.
-	if normalized == "altair" {
-		return "ao"
-	}
-	if strings.HasPrefix(normalized, "altair ") {
-		return "ao" + strings.TrimPrefix(normalized, "altair")
+	// Help text says meiyo. The previous command name was altair. Cost-control
+	// maps and older callers still say ao. The names are one binary, so
+	// classification treats them as one path.
+	for _, name := range []string{"meiyo", "altair"} {
+		if normalized == name {
+			return "ao"
+		}
+		if strings.HasPrefix(normalized, name+" ") {
+			return "ao" + strings.TrimPrefix(normalized, name)
+		}
 	}
 	return normalized
 }

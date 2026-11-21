@@ -279,7 +279,7 @@ export function CreateProjectFlow({
 			return true;
 		} catch {
 			reportProjectError(t("createProject.cloneCleanupFailed", {
-				defaultValue: "Altair could not remove the incomplete checkout. Try again before leaving this flow.",
+				defaultValue: "Meiyo could not remove the incomplete checkout. Try again before leaving this flow.",
 			}));
 			return false;
 		}
@@ -574,7 +574,7 @@ export function CreateProjectFlow({
 			if (cloneSelection) reportProjectError(message);
 			else if (selectedKind === "single_repo") reportProjectError(safeProjectCreationError(
 				message,
-				t("createProject.createFailedBody", { defaultValue: "Altair could not create this project. Try again." }),
+				t("createProject.createFailedBody", { defaultValue: "Meiyo could not create this project. Try again." }),
 				code,
 			));
 			else reportProjectError(message);
@@ -638,7 +638,7 @@ export function CreateProjectFlow({
 		} catch (err) {
 			reportProjectError(clonedPath
 				? t("createProject.cloneValidationFailed", {
-					defaultValue: "Altair cloned the repository but could not verify the checkout. Try again.",
+					defaultValue: "Meiyo cloned the repository but could not verify the checkout. Try again.",
 				})
 				: apiErrorCode(err) === "GIT_CLONE_FAILED"
 					? t("createProject.cloneFailedGuidance", {
@@ -1069,7 +1069,7 @@ function importBlockingErrorLabel(code: string): string {
 		case "UNSUPPORTED_GIT_METADATA":
 			return "Repair the Git metadata or choose a different folder.";
 		case "CHILD_REPO_SCAN_FAILED":
-			return "Altair could not inspect the repositories under this folder.";
+			return "Meiyo could not inspect the repositories under this folder.";
 		case "IMPORT_PATH_UNSAFE":
 			return "Choose a specific project folder outside AO's own state directories.";
 		case "DETACHED_HEAD":
@@ -1630,7 +1630,7 @@ function CloudProjectCard({
 			if (err instanceof CloudCpError && err.status === 401) {
 				setGithubOAuthError(
 					t("createProject.cloudSessionExpiredForConnect", {
-						defaultValue: "Your Altair Cloud session expired. Sign in again, then connect GitHub.",
+						defaultValue: "Your Meiyo Cloud session expired. Sign in again, then connect GitHub.",
 					}),
 				);
 				onAuthRequired();

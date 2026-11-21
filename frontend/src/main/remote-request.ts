@@ -12,7 +12,7 @@ export type RemoteHealth = "online" | "unauthorized" | "offline" | "not-a-daemon
 
 export class IncompatibleRemoteVersionError extends Error {
 	constructor() {
-		super("Altair versions are incompatible. Update Altair on this computer and the remote host.");
+		super("Meiyo versions are incompatible. Update Meiyo on this computer and the remote host.");
 		this.name = "IncompatibleRemoteVersionError";
 	}
 }

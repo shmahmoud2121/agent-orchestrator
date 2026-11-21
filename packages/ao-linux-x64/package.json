@@ -1,7 +1,7 @@
 {
 	"name": "@aoagents/ao-linux-x64",
 	"version": "0.10.0",
-	"description": "Altair CLI binary for Linux x64.",
+	"description": "Meiyo CLI binary for Linux x64.",
 	"license": "MIT",
 	"os": [
 		"linux"
@@ -11,6 +11,6 @@
 	],
 	"files": [
 		"bin/ao",
-		"bin/altair"
+		"bin/meiyo"
 	]
 }

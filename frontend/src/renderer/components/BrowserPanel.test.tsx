@@ -1517,16 +1517,16 @@ describe("BrowserPanel", () => {
 		{
 			rejectionCode: "BROWSER_RUNTIME_TOKEN_REJECTED",
 			message:
-				"The Altair daemon refused the browser runtime because another Altair launch started it. Run `altair stop`, then reopen Altair.",
+				"The Meiyo daemon refused the browser runtime because another Meiyo launch started it. Run `meiyo stop`, then reopen Meiyo.",
 		},
 		{
 			rejectionCode: "BROWSER_RUNTIME_PROTOCOL_MISMATCH",
 			message:
-				"The Altair daemon refused the browser runtime because it comes from a different Altair version than this app. Run `altair stop`, then reopen Altair.",
+				"The Meiyo daemon refused the browser runtime because it comes from a different Meiyo version than this app. Run `meiyo stop`, then reopen Meiyo.",
 		},
 		// A malformed hello, a code this app doesn't know, or none: no cause is claimed.
-		{ rejectionCode: "BROWSER_RUNTIME_BAD_HELLO", message: "The Altair daemon refused the browser runtime. Run `altair stop`, then reopen Altair." },
-		{ rejectionCode: undefined, message: "The Altair daemon refused the browser runtime. Run `altair stop`, then reopen Altair." },
+		{ rejectionCode: "BROWSER_RUNTIME_BAD_HELLO", message: "The Meiyo daemon refused the browser runtime. Run `meiyo stop`, then reopen Meiyo." },
+		{ rejectionCode: undefined, message: "The Meiyo daemon refused the browser runtime. Run `meiyo stop`, then reopen Meiyo." },
 	])(
 		"says why the daemon refused the runtime ($rejectionCode), without a Reconnect that can't help (#6466)",
 		({ rejectionCode, message }) => {

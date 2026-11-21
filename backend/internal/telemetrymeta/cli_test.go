@@ -9,6 +9,12 @@ func TestNormalizeCommandPath(t *testing.T) {
 	if got := NormalizeCommandPath("altair status"); got != "ao status" {
 		t.Fatalf("NormalizeCommandPath(altair) = %q, want ao status", got)
 	}
+	if got := NormalizeCommandPath("meiyo status"); got != "ao status" {
+		t.Fatalf("NormalizeCommandPath(meiyo) = %q, want ao status", got)
+	}
+	if got := NormalizeCommandPath("meiyo"); got != "ao" {
+		t.Fatalf("NormalizeCommandPath(meiyo) = %q, want ao", got)
+	}
 }
 
 func TestIsRoutineInternalCLICommandNormalizesLegacyShapes(t *testing.T) {

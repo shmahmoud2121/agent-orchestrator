@@ -359,19 +359,19 @@ export const aoBridge: AoBridge =
 			},
 			localAuthAvailable: async () => false,
 			localRegister: async () => {
-				throw new Error("Altair Cloud sign-in requires the desktop app.");
+				throw new Error("Meiyo Cloud sign-in requires the desktop app.");
 			},
 			localLogin: async () => {
-				throw new Error("Altair Cloud sign-in requires the desktop app.");
+				throw new Error("Meiyo Cloud sign-in requires the desktop app.");
 			},
 			onSessionChanged: () => () => undefined,
 		},
 		cloudCp: {
 			request: async () => {
-				throw new Error("Altair Cloud requests require the desktop app.");
+				throw new Error("Meiyo Cloud requests require the desktop app.");
 			},
 			openStream: async () => {
-				throw new Error("Altair Cloud event streams require the desktop app.");
+				throw new Error("Meiyo Cloud event streams require the desktop app.");
 			},
 			closeStream: () => undefined,
 			onStreamEvent: () => () => undefined,

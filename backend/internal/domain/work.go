@@ -19,11 +19,11 @@ const WorkOriginalChangedReason = "tried to change an original file"
 
 // WorkGuardUnavailableMessage is returned when a Work session would otherwise
 // start without every original-file guard.
-const WorkGuardUnavailableMessage = "Altair couldn't turn on the original-file guard for this session"
+const WorkGuardUnavailableMessage = "Meiyo couldn't turn on the original-file guard for this session"
 
 // WorkHarnessUnwatchedMessage is returned when a Work session would use an AI
 // the watchdog does not cover.
-const WorkHarnessUnwatchedMessage = "Work projects need an AI that Altair can watch."
+const WorkHarnessUnwatchedMessage = "Work projects need an AI that Meiyo can watch."
 
 // WorkConfig is the durable layout of a Work project. Sources are the person's
 // original folders or files. ResultsDir is where agents write.
@@ -64,7 +64,7 @@ func WorkHarnessWatched(h AgentHarness) bool {
 
 // ValidateWorkLayout checks a Work project's originals and results folder.
 // It creates ResultsDir when the layout is valid and the folder is missing.
-// aoHome is the Altair home (usually ~/.ao). Paths are compared after Clean
+// aoHome is the Meiyo home (usually ~/.ao). Paths are compared after Clean
 // and EvalSymlinks of the longest existing ancestor. On Windows the comparison
 // ignores case.
 func ValidateWorkLayout(cfg *WorkConfig, aoHome string) error {
@@ -96,7 +96,7 @@ func ValidateWorkLayout(cfg *WorkConfig, aoHome string) error {
 			return workErr("WORK_SOURCE_MISSING", fmt.Sprintf("Original %s could not be resolved.", raw))
 		}
 		if pathCoversFold(home, canon) {
-			return workErr("WORK_PATH_UNDER_AO", "Originals cannot live inside the Altair home folder.")
+			return workErr("WORK_PATH_UNDER_AO", "Originals cannot live inside the Meiyo home folder.")
 		}
 		key := foldPathKey(canon)
 		if _, ok := seen[key]; ok {
@@ -114,7 +114,7 @@ func ValidateWorkLayout(cfg *WorkConfig, aoHome string) error {
 		return workErr("WORK_RESULTS_NOT_ABSOLUTE", "The results folder could not be resolved.")
 	}
 	if pathCoversFold(home, results) {
-		return workErr("WORK_PATH_UNDER_AO", "The results folder cannot live inside the Altair home folder.")
+		return workErr("WORK_PATH_UNDER_AO", "The results folder cannot live inside the Meiyo home folder.")
 	}
 	// The results folder may sit inside an original folder (an "Output"
 	// subfolder); it may not be the original itself or hold one.
@@ -165,12 +165,12 @@ func canonicalAOHome(aoHome string) (string, error) {
 	if aoHome == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return "", workErr("WORK_PATH_UNDER_AO", "Altair couldn't find the home folder, so it can't check that originals stay outside it.")
+			return "", workErr("WORK_PATH_UNDER_AO", "Meiyo couldn't find the home folder, so it can't check that originals stay outside it.")
 		}
 		aoHome = filepath.Join(home, ".ao")
 	}
 	if !filepath.IsAbs(aoHome) {
-		return "", workErr("WORK_PATH_UNDER_AO", "Altair couldn't resolve its home folder.")
+		return "", workErr("WORK_PATH_UNDER_AO", "Meiyo couldn't resolve its home folder.")
 	}
 	canon, err := CanonicalPath(aoHome)
 	if err != nil {
@@ -209,7 +209,7 @@ func PathsOverlap(a, b string) (bool, error) {
 	return pathCoversFold(left, right) || pathCoversFold(right, left), nil
 }
 
-// AOHome returns Altair's home folder. When dataDir ends in "data" (the
+// AOHome returns Meiyo's home folder. When dataDir ends in "data" (the
 // default ~/.ao/data layout, including ~/.ao/dev/data), the home is its parent.
 // Any other data directory, such as a lab AO_DATA_DIR, is its own home so the
 // scratch folder stays inside that directory.

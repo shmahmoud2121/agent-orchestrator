@@ -1,7 +1,7 @@
 {
 	"name": "@aoagents/ao-darwin-x64",
 	"version": "0.10.0",
-	"description": "Altair CLI binary for macOS x64.",
+	"description": "Meiyo CLI binary for macOS x64.",
 	"license": "MIT",
 	"os": [
 		"darwin"
@@ -11,6 +11,6 @@
 	],
 	"files": [
 		"bin/ao",
-		"bin/altair"
+		"bin/meiyo"
 	]
 }

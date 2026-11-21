@@ -46,7 +46,7 @@ describe("CreateWorkProjectSheet", () => {
 
 		await user.click(screen.getByLabelText("Manager"));
 		expect(screen.getByRole("option", { name: /Cursor/ })).toHaveAttribute("aria-disabled", "true");
-		expect(screen.getByRole("option", { name: /Cursor/ })).toHaveAttribute("title", "Work projects need an AI that Altair can watch.");
+		expect(screen.getByRole("option", { name: /Cursor/ })).toHaveAttribute("title", "Work projects need an AI that Meiyo can watch.");
 		await user.click(screen.getByRole("option", { name: /Claude Code/ }));
 		expect(create).toBeDisabled();
 
@@ -74,13 +74,13 @@ describe("CreateWorkProjectSheet", () => {
 
 		await user.click(screen.getByRole("button", { name: "Add files" }));
 		expect(await screen.findByText("brief.pdf")).toBeInTheDocument();
-		expect(results).toHaveValue("C:\\Users\\me\\Documents\\Altair\\test");
+		expect(results).toHaveValue("C:\\Users\\me\\Documents\\Meiyo\\test");
 
 		await user.click(screen.getByRole("button", { name: "Add folder" }));
 		expect(await screen.findByText("06_Archive")).toBeInTheDocument();
 		expect(results).toHaveValue("C:\\Cases\\06_Archive\\Output");
 
 		await user.click(screen.getByRole("button", { name: "Remove 06_Archive" }));
-		expect(results).toHaveValue("C:\\Users\\me\\Documents\\Altair\\test");
+		expect(results).toHaveValue("C:\\Users\\me\\Documents\\Meiyo\\test");
 	});
 });

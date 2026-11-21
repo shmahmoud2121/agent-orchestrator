@@ -1027,7 +1027,7 @@ function unavailableChannelStatus(version?: string): UpdateStatus {
       semver.lt(version, app.getVersion())) {
     return {
       state: "unsupported",
-      message: "This channel's latest release is older than the installed build. Altair will switch when a newer release is available.",
+      message: "This channel's latest release is older than the installed build. Meiyo will switch when a newer release is available.",
     };
   }
   return { state: "not-available" };
@@ -2033,11 +2033,11 @@ function wireUpdaterEvents(): void {
           message:
             exhausted
               ? "Couldn't install the update — the copy failed verification twice. " +
-                "Altair has discarded the download and stopped retrying on its own. Check " +
+                "Meiyo has discarded the download and stopped retrying on its own. Check " +
                 "for updates again to start a fresh one, or download the latest build " +
                 "manually and install it over this one."
               : "Couldn't install the update — the downloaded copy failed verification. " +
-                "Altair will prepare it again on the next check.",
+                "Meiyo will prepare it again on the next check.",
         }),
       );
       return;
@@ -2645,7 +2645,7 @@ export async function setMacDifferentialUpdates(
 // with nothing yet installed in /Applications.
 export function getMacInstallBlocker(): string | undefined {
   if (process.platform !== "darwin") return undefined;
-  // .../Altair.app/Contents/MacOS/<binary> -> the .app bundle root
+  // .../Meiyo.app/Contents/MacOS/<binary> -> the .app bundle root
   const bundle = path.resolve(process.execPath, "..", "..", "..");
   // Everything below assumes that shape. Under `npm start`, and in tests,
   // execPath is a bare node/electron binary and this resolves to some unrelated
@@ -2654,9 +2654,9 @@ export function getMacInstallBlocker(): string | undefined {
   if (!bundle.endsWith(".app")) return undefined;
   if (bundle.includes("/AppTranslocation/")) {
     return (
-      "macOS is running Altair from a temporary read-only location " +
+      "macOS is running Meiyo from a temporary read-only location " +
       "because it was opened straight from where it was downloaded. Quit the app, " +
-      "move Altair.app into /Applications, reopen it from there, and " +
+      "move Meiyo.app into /Applications, reopen it from there, and " +
       "then restart to update."
     );
   }
@@ -2669,9 +2669,9 @@ export function getMacInstallBlocker(): string | undefined {
     // Deliberately does NOT say "move it to /Applications": the app may already
     // be there, and telling someone to do what they have done reads as a bug.
     return (
-      "The update can't be installed because Altair's location isn't " +
+      "The update can't be installed because Meiyo's location isn't " +
       `writable: ${path.dirname(bundle)}. Fix that folder's permissions, or move ` +
-      "Altair.app somewhere you can write to, reopen it, and then " +
+      "Meiyo.app somewhere you can write to, reopen it, and then " +
       "restart to update."
     );
   }
@@ -2791,7 +2791,7 @@ export async function quitAndInstallUpdate(confirmedVersion?: string): Promise<U
         new Promise<void>((resolve) => setTimeout(resolve, 750)),
       ]);
       autoUpdater.quitAndInstall(false, true);
-      if (!macRestartRequested) throw nativePreparationError ?? new Error("The installer could not restart Altair.");
+      if (!macRestartRequested) throw nativePreparationError ?? new Error("The installer could not restart Meiyo.");
     } catch (err) {
       macRestartRequested = false;
       stagedInCurrentProcess = false;
@@ -2886,7 +2886,7 @@ export async function ensureUpdatePrefs(stateDir: string): Promise<void> {
     buttons: ["Enable auto-updates", "Not now"],
     defaultId: 0,
     cancelId: 1,
-    message: "Keep Altair up to date automatically?",
+    message: "Keep Meiyo up to date automatically?",
     detail: "You can change this later in Settings.",
   });
   if (optIn.response !== 0) {

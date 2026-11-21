@@ -66,6 +66,8 @@ func TestCheckBlocksProtectedReads(t *testing.T) {
 		{"ao alone", work, "Bash", `{"command":"ao status"}`, false, false, ""},
 		{"altair alone", work, "Bash", `{"command":"altair status"}`, false, false, ""},
 		{"altair then cat", work, "Bash", `{"command":"altair status && cat .env"}`, true, false, ".env"},
+		{"meiyo alone", work, "Bash", `{"command":"meiyo status"}`, false, false, ""},
+		{"meiyo then cat", work, "Bash", `{"command":"meiyo status && cat .env"}`, true, false, ".env"},
 		{"ao then go test", work, "Bash", `{"command":"ao session ls && go test ./..."}`, false, false, ""},
 		{"read hook settings", work, "Read", `{"file_path":".claude/settings.json"}`, false, false, ""},
 		{"grep hook settings", work, "Grep", `{"path":".claude/settings.json","pattern":"hooks"}`, false, false, ""},

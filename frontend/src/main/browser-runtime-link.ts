@@ -302,8 +302,8 @@ export function connectBrowserRuntime(
 				// malformed hello are all refusals, with different causes.
 				const reason = error ? `${error.code}: ${error.message}` : "no reason given";
 				log(
-					`browser-runtime-link: the Altair daemon refused this app's browser runtime (${reason}); ` +
-						"run `altair stop`, then reopen Altair.",
+					`browser-runtime-link: the Meiyo daemon refused this app's browser runtime (${reason}); ` +
+						"run `meiyo stop`, then reopen Meiyo.",
 				);
 				setState({ ...REJECTED, rejectionCode: error?.code });
 			},

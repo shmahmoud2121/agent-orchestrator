@@ -213,9 +213,9 @@ process.stdout.on("error", ignoreStdStreamError);
 process.stderr.on("error", ignoreStdStreamError);
 
 // The name shown in window titles, the menu bar, the dock, and the About panel.
-// The macOS bundle is Altair.app and the executable is altair. The downloaded
+// The macOS bundle is Meiyo.app and the executable is meiyo. The downloaded
 // Windows installer file name stays "Agent Orchestrator Setup". appId is unchanged.
-const APP_DISPLAY_NAME = "Altair";
+const APP_DISPLAY_NAME = "Meiyo";
 
 // Must run before app ready so the About panel and default-menu role labels use it.
 // Unpackaged runs get a distinct name so the dev window, dock menu, and About
@@ -842,7 +842,7 @@ async function createWindowInternal(): Promise<void> {
 	windowComposition = composition;
 	syncNativeWindowBackground();
 	const shellWebContents = getShellWebContents();
-	if (!shellWebContents) throw new Error("Altair shell WebContents was not created");
+	if (!shellWebContents) throw new Error("Meiyo shell WebContents was not created");
 	installDaemonAPIAuthentication({
 		session: shellWebContents.session,
 		port: () => daemonStatus.port,
@@ -1191,7 +1191,7 @@ function runFilePath(): string | null {
 
 function editorStateDir(): string {
 	const runFile = runFilePath();
-	if (!runFile) throw new Error("Altair state directory is not available.");
+	if (!runFile) throw new Error("Meiyo state directory is not available.");
 	return path.dirname(runFile);
 }
 
@@ -1207,7 +1207,7 @@ async function fetchDesktopSessionPath(
 	unavailableMessage: string,
 ): Promise<string> {
 	if (daemonStatus.state !== "ready" || !daemonStatus.port) {
-		throw workspaceCheckUnavailable("Altair daemon is not ready.");
+		throw workspaceCheckUnavailable("Meiyo daemon is not ready.");
 	}
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), DAEMON_PROBE_TIMEOUT_MS);
@@ -1217,10 +1217,10 @@ async function fetchDesktopSessionPath(
 			{ signal: controller.signal },
 		).catch((error: unknown) => {
 			if (error instanceof Error && error.name === "AbortError") throw error;
-			throw workspaceCheckUnavailable("Altair daemon is not reachable.");
+			throw workspaceCheckUnavailable("Meiyo daemon is not reachable.");
 		});
 		const body = await response.json().catch((error: unknown) => {
-			if (response.status >= 500) throw workspaceCheckUnavailable("Altair daemon is not ready.");
+			if (response.status >= 500) throw workspaceCheckUnavailable("Meiyo daemon is not ready.");
 			throw error;
 		}) as Record<string, unknown>;
 		if (!response.ok) {
@@ -1545,12 +1545,12 @@ function daemonIdentityError(launch: DaemonLaunchSpec, probe: DaemonProbe): stri
 			: false;
 		const executableMatches = probe.executablePath ? canonicalPathInside(probe.executablePath, launch.cwd) : false;
 		if (!probe.workingDirectory && !probe.startupWorkingDirectory && !probe.executablePath) {
-			return "An older Altair daemon is already running, but it does not report its checkout identity. Stop it and restart this app.";
+			return "An older Meiyo daemon is already running, but it does not report its checkout identity. Stop it and restart this app.";
 		}
 		if (!cwdMatches && !startupCwdMatches && !executableMatches) {
 			const actual =
 				probe.startupWorkingDirectory ?? probe.workingDirectory ?? probe.executablePath ?? "an unknown location";
-			return `Another Altair daemon is already running from ${actual}; expected this checkout at ${launch.cwd}. Stop the other daemon before using this checkout.`;
+			return `Another Meiyo daemon is already running from ${actual}; expected this checkout at ${launch.cwd}. Stop the other daemon before using this checkout.`;
 		}
 		return null;
 	}
@@ -1804,7 +1804,7 @@ async function refreshDaemonStatus(): Promise<DaemonStatus> {
 	) {
 		setDaemonStatus({
 			state: "stopped",
-			message: "Altair daemon is no longer reachable.",
+			message: "Meiyo daemon is no longer reachable.",
 			code: "daemon_unreachable",
 		});
 	}
@@ -2095,7 +2095,7 @@ async function startDaemonInner(startEpoch: number): Promise<DaemonStatus> {
 	if (launch.source === "bundled" && !existsSync(launch.command)) {
 		setDaemonStatus({
 			state: "error",
-			message: `Bundled Altair daemon binary was not found at ${launch.command}. Rebuild the desktop package.`,
+			message: `Bundled Meiyo daemon binary was not found at ${launch.command}. Rebuild the desktop package.`,
 			code: "binary_missing",
 		});
 		return daemonStatus;
@@ -2390,7 +2390,7 @@ function stopDaemon(): DaemonStatus {
 function reportDaemonRestartFailure(error: unknown): DaemonStatus {
 	setDaemonStatus({
 		state: "error",
-		message: `Could not restart the Altair daemon: ${error instanceof Error ? error.message : String(error)}`,
+		message: `Could not restart the Meiyo daemon: ${error instanceof Error ? error.message : String(error)}`,
 		details: daemonOutput.trim() || undefined,
 		code: "spawn_failed",
 	});
@@ -2435,7 +2435,7 @@ async function restartDaemon(): Promise<DaemonStatus> {
 		// a replacement instead of collapsing back to a code-less stopped state.
 		setDaemonStatus({
 			state: "error",
-			message: "Altair daemon is still stopping. It will restart automatically when shutdown completes.",
+			message: "Meiyo daemon is still stopping. It will restart automatically when shutdown completes.",
 			details: daemonOutput.trim() || undefined,
 			code: "not_ready",
 		});
@@ -3240,7 +3240,7 @@ function initAutoUpdates(): void {
 }
 
 // Resolve the bundle path `ao start` will later `open` and stat as a usable app.
-// On macOS process.execPath is .../Altair.app/Contents/MacOS/<exe>;
+// On macOS process.execPath is .../Meiyo.app/Contents/MacOS/<exe>;
 // the thing `ao start` opens is the enclosing `.app` directory, so walk up three
 // levels (MacOS -> Contents -> .app). app.getAppPath() is WRONG here: it returns
 // the app.asar archive path inside the bundle, not the bundle itself.

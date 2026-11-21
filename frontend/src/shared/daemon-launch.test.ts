@@ -110,14 +110,14 @@ describe("bundledDaemonIdentityError", () => {
 		const other = "/home/user/Apps/agent-orchestrator-nightly.AppImage";
 		const probe = { executablePath: "/tmp/.mount_agent-1Qs4N6/resources/daemon/ao", appImagePath: other };
 		expect(bundledDaemonIdentityError(probe, launchCommand, appImage, samePath)).toBe(
-			`Another Altair daemon is already running from ${other}; expected ${appImage}. Stop the other daemon before using this app.`,
+			`Another Meiyo daemon is already running from ${other}; expected ${appImage}. Stop the other daemon before using this app.`,
 		);
 	});
 
 	it("fails closed under AppImage when the daemon does not report its install identity", () => {
 		const probe = { executablePath: "/tmp/.mount_agent-1Qs4N6/resources/daemon/ao" };
 		expect(bundledDaemonIdentityError(probe, launchCommand, appImage, samePath)).toBe(
-			"An older Altair daemon is already running, but it does not report its install identity. Stop it and restart this app.",
+			"An older Meiyo daemon is already running, but it does not report its install identity. Stop it and restart this app.",
 		);
 	});
 
@@ -125,12 +125,12 @@ describe("bundledDaemonIdentityError", () => {
 		const command = "/opt/Agent Orchestrator/resources/daemon/ao";
 		expect(bundledDaemonIdentityError({ executablePath: command }, command, undefined, samePath)).toBeNull();
 		expect(bundledDaemonIdentityError({ executablePath: "/other/ao" }, command, undefined, samePath)).toBe(
-			`Another Altair daemon is already running from /other/ao; expected ${command}. Stop the other daemon before using this app.`,
+			`Another Meiyo daemon is already running from /other/ao; expected ${command}. Stop the other daemon before using this app.`,
 		);
 	});
 
 	it("treats a previous install's daemon as this product", () => {
-		const expected = "/Applications/Altair.app/Contents/Resources/daemon/ao";
+		const expected = "/Applications/Meiyo.app/Contents/Resources/daemon/ao";
 		expect(bundledDaemonIdentityError(
 			{ executablePath: "/Applications/Agent Orchestrator.app/Contents/Resources/daemon/ao" },
 			expected,
@@ -145,17 +145,23 @@ describe("bundledDaemonIdentityError", () => {
 		)).toBeNull();
 		expect(bundledDaemonIdentityError(
 			{ executablePath: "C:/Users/me/AppData/Local/Programs/Orchestrator.inc/resources/daemon/ao.exe" },
-			"C:/Users/me/AppData/Local/Programs/Altair/resources/daemon/ao.exe",
+			"C:/Users/me/AppData/Local/Programs/Meiyo/resources/daemon/ao.exe",
 			undefined,
 			samePath,
 		)).toBeNull();
-		expect(bundledCliBinaryName("win32")).toBe("altair.exe");
-		expect(bundledCliBinaryName("darwin")).toBe("altair");
+		expect(bundledDaemonIdentityError(
+			{ executablePath: "C:/Users/me/AppData/Local/Programs/Altair/resources/daemon/ao.exe" },
+			"C:/Users/me/AppData/Local/Programs/Meiyo/resources/daemon/ao.exe",
+			undefined,
+			samePath,
+		)).toBeNull();
+		expect(bundledCliBinaryName("win32")).toBe("meiyo.exe");
+		expect(bundledCliBinaryName("darwin")).toBe("meiyo");
 	});
 
 	it("fails closed outside AppImage when the daemon does not report its binary path", () => {
 		expect(bundledDaemonIdentityError({}, "/opt/ao/resources/daemon/ao", undefined, samePath)).toBe(
-			"An older Altair daemon is already running, but it does not report its binary path. Stop it and restart this app.",
+			"An older Meiyo daemon is already running, but it does not report its binary path. Stop it and restart this app.",
 		);
 	});
 });
