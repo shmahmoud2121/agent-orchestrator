@@ -405,15 +405,17 @@ func samePath(a, b string) bool {
 	return filepath.Clean(a) == filepath.Clean(b)
 }
 
-// isAOCommand reports whether this one command is ao, altair, or their .exe
-// names. Only that command is skipped. The caller checks every other segment.
+// isAOCommand reports whether this one command is ao, meiyo, altair, or their
+// .exe names. meiyo is the command a person types. altair is the previous name
+// of the same binary. Only that command is skipped. The caller checks every
+// other segment.
 func isAOCommand(words []string) bool {
 	for _, word := range words {
 		if isSegmentBreak(word) {
 			return false
 		}
 		base := strings.TrimSuffix(strings.ToLower(filepath.Base(word)), ".exe")
-		if base == "ao" || base == "altair" {
+		if base == "ao" || base == "meiyo" || base == "altair" {
 			return true
 		}
 		if isShellPunctuation(word) || isShellFlag(word) || strings.Contains(word, "=") {

@@ -1,7 +1,7 @@
 {
 	"name": "@aoagents/ao-win32-x64",
 	"version": "0.10.0",
-	"description": "Altair CLI binary for Windows x64.",
+	"description": "Meiyo CLI binary for Windows x64.",
 	"license": "MIT",
 	"os": [
 		"win32"
@@ -11,6 +11,6 @@
 	],
 	"files": [
 		"bin/ao.exe",
-		"bin/altair.exe"
+		"bin/meiyo.exe"
 	]
 }

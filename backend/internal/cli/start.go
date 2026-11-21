@@ -31,10 +31,11 @@ import (
 var releaseRepo = "Untrivial-ai/agent-orchestrator"
 
 // appBundleName is the macOS bundle directory name produced by electron-forge
-// (frontend/forge.config.ts packagerConfig.name). legacyAppBundleName is the
-// previous name; published zips and existing installs still use it.
-const appBundleName = "Altair.app"
-const legacyAppBundleName = "Agent Orchestrator.app"
+// (frontend/forge.config.ts packagerConfig.name). legacyAppBundleNames are the
+// previous names; published zips and existing installs still use them.
+const appBundleName = "Meiyo.app"
+
+var legacyAppBundleNames = []string{"Altair.app", "Agent Orchestrator.app"}
 
 // appStateFileName is the marker the desktop app writes under ~/.ao on every
 // launch (spec §5). `ao start` is a read-only consumer of it.
@@ -69,9 +70,9 @@ func newStartCommand(ctx *commandContext) *cobra.Command {
 	opts := startOptions{}
 	cmd := &cobra.Command{
 		Use:   "start",
-		Short: "Fetch (if needed) and open the Altair desktop app",
-		Long: "Fetch (if needed) and open the Altair desktop app.\n\n" +
-			"The desktop app owns the daemon, state, and updates. `altair start` no\n" +
+		Short: "Fetch (if needed) and open the Meiyo desktop app",
+		Long: "Fetch (if needed) and open the Meiyo desktop app.\n\n" +
+			"The desktop app owns the daemon, state, and updates. `meiyo start` no\n" +
 			"longer runs a daemon: it resolves the installed app (or downloads the\n" +
 			"latest release), opens it, and exits. `ao start` is the same command.",
 		Args: noArgs,
@@ -212,16 +213,19 @@ func knownAppLocations() []string {
 	case "darwin":
 		paths := []string{"/Applications/" + appBundleName}
 		if home, err := os.UserHomeDir(); err == nil {
-			paths = append(paths,
-				filepath.Join(home, "Applications", appBundleName),
-				filepath.Join(home, "Applications", legacyAppBundleName))
+			paths = append(paths, filepath.Join(home, "Applications", appBundleName))
+			for _, legacy := range legacyAppBundleNames {
+				paths = append(paths, filepath.Join(home, "Applications", legacy))
+			}
 		}
-		paths = append(paths, "/Applications/"+legacyAppBundleName)
+		for _, legacy := range legacyAppBundleNames {
+			paths = append(paths, "/Applications/"+legacy)
+		}
 		return paths
 	case "windows":
 		var paths []string
 		// Default electron-builder NSIS per-user install (perMachine:false).
-		// The current folder is Altair. Upgrades that keep the previous
+		// The current folder is Meiyo. Upgrades that keep the previous
 		// directory (same appId) and installs that predate the rename are
 		// listed after it.
 		if local := os.Getenv("LOCALAPPDATA"); local != "" {
@@ -232,7 +236,8 @@ func knownAppLocations() []string {
 		}
 		return paths
 	case "linux":
-		paths := []string{linuxAppImagePath(), linuxLegacyAppImagePath()}
+		paths := []string{linuxAppImagePath()}
+		paths = append(paths, linuxLegacyAppImagePaths()...)
 		if home, err := os.UserHomeDir(); err == nil {
 			paths = append(paths,
 				filepath.Join(home, "Applications", "altair.AppImage"),
@@ -246,52 +251,64 @@ func knownAppLocations() []string {
 }
 
 // windowsInstalledExe is the default per-user electron-builder NSIS install
-// target for a fresh Altair install under %LOCALAPPDATA%.
+// target for a fresh Meiyo install under %LOCALAPPDATA%.
 func windowsInstalledExe(localAppData string) string {
-	return filepath.Join(localAppData, "Programs", "Altair", "altair.exe")
+	return filepath.Join(localAppData, "Programs", "Meiyo", "meiyo.exe")
 }
 
 func windowsCandidateExes(localAppData string) []string {
-	programs := filepath.Join(localAppData, "Programs")
-	return []string{
-		filepath.Join(programs, "Altair", "altair.exe"),
-		filepath.Join(programs, "Orchestrator.inc", "altair.exe"),
-		filepath.Join(programs, "Orchestrator.inc", "agent-orchestrator.exe"),
-		filepath.Join(programs, "Agent Orchestrator", "altair.exe"),
-		filepath.Join(programs, "Agent Orchestrator", "agent-orchestrator.exe"),
-	}
+	return windowsInstallExes(filepath.Join(localAppData, "Programs"))
 }
 
 func windowsProgramFilesExes(programFiles string) []string {
-	return []string{
-		filepath.Join(programFiles, "Altair", "altair.exe"),
-		filepath.Join(programFiles, "Orchestrator.inc", "altair.exe"),
-		filepath.Join(programFiles, "Orchestrator.inc", "agent-orchestrator.exe"),
-		filepath.Join(programFiles, "Agent Orchestrator", "altair.exe"),
-		filepath.Join(programFiles, "Agent Orchestrator", "agent-orchestrator.exe"),
+	return windowsInstallExes(programFiles)
+}
+
+// windowsInstallExes lists meiyo.exe, then altair.exe, in each product folder.
+// agent-orchestrator.exe stays in the folders that shipped it before those names.
+func windowsInstallExes(root string) []string {
+	type folderExes struct {
+		folder string
+		exes   []string
 	}
+	folders := []folderExes{
+		{"Meiyo", []string{"meiyo.exe", "altair.exe"}},
+		{"Altair", []string{"meiyo.exe", "altair.exe"}},
+		{"Orchestrator.inc", []string{"meiyo.exe", "altair.exe", "agent-orchestrator.exe"}},
+		{"Agent Orchestrator", []string{"meiyo.exe", "altair.exe", "agent-orchestrator.exe"}},
+	}
+	var paths []string
+	for _, folder := range folders {
+		for _, exe := range folder.exes {
+			paths = append(paths, filepath.Join(root, folder.folder, exe))
+		}
+	}
+	return paths
 }
 
 // linuxAppImagePath is the stable location `ao start` downloads the AppImage to
 // and scans for. Keeping it out of the cleared staging dir lets re-runs resolve
 // the existing download instead of re-fetching (spec §6.2/§6.3).
 func linuxAppImagePath() string {
+	return linuxAppImageInStateDir("meiyo.AppImage")
+}
+
+// linuxLegacyAppImagePaths are the download locations used before the current name.
+func linuxLegacyAppImagePaths() []string {
+	return []string{
+		linuxAppImageInStateDir("altair.AppImage"),
+		linuxAppImageInStateDir("agent-orchestrator.AppImage"),
+	}
+}
+
+func linuxAppImageInStateDir(name string) string {
 	dir, err := aoStateDir()
 	if err != nil {
 		// Fall back to a bare filename so a misconfigured state dir surfaces as a
 		// clear "not found" rather than a panic; fetch will re-error on download.
-		return "altair.AppImage"
+		return name
 	}
-	return filepath.Join(dir, "altair.AppImage")
-}
-
-// linuxLegacyAppImagePath is the download location used before the rename.
-func linuxLegacyAppImagePath() string {
-	dir, err := aoStateDir()
-	if err != nil {
-		return "agent-orchestrator.AppImage"
-	}
-	return filepath.Join(dir, "agent-orchestrator.AppImage")
+	return filepath.Join(dir, name)
 }
 
 const linuxDesktopEntryName = "agent-orchestrator-ao-app.desktop"
@@ -334,7 +351,7 @@ func (c *commandContext) registerLinuxProtocolHandler(
 	}
 	entry := fmt.Sprintf(`[Desktop Entry]
 Type=Application
-Name=Altair
+Name=Meiyo
 Exec=%s %%u
 Terminal=false
 NoDisplay=true
@@ -417,7 +434,7 @@ func (c *commandContext) fetchApp(ctx context.Context, w io.Writer) (string, err
 	case "linux":
 		return c.fetchAppLinux(ctx, w)
 	default:
-		return "", fmt.Errorf("altair start: fetch not supported on %s", runtime.GOOS)
+		return "", fmt.Errorf("meiyo start: fetch not supported on %s", runtime.GOOS)
 	}
 }
 
@@ -457,13 +474,13 @@ func (c *commandContext) fetchAppDarwin(ctx context.Context, w io.Writer) (strin
 		return "", fmt.Errorf("ditto unpack: %w: %s", err, out)
 	}
 
-	for _, name := range []string{appBundleName, legacyAppBundleName} {
+	for _, name := range append([]string{appBundleName}, legacyAppBundleNames...) {
 		candidate := filepath.Join(staging, name)
 		if isUsableBundle(candidate) {
 			return candidate, nil
 		}
 	}
-	return "", fmt.Errorf("altair start: %s not found in unpacked release at %s", appBundleName, staging)
+	return "", fmt.Errorf("meiyo start: %s not found in unpacked release at %s", appBundleName, staging)
 }
 
 // fetchAppWindows downloads the NSIS installer into staging, runs it silently,
@@ -509,14 +526,14 @@ func (c *commandContext) fetchAppWindows(ctx context.Context, w io.Writer) (stri
 
 	local := os.Getenv("LOCALAPPDATA")
 	if local == "" {
-		return "", fmt.Errorf("altair start: LOCALAPPDATA not set; cannot locate installed app")
+		return "", fmt.Errorf("meiyo start: LOCALAPPDATA not set; cannot locate installed app")
 	}
 	for _, candidate := range windowsCandidateExes(local) {
 		if isUsableBundle(candidate) {
 			return candidate, nil
 		}
 	}
-	return "", fmt.Errorf("altair start: installed app not found at %s", windowsInstalledExe(local))
+	return "", fmt.Errorf("meiyo start: installed app not found at %s", windowsInstalledExe(local))
 }
 
 // fetchAppLinux downloads the self-contained AppImage to a stable path under
@@ -550,7 +567,7 @@ func (c *commandContext) fetchAppLinux(ctx context.Context, w io.Writer) (string
 		return "", fmt.Errorf("install AppImage: %w", err)
 	}
 	if !isUsableBundle(appPath) {
-		return "", fmt.Errorf("altair start: AppImage not found at %s", appPath)
+		return "", fmt.Errorf("meiyo start: AppImage not found at %s", appPath)
 	}
 	return appPath, nil
 }
@@ -585,9 +602,9 @@ func (c *commandContext) download(ctx context.Context, w io.Writer, url, asset, 
 	// percentage is unknown and we report transferred bytes instead.
 	total := resp.ContentLength
 	if total > 0 {
-		_, _ = fmt.Fprintf(w, "Downloading Altair (%s, ~%s) from %s...\n", asset, humanBytes(total), releaseRepo)
+		_, _ = fmt.Fprintf(w, "Downloading Meiyo (%s, ~%s) from %s...\n", asset, humanBytes(total), releaseRepo)
 	} else {
-		_, _ = fmt.Fprintf(w, "Downloading Altair (%s) from %s...\n", asset, releaseRepo)
+		_, _ = fmt.Fprintf(w, "Downloading Meiyo (%s) from %s...\n", asset, releaseRepo)
 	}
 
 	f, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
@@ -694,7 +711,7 @@ func assetName() (string, error) {
 		}
 		return "agent-orchestrator-linux-x64.AppImage", nil
 	default:
-		return "", fmt.Errorf("altair start: no release asset for %s", runtime.GOOS)
+		return "", fmt.Errorf("meiyo start: no release asset for %s", runtime.GOOS)
 	}
 }
 
@@ -703,7 +720,7 @@ func assetName() (string, error) {
 // mirroring assetArch rather than fetching a 404.
 func requireAMD64() (string, error) {
 	if runtime.GOARCH != "amd64" {
-		return "", fmt.Errorf("altair start: unsupported architecture %q on %s (only amd64 is published)", runtime.GOARCH, runtime.GOOS)
+		return "", fmt.Errorf("meiyo start: unsupported architecture %q on %s (only amd64 is published)", runtime.GOARCH, runtime.GOOS)
 	}
 	return "x64", nil
 }
@@ -716,7 +733,7 @@ func assetArch(goarch string) (string, error) {
 	case "amd64":
 		return "x64", nil
 	default:
-		return "", fmt.Errorf("altair start: unsupported architecture %q", goarch)
+		return "", fmt.Errorf("meiyo start: unsupported architecture %q", goarch)
 	}
 }
 
@@ -763,10 +780,10 @@ func (c *commandContext) openApp(ctx context.Context, appPath string) (bool, err
 // printDeprecationNotice explains the new role of the npm `ao` binary. Keep it
 // honest: Track B (live auto-update) is not done, so it does not promise it.
 func (c *commandContext) printDeprecationNotice(w io.Writer) {
-	_, _ = fmt.Fprint(w, "Altair is a desktop app, and the npm `ao` command is its launcher.\n"+
+	_, _ = fmt.Fprint(w, "Meiyo is a desktop app, and the npm `ao` command is its launcher.\n"+
 		"Formerly Agent Orchestrator (AO). Data still lives in ~/.ao.\n"+
 		"The app is distributed from the website and GitHub Releases; it owns the daemon and updates itself.\n"+
-		"You can keep running `altair start` or `ao start` to fetch (if needed) and open it.\n")
+		"You can keep running `meiyo start` or `ao start` to fetch (if needed) and open it.\n")
 }
 
 // printManualOpen tells the user how to open the bundle when `ao start` could

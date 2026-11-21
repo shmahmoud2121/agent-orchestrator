@@ -271,7 +271,7 @@ type FakeAgentSeam = { snapshot: () => WorkspaceSummary[] };
 
 class DaemonNotReadyError extends Error {
 	constructor() {
-		super("Altair daemon API is not ready");
+		super("Meiyo daemon API is not ready");
 	}
 }
 

@@ -15,7 +15,7 @@ describe("slowDaemonStartupStatus", () => {
 
 		expect(status).toMatchObject({
 			state: "starting",
-			message: "Altair daemon is still starting. Session recovery can take a while.",
+			message: "Meiyo daemon is still starting. Session recovery can take a while.",
 			details: "initial recovery output",
 			executablePath: "/Applications/AO.app/ao",
 			workingDirectory: "/Users/example/.ao",

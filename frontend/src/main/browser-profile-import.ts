@@ -303,8 +303,8 @@ function isAccessDenied(error: unknown): boolean {
 
 function safariAccessError(): Error {
 	return Object.assign(new Error(
-		"Altair couldn't access Safari's data. In System Settings, open Privacy & Security > Full Disk Access, "
-		+ "allow Altair, then restart Altair and try the import again.",
+		"Meiyo couldn't access Safari's data. In System Settings, open Privacy & Security > Full Disk Access, "
+		+ "allow Meiyo, then restart Meiyo and try the import again.",
 	), { code: "EACCES" });
 }
 
@@ -1058,7 +1058,7 @@ async function snapshotSQLite(
 			return destination;
 		}
 		if (browserName) throw temporarySnapshotError(browserName);
-		throw new Error("Altair's temporary browser data snapshot disappeared before it could be read. Restart Altair and retry the import.");
+		throw new Error("Meiyo's temporary browser data snapshot disappeared before it could be read. Restart Meiyo and retry the import.");
 	} catch (error) {
 		await rm(destination, { force: true }).catch(() => undefined);
 		throw error;
@@ -1072,9 +1072,9 @@ async function snapshotSQLite(
 
 function temporarySnapshotError(browserName: string): Error {
 	return new Error(
-		`Altair couldn't create a temporary copy of ${browserName}'s profile database. `
+		`Meiyo couldn't create a temporary copy of ${browserName}'s profile database. `
 		+ `Fully close ${browserName}, including background processes, then retry the import. `
-		+ "If this keeps happening, restart Altair and try again.",
+		+ "If this keeps happening, restart Meiyo and try again.",
 	);
 }
 

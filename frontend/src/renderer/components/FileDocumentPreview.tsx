@@ -24,7 +24,7 @@ async function fetchDocument(src: string, signal: AbortSignal): Promise<ArrayBuf
 
 /**
  * PDF, Word and Excel files drawn inside the app, so a document can be read
- * without leaving Altair. Everything runs in the renderer from the file's
+ * without leaving Meiyo. Everything runs in the renderer from the file's
  * bytes: no plugin, no network, no macros. Other office formats show the
  * "Open in default app" action only.
  */

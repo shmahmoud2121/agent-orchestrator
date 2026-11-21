@@ -1,7 +1,7 @@
 import type { DaemonStatus } from "./daemon-status";
 
 export const SLOW_DAEMON_START_MESSAGE =
-	"Altair daemon is still starting. Session recovery can take a while.";
+	"Meiyo daemon is still starting. Session recovery can take a while.";
 
 type SlowDaemonStartupInput = {
 	output: string;

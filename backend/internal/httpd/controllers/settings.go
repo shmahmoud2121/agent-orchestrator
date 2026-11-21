@@ -166,7 +166,7 @@ func (c *SettingsController) setDefaultCodeManager(w http.ResponseWriter, r *htt
 	snapshot, err := c.Svc.SetDefaultCodeManager(r.Context(), harness)
 	if errors.Is(err, settingssvc.ErrUnknownHarness) {
 		envelope.WriteAPIError(w, r, http.StatusBadRequest, "validation",
-			"DEFAULT_CODE_MANAGER_INVALID", "Choose an AI Altair knows.", nil)
+			"DEFAULT_CODE_MANAGER_INVALID", "Choose an AI Meiyo knows.", nil)
 		return
 	}
 	if err != nil {

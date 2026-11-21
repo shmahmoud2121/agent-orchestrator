@@ -5,10 +5,10 @@ import path from "node:path";
 import semver from "semver";
 
 export const AO_BUNDLE_ID = "dev.agent-orchestrator.desktop";
-export const MAINTAINED_MAC_APP_PATH = "/Applications/Altair.app";
+export const MAINTAINED_MAC_APP_PATH = "/Applications/Meiyo.app";
 
-const CURRENT_MAC_BUNDLE_NAME = "Altair.app";
-const LEGACY_MAC_BUNDLE_NAME = "Agent Orchestrator.app";
+const CURRENT_MAC_BUNDLE_NAME = "Meiyo.app";
+const LEGACY_MAC_BUNDLE_NAMES = ["Altair.app", "Agent Orchestrator.app"];
 
 export interface BundleMetadata {
 	bundleId: string | null;
@@ -88,14 +88,16 @@ export async function findStaleAppCopies(
 
 	const dependencies = { ...defaultDiscoveryDependencies, ...dependencyOverrides };
 	// Legacy bundles keep the old name after this rename, including one already
-	// installed in /Applications. The maintained Altair.app is not a candidate.
-	// An equal version counts as stale only for the legacy name: this branch
-	// does not bump the version, and a same-version Altair download must stay.
+	// installed in /Applications. The maintained Meiyo.app is not a candidate.
+	// An equal version counts as stale only for a legacy name: this branch
+	// does not bump the version, and a same-version Meiyo download must stay.
 	const candidates = [
-		{ path: path.join("/Applications", LEGACY_MAC_BUNDLE_NAME), legacy: true },
-		{ path: path.join(input.homeDir, "Applications", LEGACY_MAC_BUNDLE_NAME), legacy: true },
-		{ path: path.join(input.homeDir, "Downloads", LEGACY_MAC_BUNDLE_NAME), legacy: true },
-		{ path: path.join(input.homeDir, "Desktop", LEGACY_MAC_BUNDLE_NAME), legacy: true },
+		...LEGACY_MAC_BUNDLE_NAMES.flatMap((name) => [
+			{ path: path.join("/Applications", name), legacy: true },
+			{ path: path.join(input.homeDir, "Applications", name), legacy: true },
+			{ path: path.join(input.homeDir, "Downloads", name), legacy: true },
+			{ path: path.join(input.homeDir, "Desktop", name), legacy: true },
+		]),
 		{ path: path.join(input.homeDir, "Downloads", CURRENT_MAC_BUNDLE_NAME), legacy: false },
 		{ path: path.join(input.homeDir, "Desktop", CURRENT_MAC_BUNDLE_NAME), legacy: false },
 	];

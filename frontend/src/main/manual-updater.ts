@@ -69,7 +69,7 @@ export interface ManualUpdaterDeps {
 export const MANUAL_UPDATE_UNSUPPORTED_MESSAGE =
 	"Updates for this system are not published yet. Install the new version by hand.";
 export const MANUAL_UPDATE_DEV_MESSAGE = "Updates are only available in an installed build.";
-export const MANUAL_UPDATE_NO_STATE_DIR_MESSAGE = "Updates are unavailable because the Altair data folder could not be found.";
+export const MANUAL_UPDATE_NO_STATE_DIR_MESSAGE = "Updates are unavailable because the Meiyo data folder could not be found.";
 const NO_RELEASE_MESSAGE = "No published version was found. Check again later.";
 const MAX_ERROR_LENGTH = 240;
 

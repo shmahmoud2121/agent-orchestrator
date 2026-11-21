@@ -27,9 +27,9 @@ const DEFAULT_RELEASE_REPO = "Untrivial-ai/agent-orchestrator";
 // names the exe/ELF from this, and the NSIS + deb makers must point their
 // shortcut/launcher at the SAME name. Drift here means a broken Start menu
 // shortcut on Windows (#2414) or "could not find the Electron app binary" on deb.
-const EXECUTABLE_NAME = "altair";
+const EXECUTABLE_NAME = "meiyo";
 const AUTH_PROTOCOL = {
-	name: "Altair authentication callback",
+	name: "Meiyo authentication callback",
 	schemes: ["ao-app"],
 };
 const AUTH_PROTOCOL_MIME_TYPE = "x-scheme-handler/ao-app";
@@ -128,7 +128,7 @@ const config: ForgeConfig = {
 		// the .node binary outside app.asar.
 		ignore: ignoreFromVitePackage,
 		appBundleId: "dev.agent-orchestrator.desktop",
-		name: "Altair",
+		name: "Meiyo",
 		executableName: EXECUTABLE_NAME,
 		protocols: [AUTH_PROTOCOL],
 		appCategoryType: "public.app-category.developer-tools",
@@ -292,9 +292,9 @@ const config: ForgeConfig = {
 				appId: "dev.agent-orchestrator.desktop",
 				// The name shown in the installer, the updater, the shortcuts, and
 				// Windows Apps. It matches the app's display name in main.ts.
-				productName: "Altair",
+				productName: "Meiyo",
 				// Match the packaged binary name so the Start menu shortcut targets
-				// altair.exe. The appId above is unchanged, so an upgrade still finds
+				// meiyo.exe. The appId above is unchanged, so an upgrade still finds
 				// the existing install in the uninstall registry.
 				executableName: EXECUTABLE_NAME,
 				icon: "assets/icon.ico",
@@ -315,7 +315,7 @@ const config: ForgeConfig = {
 		new MakerDMG(
 			{
 				appId: "dev.agent-orchestrator.desktop",
-				productName: "Altair",
+				productName: "Meiyo",
 			},
 			["darwin"],
 		),
@@ -326,7 +326,7 @@ const config: ForgeConfig = {
 		new MakerAppImage(
 			{
 				appId: "dev.agent-orchestrator.desktop",
-				productName: "Altair",
+				productName: "Meiyo",
 				icon: "assets/icon.png",
 				protocols: [AUTH_PROTOCOL],
 			},
@@ -341,7 +341,7 @@ const config: ForgeConfig = {
 					// the Electron app binary".
 					bin: EXECUTABLE_NAME,
 					icon: "assets/icon.png",
-					maintainer: "Altair",
+					maintainer: "Meiyo",
 					homepage: "https://github.com/aoagents/agent-orchestrator",
 					mimeType: [AUTH_PROTOCOL_MIME_TYPE],
 				},

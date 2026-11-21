@@ -955,7 +955,7 @@ export function useBrowserView({
 				setNavState((current) => ({
 					...current,
 					url: normalized,
-					title: normalized ? "Altair preview" : "",
+					title: normalized ? "Meiyo preview" : "",
 					isLoading: false,
 				}));
 				return Promise.resolve();

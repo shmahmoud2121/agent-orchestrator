@@ -1,10 +1,10 @@
-# Altair Work mode: design
+# Meiyo Work mode: design
 
 Status: approved by the owner. Date: 2026-10-27.
 
 ## 1. What it is
 
-Altair has two kinds of projects that live side by side.
+Meiyo has two kinds of projects that live side by side.
 
 - **Code:** a repository. A manager AI plans, and worker AIs write code in their own copies (worktrees). This is what exists today.
 - **Work:** a set of the person's folders or files (spreadsheets, documents, PDFs, notes) plus a goal. A manager AI plans, and worker AIs do the work: analyse, summarise, draft, convert, build reports.
@@ -53,12 +53,12 @@ Agents never edit, move, rename or delete the person's original files. Everythin
 
 - **Originals:** the folders or files the person added to the Work project. Agents can read them and never write to them.
 - **Results folder:**
-  - When an original folder was added, the default is an `Output` folder inside the first one (`<folder>/Output/`). With only files, it is `Documents/Altair/<project name>/`. Each task gets its own subfolder `<date> <task title>/`.
+  - When an original folder was added, the default is an `Output` folder inside the first one (`<folder>/Output/`). With only files, it is `Documents/Meiyo/<project name>/`. Each task gets its own subfolder `<date> <task title>/`.
   - The person can choose a different location when creating the project. It may sit inside an original folder, but it may not be an original or hold one. Everything under it belongs to the agents; every other file in that original folder stays protected (watchdog and OS sandbox).
   - It holds documents, not app state, so the `~/.ao` rule doesn't apply.
 - **Scratch:** each worker gets a private scratch folder under `~/.ao/work/<project>/<session>/` for temporary files. Copies of originals go there if an agent needs to transform them.
 
-**How Altair enforces it, in layers:**
+**How Meiyo enforces it, in layers:**
 
 1. **Built-in instructions.** Every Work session's built-in instructions state the rule, whatever the AI. This isn't a per-project setting and it can't be turned off.
 2. **Sandbox (where available).** On Mac, Linux or WSL2, a sandboxed Claude can write only to the results and scratch folders.
@@ -68,13 +68,13 @@ Agents never edit, move, rename or delete the person's original files. Everythin
    - It uses the same 3-strike stop, alert and audit log.
 4. **Exceptions only from the person.** A one-off exception for a single task goes through the approval bar. It never carries over to the next task.
 
-Secret protection (`.env`, keys, Altair's database) applies to Work projects exactly as it does to Code.
+Secret protection (`.env`, keys, Meiyo's database) applies to Work projects exactly as it does to Code.
 
 ## 5. Results
 
 - A **Results** panel on the Work project lists every file the task produced, newest first, with "Open", "Show in folder" and an in-app preview. The preview covers text, Markdown, images and PDF first. Word, Excel and slides come later.
 - When a task finishes, the manager posts a short summary with links to the files.
-- **Altair never overwrites a file in the results folder.** A new version gets ` (2)`, ` (3)` and so on.
+- **Meiyo never overwrites a file in the results folder.** A new version gets ` (2)`, ` (3)` and so on.
 
 ## 6. Skills and tools (later steps)
 
@@ -102,6 +102,6 @@ Secret protection (`.env`, keys, Altair's database) applies to Work projects exa
 
 - Work project workers have no default AI. The person picks, and it can differ from the manager (owner decision, 2026-10-27).
 
-- **Results location:** the default is `Documents/Altair/<project>`. The other choice was asking every time.
+- **Results location:** the default is `Documents/Meiyo/<project>`. The other choice was asking every time.
 - **Split view:** at most two panes.
-- The Altair rename lands before W1.
+- The Meiyo rename lands before W1.

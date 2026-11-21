@@ -213,10 +213,10 @@ func TestUsageErrorCommandDropsUserArgs(t *testing.T) {
 		wantCommand string
 		wantPath    string
 	}{
-		{[]string{"send", "orchestrator-pack-5", "wake", "heartbeat.reconcile"}, "send", "altair send"},
-		{[]string{"status", "extra"}, "status", "altair status"},
-		{[]string{"not-a-command", "whatever"}, "altair", "altair"},
-		{[]string{"--bad-flag"}, "altair", "altair"},
+		{[]string{"send", "orchestrator-pack-5", "wake", "heartbeat.reconcile"}, "send", "meiyo send"},
+		{[]string{"status", "extra"}, "status", "meiyo status"},
+		{[]string{"not-a-command", "whatever"}, "meiyo", "meiyo"},
+		{[]string{"--bad-flag"}, "meiyo", "meiyo"},
 	} {
 		command, path := usageErrorCommand(tc.args)
 		if command != tc.wantCommand || path != tc.wantPath {

@@ -1,10 +1,10 @@
 {
 	"name": "@aoagents/ao",
 	"version": "0.10.0",
-	"description": "Altair CLI. Resolves and runs the prebuilt Go binary for your platform.",
+	"description": "Meiyo CLI. Resolves and runs the prebuilt Go binary for your platform.",
 	"license": "MIT",
 	"bin": {
-		"altair": "./bin/ao.js",
+		"meiyo": "./bin/ao.js",
 		"ao": "./bin/ao.js"
 	},
 	"files": [

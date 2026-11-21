@@ -21,8 +21,8 @@ A command that hides the path inside another program, or builds it from
 pieces, can get past the word split. A search over the whole folder can still
 read a protected file's contents. Examples are `grep -r KEY .`, or Claude's
 Grep with no file filter when `.env` isn't gitignored. The `ao` exemption
-covers only a command that is `ao`, `ao.exe`, `altair`, or `altair.exe` on its own.
-`altair` is the same binary.
+covers only a command that is `ao`, `ao.exe`, `meiyo`, `meiyo.exe`, `altair`, or `altair.exe` on its own.
+`meiyo` is the name a person types. `altair` is the previous name of the same binary.
 
 A search over a folder is allowed even when that folder contains a protected
 file. A pattern that names a protected file, such as `**/.env*`, is blocked.

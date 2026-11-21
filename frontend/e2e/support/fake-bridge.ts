@@ -948,7 +948,7 @@ export async function installFakeAgent(page: Page, opts: FakeAgentOptions = {}):
 			const navState = (viewId: string, url = "", error?: string) => ({
 				viewId,
 				url,
-				title: url ? "Altair preview" : "",
+				title: url ? "Meiyo preview" : "",
 				canGoBack: false,
 				canGoForward: false,
 				isLoading: false,
