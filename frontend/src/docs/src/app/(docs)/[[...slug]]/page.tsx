@@ -5,6 +5,7 @@ import { DocsBody, DocsDescription, DocsPage, DocsTitle } from "fumadocs-ui/layo
 import { getMDXComponents } from "@/components/mdx";
 import { source } from "@/lib/source";
 import { visibleProductName } from "@/lib/branding";
+import { COMPANY } from "@/lib/constants";
 
 export default async function Page(props: PageProps<"/[[...slug]]">) {
   const params = await props.params;
@@ -38,7 +39,7 @@ export async function generateMetadata(props: PageProps<"/[[...slug]]">): Promis
   if (!page) notFound();
 
   return {
-    title: `${page.data.title} | Altair Docs`,
+    title: `${page.data.title} | ${COMPANY.NAME} Docs`,
     description: page.data.description,
   };
 }

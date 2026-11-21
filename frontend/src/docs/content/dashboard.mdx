@@ -1,9 +1,9 @@
 ---
 title: Dashboard
-description: Use the AO desktop app to supervise projects, sessions, pull requests, reviews, and previews.
+description: Use the Meiyo desktop app to supervise projects, sessions, pull requests, reviews, and previews.
 ---
 
-The Orchestrator desktop app is where you manage projects and sessions. Open a worker's Chat or terminal, review its pull request and changed files, and preview its web app.
+The Meiyo desktop app is where you manage projects and sessions. Open a worker's Chat or terminal, review its pull request and changed files, and preview its web app.
 
 ## The app shell
 
@@ -14,15 +14,15 @@ The Orchestrator desktop app is where you manage projects and sessions. Open a w
 | **Session view** | Structured Chat or the live native Terminal UI. |
 | **Inspector** | Pull request, reviews, files, and browser preview for the selected session. |
 
-Orchestrator remembers the session's committed interface mode. Opening a Chat session restores its paged conversation timeline; opening a TUI session reconnects to its terminal through the daemon mux.
+Meiyo remembers the session's committed interface mode. Opening a Chat session restores its paged conversation timeline; opening a TUI session reconnects to its terminal through the daemon mux.
 
-Open **Automations** from the sidebar to create recurring work, edit its prompt and schedule, enable or pause it, delete a definition, and inspect run history. Local schedules run in the daemon: keep the host awake and Orchestrator running. See [schedule behavior](/configuration/lifecycle-automation#what-ao-handles).
+Open **Automations** from the sidebar to create recurring work, edit its prompt and schedule, enable or pause it, delete a definition, and inspect run history. Local schedules run in the daemon: keep the host awake and Meiyo running. See [schedule behavior](/configuration/lifecycle-automation#what-ao-handles).
 
 Projectless standalone tasks do not need a Git project.
 
 ## Read session state
 
-Orchestrator does not persist a display-status label. It derives what you see from durable facts such as agent activity, termination, controller state, and current pull-request checks, reviews, and mergeability.
+Meiyo does not persist a display-status label. It derives what you see from durable facts such as agent activity, termination, controller state, and current pull-request checks, reviews, and mergeability.
 
 Common activity signals include:
 
@@ -46,17 +46,17 @@ Chat controls depend on the provider. Where supported, choose a model, reasoning
 
 ## Work in Terminal UI
 
-Terminal UI sessions keep the selected agent's native terminal experience available through Orchestrator. New macOS/Linux sessions use Orchestrator's native terminal host. Older sessions and fallback launches can use tmux. Windows uses ConPTY.
+Terminal UI sessions keep the selected agent's native terminal experience available through Meiyo. New macOS/Linux sessions use Meiyo's native terminal host. Older sessions and fallback launches can use tmux. Windows uses ConPTY.
 
-Use the terminal for native prompts and interactive tools. Use Orchestrator's message controls for routine follow-ups so lifecycle reactions can apply the correct delivery policy.
+Use the terminal for native prompts and interactive tools. Use Meiyo's message controls for routine follow-ups so lifecycle reactions can apply the correct delivery policy.
 
 ## Switch interfaces
 
-Supported sessions show **Switch to chat UI** or **Switch to terminal UI**. Which action appears depends on the agent, the current interface, and whether it is working. Orchestrator keeps the same session and worktree and replaces one controller at a time.
+Supported sessions show **Switch to chat UI** or **Switch to terminal UI**. Which action appears depends on the agent, the current interface, and whether it is working. Meiyo keeps the same session and worktree and replaces one controller at a time.
 
 When offered, **Finish work, then switch** waits for accepted work. **Stop now and switch** interrupts it. Some terminal sessions require **Terminate and then switch**. Read the dialog before continuing because drafts, attachments, or queued turns may need to be sent again.
 
-Where supported, Orchestrator can resume the same provider conversation in Chat. It does not turn old terminal screen output into Chat messages.
+Where supported, Meiyo can resume the same provider conversation in Chat. It does not turn old terminal screen output into Chat messages.
 
 ## Pull requests and reviews
 
@@ -67,9 +67,9 @@ Once a session has a linked pull request, the inspector shows a concise summary:
 - Reviewer information and unresolved-review counts.
 - Mergeability and reasons the pull request is not ready.
 
-Orchestrator can run configured reviewer agents, send review findings back to the worker, resolve review comments, and request a merge. Raw CI logs and full review bodies are not part of the concise desktop summary.
+Meiyo can run configured reviewer agents, send review findings back to the worker, resolve review comments, and request a merge. Raw CI logs and full review bodies are not part of the concise desktop summary.
 
-Enable **Auto review** for one session, or set the project default for new sessions. Orchestrator starts a review only when the pull request is eligible and the worker is idle. This does not enable automatic merge.
+Enable **Auto review** for one session, or set the project default for new sessions. Meiyo starts a review only when the pull request is eligible and the worker is idle. This does not enable automatic merge.
 
 In **Files**, choose workspace changes or pull-request changes. You can inspect commits where available. Looking at local changes does not publish a review to the repository.
 
@@ -77,17 +77,17 @@ In **Files**, choose workspace changes or pull-request changes. You can inspect 
 
 The Browser tab displays the preview target explicitly selected for the session with `ao preview`, `ao preview <url>`, or `ao preview start`. The default temporary browser profile is isolated per session. Named browser profiles persist cookies and storage and can be reused across sessions; sessions using the same named profile deliberately share that browser state.
 
-Orchestrator's browser bridge can support agent-driven navigation, snapshots, clicks, typing, screenshots, console inspection, and temporary network-metadata capture. Network capture is off by default, bounded, omits bodies and sensitive values, and expires automatically.
+Meiyo's browser bridge can support agent-driven navigation, snapshots, clicks, typing, screenshots, console inspection, and temporary network-metadata capture. Network capture is off by default, bounded, omits bodies and sensitive values, and expires automatically.
 
 Use the Browser toolbar to select a profile, open DevTools, pop out the view, or annotate the page and send feedback to Chat. Orchestrators can open a browser on demand. Keep the panel visible for screenshots and human-style pointer actions.
 
-In **Settings → Browser**, manage named profiles and downloads. Import can copy supported data from Chrome, Firefox, or Safari into Orchestrator-owned storage; availability and cookie support vary by OS/browser. Orchestrator reads the source profile without modifying it, and not every login transfers. Deleting an Orchestrator profile removes its saved browser state; choosing a different profile changes the cookies used by the view.
+In **Settings → Browser**, manage named profiles and downloads. Import can copy supported data from Chrome, Firefox, or Safari into Meiyo-owned storage; availability and cookie support vary by OS/browser. Meiyo reads the source profile without modifying it, and not every login transfers. Deleting a Meiyo profile removes its saved browser state; choosing a different profile changes the cookies used by the view.
 
 ## Notifications
 
 The notification center keeps alerts for sessions that need input, pull requests ready to merge, merged pull requests, and pull requests closed without merging. Open the bell to see the newest alerts first, then choose one to open its session or pull request.
 
-Opening the panel marks loaded unread alerts as read, but leaves them in the feed. Use **Clear all** or an alert's clear control to remove records. Scroll down to load older alerts. There are no separate Unread/All tabs or individual mark-read buttons. Orchestrator also shows desktop toasts while it is running.
+Opening the panel marks loaded unread alerts as read, but leaves them in the feed. Use **Clear all** or an alert's clear control to remove records. Scroll down to load older alerts. There are no separate Unread/All tabs or individual mark-read buttons. Meiyo also shows desktop toasts while it is running.
 
 ## Project settings
 
@@ -97,7 +97,7 @@ GitHub and GitLab provide pull-request and issue data. **Cues** belong to a proj
 
 Use **General** to choose the default session interface. **Harness** shows setup and readiness. **Agents → Codex** manages device accounts. **Browser** manages profiles and downloads. Project settings hold role-specific model, effort, permission, and rules overrides.
 
-Closing a terminal or switching views does not archive a session. Some detached terminal and Chat processes can survive a daemon restart; reconnecting depends on the computer and provider state. **Archive** ends the Orchestrator session. Stopping only its agent leaves a session you can resume. See [session commands](/cli#ao-session) for resume, restore, and cleanup.
+Closing a terminal or switching views does not archive a session. Some detached terminal and Chat processes can survive a daemon restart; reconnecting depends on the computer and provider state. **Archive** ends the Meiyo session. Stopping only its agent leaves a session you can resume. See [session commands](/cli#ao-session) for resume, restore, and cleanup.
 
 <span id="next" />
 

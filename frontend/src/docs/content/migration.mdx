@@ -1,6 +1,6 @@
 ---
 title: Migration
-description: Move from the frozen npm CLI and older AO architecture to the desktop app.
+description: Move from the frozen npm CLI and older Meiyo architecture to the desktop app.
 ---
 
 ## Move to the desktop app
@@ -14,7 +14,7 @@ The npm package `@aoagents/ao` is frozen at `0.10.0`. Existing users can still u
 
 ### Preserve active work
 
-Before changing installs, inspect any active sessions and worktrees. Commit, push, or otherwise preserve changes you need. Orchestrator will not force-delete dirty registered worktrees, but you should not rely on cleanup as a backup strategy.
+Before changing installs, inspect any active sessions and worktrees. Commit, push, or otherwise preserve changes you need. Meiyo will not force-delete dirty registered worktrees, but you should not rely on cleanup as a backup strategy.
 
 </Step>
 <Step>
@@ -36,7 +36,7 @@ The frozen CLI uses this as a bridge to fetch and open the desktop build. It no 
 
 Open the desktop app and add each local repository you want to use.
 
-To import legacy projects with the optional CLI, first run `ao import --dry-run` to see what Orchestrator will import and which settings it will drop. Then run `ao import`. Use `--yes` only in an intentional script. Do not copy old session folders into the current database by hand.
+To import legacy projects with the optional CLI, first run `ao import --dry-run` to see what Meiyo will import and which settings it will drop. Then run `ao import`. Use `--yes` only in an intentional script. Do not copy old session folders into the current database by hand.
 
 </Step>
 <Step>
@@ -49,7 +49,7 @@ Confirm GitHub and at least one agent harness are still authenticated:
 gh auth status
 ```
 
-Run the agent harness once outside Orchestrator if its sign-in expired, then restart the desktop app.
+Run the agent harness once outside Meiyo if its sign-in expired, then restart the desktop app.
 
 </Step>
 </Steps>
@@ -73,11 +73,11 @@ Old `agent-orchestrator.yaml` examples and Node plugin packages are not authorit
 
 ## Data locations
 
-Current Orchestrator state defaults to `~/.ao`:
+Current Meiyo state defaults to `~/.ao`:
 
 - `~/.ao/data` contains durable daemon database files.
 - `~/.ao/running.json` advertises the supervised daemon process and port.
-- Managed worktrees and Orchestrator metadata remain under the Orchestrator home.
+- Managed worktrees and Meiyo metadata remain under the Meiyo home.
 - `~/.ao/electron` contains the desktop app's Chromium data.
 
 Do not delete the old or new data directories until you have inspected and preserved active worktrees.
