@@ -3,6 +3,7 @@ import defaultMdxComponents from "fumadocs-ui/mdx";
 import { Children, cloneElement, isValidElement, type ComponentPropsWithoutRef, type ReactElement, type ReactNode } from "react";
 import type { MDXComponents } from "mdx/types";
 import { Tab, Tabs } from "./docs-tabs";
+import { COMPANY } from "@/lib/constants";
 
 function textOf(node: ReactNode): string {
   if (typeof node === "string" || typeof node === "number") return String(node);
@@ -253,7 +254,7 @@ export function InstallDownloads() {
   return (
     <div style={{ marginBlock: "1.25rem", overflowX: "auto" }}>
       <table>
-        <caption>Download the latest Orchestrator desktop release</caption>
+        <caption>Download the latest {COMPANY.NAME} desktop release</caption>
         <thead>
           <tr><th scope="col">Platform</th><th scope="col">Download</th></tr>
         </thead>

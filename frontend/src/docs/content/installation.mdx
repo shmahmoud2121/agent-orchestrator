@@ -1,9 +1,9 @@
 ---
 title: Installation
-description: Download the AO desktop app and connect your coding tools.
+description: Download the Meiyo desktop app and connect your coding tools.
 ---
 
-For the latest stable desktop build, start at the [official Orchestrator download page](https://orchestrator.inc/download/). It also lists nightly builds. If you want a direct desktop package, choose one below:
+For the latest stable desktop build, start at the [official Meiyo download page](https://orchestrator.inc/download/). It also lists nightly builds. If you want a direct desktop package, choose one below:
 
 <InstallDownloads />
 
@@ -30,20 +30,20 @@ brew upgrade --cask agentwrapper/tap/agent-orchestrator
 | --- | --- | --- |
 | Git | Repository projects | Creates and manages isolated worktrees and branches. |
 | GitHub CLI `gh` | GitHub projects | Uses your existing authentication for repository and pull-request operations. |
-| External coding agent (called a harness in Orchestrator) | Agent sessions that use an installed CLI | Install a supported tool such as Claude Code, Codex, Cursor, Aider, or OpenCode. See the [agent catalog](/plugins/agents) for the current list and interface support. Unreal Agent is built into Orchestrator for Chat on macOS and Linux. |
+| External coding agent (called a harness in Meiyo) | Agent sessions that use an installed CLI | Install a supported tool such as Claude Code, Codex, Cursor, Aider, or OpenCode. See the [agent catalog](/plugins/agents) for the current list and interface support. Unreal Agent is built into Meiyo for Chat on macOS and Linux. |
 | tmux | macOS preflight and legacy/fallback terminal sessions | Desktop macOS/Linux packages include it. Source launches may need system tmux; see [Runtime](/plugins/runtimes). |
 
-Orchestrator uses the coding agents and sign-ins already installed on your computer. **Settings → Harness** offers setup and readiness checks for supported agents; some need to be installed or signed in outside Orchestrator. Unreal Agent is a built-in Chat-only exception with its own platform and permission limits. See the [agent catalog](/plugins/agents).
+Meiyo uses the coding agents and sign-ins already installed on your computer. **Settings → Harness** offers setup and readiness checks for supported agents; some need to be installed or signed in outside Meiyo. Unreal Agent is a built-in Chat-only exception with its own platform and permission limits. See the [agent catalog](/plugins/agents).
 
 <span id="set-up-ao" />
-## Set up Orchestrator
+## Set up Meiyo
 
 <Steps>
 <Step>
 
 ### Install and open the desktop app
 
-Choose the download for your platform above, install it, and open **Orchestrator**. The app starts and supervises the local Go daemon automatically.
+Choose the download for your platform above, install it, and open **Meiyo**. The app starts and supervises the local Go daemon automatically.
 
 </Step>
 <Step>
@@ -68,7 +68,7 @@ For GitLab, sign in with a GitLab token or `glab`. See [source-control setup](/p
 
 ### Install and sign in to an external agent
 
-For an externally installed harness, install it and run it once outside Orchestrator to complete its sign-in flow. Orchestrator detects available harnesses when you create a session. If you use the built-in Unreal Agent, skip this step and choose it for a Chat session on supported macOS or Linux.
+For an externally installed harness, install it and run it once outside Meiyo to complete its sign-in flow. Meiyo detects available harnesses when you create a session. If you use the built-in Unreal Agent, skip this step and choose it for a Chat session on supported macOS or Linux.
 
 Chat support depends on the harness and installed version; see the [agent capability catalog](/plugins/agents#chat-versus-terminal-ui).
 
@@ -77,7 +77,7 @@ Chat support depends on the harness and installed version; see the [agent capabi
 
 ### Add a project
 
-In the desktop app, choose **Add project** and select an existing local Git repository. Orchestrator registers it without moving your original checkout. Each worker session gets its own isolated worktree.
+In the desktop app, choose **Add project** and select an existing local Git repository. Meiyo registers it without moving your original checkout. Each worker session gets its own isolated worktree.
 
 </Step>
 </Steps>
@@ -110,15 +110,15 @@ New users should install the desktop app directly instead.
 </details>
 
 <span id="where-ao-stores-data" />
-## Where Orchestrator stores data
+## Where Meiyo stores data
 
-All Orchestrator application state lives under `~/.ao` by default, including the daemon database, run file, managed worktrees, and Electron browser data. Advanced installations can override daemon paths with `AO_DATA_DIR` and `AO_RUN_FILE`.
+All Meiyo application state lives under `~/.ao` by default, including the daemon database, run file, managed worktrees, and Electron browser data. Advanced installations can override daemon paths with `AO_DATA_DIR` and `AO_RUN_FILE`.
 
 ## Common installation problems
 
 <Accordions>
 	<Accordion title="No agent is available">
-		For an external harness, install it, run it once to authenticate, then restart Orchestrator so the desktop-launched daemon receives the updated login-shell environment. Unreal Agent is built into Orchestrator for Chat on supported macOS and Linux; choose it directly instead of installing a CLI.
+		For an external harness, install it, run it once to authenticate, then restart Meiyo so the desktop-launched daemon receives the updated login-shell environment. Unreal Agent is built into Meiyo for Chat on supported macOS and Linux; choose it directly instead of installing a CLI.
 	</Accordion>
 	<Accordion title="GitHub data is missing">
 		Run `gh auth status`. Confirm the active account can access the repository and its pull requests.
@@ -130,7 +130,7 @@ All Orchestrator application state lives under `~/.ao` by default, including the
 		The desktop app does not require it. Only troubleshoot the package manager's global bin path if you intentionally use the frozen legacy CLI.
 	</Accordion>
 	<Accordion title="macOS says the developer cannot be verified">
-		In Finder, right-click Orchestrator, choose Open, then choose Open again in the confirmation dialog. If macOS still blocks the app, run these diagnostics and include the output when opening an issue:
+		In Finder, right-click Meiyo, choose Open, then choose Open again in the confirmation dialog. If macOS still blocks the app, run these diagnostics and include the output when opening an issue:
 		```bash
 		sw_vers
 		codesign -dvvv "/Applications/Agent Orchestrator.app"
