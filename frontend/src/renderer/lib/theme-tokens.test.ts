@@ -133,29 +133,31 @@ describe("default theme contrast", () => {
 	const dark = cssBlock(normalized, ":root,\n:root.dark,\n.dark {");
 	const light = cssBlock(normalized, '\n:root[data-theme="light"] {');
 
-	it("keeps the Observatory token values", () => {
-		expect(resolveToken(dark, "--background")).toBe("#050506");
-		expect(resolveToken(dark, "--foreground")).toBe("#ECE7DC");
-		expect(resolveToken(dark, "--accent-star")).toBe("#E5B451");
-		expect(resolveToken(dark, "--ring")).toBe("#E5B451");
-		expect(resolveToken(dark, "--sidebar-ring")).toBe("#E5B451");
-		expect(resolveToken(light, "--background")).toBe("#F4F0E6");
-		expect(resolveToken(light, "--card")).toBe("#FBF8F1");
-		expect(resolveToken(light, "--accent-star")).toBe("#D9A441");
-		expect(resolveToken(light, "--accent-star-ink")).toBe("#8A5E0E");
-		expect(resolveToken(light, "--ring")).toBe("#8A5E0E");
-		expect(cssToken(dark, "--border")).toBe("#1E1C18");
-		expect(cssToken(light, "--border")).toBe("#D8D0BE");
+	it("keeps the Meiyo token values", () => {
+		expect(resolveToken(dark, "--background")).toBe("#101212");
+		expect(resolveToken(dark, "--foreground")).toBe("#F0EDE6");
+		expect(resolveToken(dark, "--accent-star")).toBe("#D9643F");
+		expect(resolveToken(dark, "--ring")).toBe("#D9643F");
+		expect(resolveToken(dark, "--sidebar-ring")).toBe("#D9643F");
+		expect(resolveToken(light, "--background")).toBe("#F4F2EC");
+		expect(resolveToken(light, "--card")).toBe("#FBFAF5");
+		expect(resolveToken(light, "--accent-star")).toBe("#C0502E");
+		expect(resolveToken(light, "--accent-star-ink")).toBe("#9E3E22");
+		expect(resolveToken(light, "--ring")).toBe("#9E3E22");
+		expect(cssToken(dark, "--border")).toBe("#2A302D");
+		expect(cssToken(light, "--border")).toBe("#D8D6CC");
+		expect(resolveToken(dark, "--accent-brand")).not.toBe(resolveToken(dark, "--destructive"));
+		expect(resolveToken(light, "--accent-brand")).not.toBe(resolveToken(light, "--destructive"));
 	});
 
-	it("clears the text and gold floors on both themes", () => {
+	it("clears the text and brand-accent floors on both themes", () => {
 		for (const [label, block] of [
 			["dark", dark],
 			["light", light],
 		] as const) {
 			const foreground = resolveToken(block, "--foreground");
 			const muted = resolveToken(block, "--muted-foreground");
-			const goldInk = resolveToken(block, "--accent-star-ink");
+			const brandInk = resolveToken(block, "--accent-star-ink");
 			const ring = resolveToken(block, "--ring");
 			const surfaces = ["--background", "--card", "--popover", "--sidebar"] as const;
 			for (const surface of surfaces) {
@@ -166,10 +168,10 @@ describe("default theme contrast", () => {
 				const ratio = contrast(muted, resolveToken(block, surface));
 				expect(ratio, `${label} muted on ${surface} = ${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(4.5);
 			}
-			// Gold used as text or a rule must read as text; the focus ring needs 3:1.
+			// Brand accent used as text or a rule must read as text; the focus ring needs 3:1.
 			for (const surface of ["--background", "--card"] as const) {
-				const inkRatio = contrast(goldInk, resolveToken(block, surface));
-				expect(inkRatio, `${label} gold ink on ${surface} = ${inkRatio.toFixed(2)}`).toBeGreaterThanOrEqual(4.5);
+				const inkRatio = contrast(brandInk, resolveToken(block, surface));
+				expect(inkRatio, `${label} brand ink on ${surface} = ${inkRatio.toFixed(2)}`).toBeGreaterThanOrEqual(4.5);
 				const ringRatio = contrast(ring, resolveToken(block, surface));
 				expect(ringRatio, `${label} ring on ${surface} = ${ringRatio.toFixed(2)}`).toBeGreaterThanOrEqual(3);
 			}

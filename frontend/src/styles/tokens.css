@@ -19,43 +19,46 @@
 	/* ── Color scheme hint for native form controls / scrollbars ── */
 	color-scheme: dark;
 
-	/* True black canvas. Hue 80 is warm, kept at very low chroma so nested
-	   surfaces read as lamp-lit black. Starlight gold is the only accent. */
-	--accent-star: #E5B451;
-	--accent-star-ink: #E5B451;
-	--background: #050506;
-	--foreground: #ECE7DC;
-	--card: #0B0B0D;
-	--card-foreground: #ECE7DC;
-	--popover: #100F0C;
-	--popover-foreground: #ECE7DC;
+	/* Graphite canvas, warm ivory text. Vermilion is the brand accent;
+	   bronze is for quiet detail. */
+	--accent-brand: #D9643F; /* vermilion: brand mark, primary action, focus ring */
+	--accent-brand-ink: #EC8A6C; /* vermilion as text or a rule on dark surfaces */
+	--accent-bronze: #C0A785; /* quiet detail: eyebrows, crest outline */
+	--accent-star: var(--accent-brand);
+	--accent-star-ink: var(--accent-brand-ink);
+	--background: #101212;
+	--foreground: #F0EDE6;
+	--card: #171A19;
+	--card-foreground: #F0EDE6;
+	--popover: #1C201F;
+	--popover-foreground: #F0EDE6;
 	--primary: oklch(0.90 0.014 85);
 	--primary-foreground: oklch(0 0 0);
-	--secondary: #15130F;
+	--secondary: #222725;
 	--secondary-foreground: oklch(0.93 0.012 85);
-	--muted: #15130F;
-	--muted-foreground: #B3AD9F;
-	--accent: #15130F;
+	--muted: #222725;
+	--muted-foreground: #B2B7AF;
+	--accent: #222725;
 	--accent-foreground: oklch(0.93 0.012 85);
-	--destructive: oklch(0.704 0.191 22.216);
+	--destructive: #F0788A; /* crimson, kept apart from the vermilion brand accent */
 	/* Hairlines separate, they do not decorate. Opaque warm hex, not a white overlay. */
-	--border: #1E1C18;
-	--input: #2B2820;
-	--ring: var(--accent-star);
+	--border: #2A302D;
+	--input: #353C38;
+	--ring: var(--accent-brand);
 	--chart-1: oklch(0.84 0 0);
 	--chart-2: oklch(0.6 0 0);
 	--chart-3: oklch(0.48 0 0);
 	--chart-4: oklch(0.4 0 0);
 	--chart-5: oklch(0.29 0 0);
 	--radius: 0.5rem;
-	--sidebar: #08080A;
+	--sidebar: #141716;
 	--sidebar-foreground: oklch(0.93 0.012 85);
 	--sidebar-primary: oklch(0.90 0.014 85);
 	--sidebar-primary-foreground: oklch(0 0 0);
-	--sidebar-accent: #15130F;
+	--sidebar-accent: #222725;
 	--sidebar-accent-foreground: oklch(0.93 0.012 85);
 	--sidebar-border: var(--border);
-	--sidebar-ring: var(--accent-star);
+	--sidebar-ring: var(--accent-brand);
 
 	/* ═══════════════════════════════════════════════════════════════
 	   COLOR — semantic (swap these per theme; do not invent new roles
@@ -78,7 +81,7 @@
 	/* Text */
 	--color-text-primary: var(--foreground);
 	--color-text-muted: var(--muted-foreground);
-	--color-text-passive: #8E887A;
+	--color-text-passive: #8F978F;
 	--color-brand-logo: #79b0dc;
 	--color-brand-logo-bright: #a5cde7;
 	--color-brand-logo-foreground: #0a0b0d;
@@ -648,41 +651,44 @@
 :root[data-theme="light"] {
 	color-scheme: light;
 
-	/* Warm paper. Hue 80 at low chroma; nothing here is pure white. */
-	--accent-star: #D9A441;
-	--accent-star-ink: #8A5E0E;
-	--background: #F4F0E6;
-	--foreground: #1E1B15;
-	--card: #FBF8F1;
-	--card-foreground: #1E1B15;
-	--popover: #FBF8F1;
-	--popover-foreground: #1E1B15;
+	/* Warm paper. Nothing here is pure white. */
+	--accent-brand: #C0502E;
+	--accent-brand-ink: #9E3E22;
+	--accent-bronze: #8C714D;
+	--accent-star: var(--accent-brand);
+	--accent-star-ink: var(--accent-brand-ink);
+	--background: #F4F2EC;
+	--foreground: #222724;
+	--card: #FBFAF5;
+	--card-foreground: #222724;
+	--popover: #FBFAF5;
+	--popover-foreground: #222724;
 	--primary: oklch(0.26 0.020 60);
 	--primary-foreground: oklch(0.975 0.013 80);
-	--secondary: #E6DFCF;
+	--secondary: #E8E5DD;
 	--secondary-foreground: oklch(0.22 0.020 60);
-	--muted: #E6DFCF;
-	--muted-foreground: #4F493D;
-	--accent: #E6DFCF;
+	--muted: #E8E5DD;
+	--muted-foreground: #4D5751;
+	--accent: #E8E5DD;
 	--accent-foreground: oklch(0.22 0.020 60);
-	--destructive: oklch(0.577 0.245 27.325);
+	--destructive: #B3263E;
 	/* Warm opaque hairlines, matching dark. */
-	--border: #D8D0BE;
-	--input: #CFC6B2;
-	--ring: var(--accent-star-ink); /* the fill is 2:1 on paper; rings need 3:1 */
+	--border: #D8D6CC;
+	--input: #CBC8BD;
+	--ring: var(--accent-brand-ink); /* the deeper ink keeps the ring well clear of 3:1 on paper */
 	--chart-1: oklch(0.72 0 0);
 	--chart-2: oklch(0.52 0 0);
 	--chart-3: oklch(0.4 0 0);
 	--chart-4: oklch(0.32 0 0);
 	--chart-5: oklch(0.24 0 0);
-	--sidebar: #EDE8DC;
+	--sidebar: #ECE9E1;
 	--sidebar-foreground: oklch(0.22 0.020 60);
 	--sidebar-primary: oklch(0.26 0.020 60);
 	--sidebar-primary-foreground: oklch(0.975 0.013 80);
-	--sidebar-accent: #E6DFCF;
+	--sidebar-accent: #E8E5DD;
 	--sidebar-accent-foreground: oklch(0.22 0.020 60);
 	--sidebar-border: var(--border);
-	--sidebar-ring: var(--accent-star-ink);
+	--sidebar-ring: var(--accent-brand-ink);
 
 	--color-bg-primary: var(--background);
 	--color-bg-secondary: var(--card);
@@ -695,7 +701,7 @@
 
 	--color-text-primary: var(--foreground);
 	--color-text-muted: var(--muted-foreground);
-	--color-text-passive: #665F51; /* 4.5:1 on tertiary too */
+	--color-text-passive: #5E665F; /* 4.5:1 on tertiary too */
 	--color-brand-logo: #304c83;
 	--color-brand-logo-bright: #466daa;
 	--color-brand-logo-foreground: #ffffff;
@@ -745,7 +751,7 @@
 	--color-purple: var(--chart-4);
 
 	--color-interactive-hover: color-mix(in oklch, var(--foreground) 4%, transparent);
-	--color-interactive-active: #E6DFCF;
+	--color-interactive-active: #E8E5DD;
 	--color-overlay-subtle: color-mix(in oklch, var(--foreground) 2%, transparent);
 	--color-overlay-faint: color-mix(in oklch, var(--foreground) 3%, transparent);
 	--color-scrollbar: color-mix(in oklch, var(--foreground) 12%, transparent);
